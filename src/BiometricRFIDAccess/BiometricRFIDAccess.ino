@@ -128,6 +128,9 @@ void handleLedCommand(JsonDocument bleJSON);
 
 /// SD Card
 void setupSDCard();  
+void addFingerprintToSDCard(uint8_t fingerprintID);
+void deleteFingerprintFromSDCard(uint8_t fingerprintID);
+void addRFIDCardToSDCard(String username, String RFID);
 
 /// Task Controller
 void taskRFID(void *parameter);
@@ -338,34 +341,15 @@ void enrollUserPN532(String data) {
     uint8_t uidLength;  
   
     if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {  
-        String id = "";  
-        for (uint8_t i = 0; i < uidLength; i++) {  
-            id += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");  
-        }  
-        Serial.print("UID: ");  
-        Serial.println(id);  
-  
-        File file = SD.open("/data.json", FILE_READ);  
-        StaticJsonDocument<JSON_CAPACITY> doc;  
-        if (file) {  
-            deserializeJson(doc, file);  
-            file.close();  
-        }  
-  
-        JsonObject user = doc.createNestedObject(name);  
-        user["uid"] = id;  
-        if (!user.containsKey("fingerprint_id")) {  
-            user["fingerprint_id"] = nullptr;  
-        }  
-  
-        file = SD.open("/data.json", FILE_WRITE);  
-        if (file) {  
-            serializeJson(doc, file);  
-            file.close();  
-            Serial.println("Data berhasil disimpan.");  
-        } else {  
-            Serial.println("Gagal menyimpan data.");  
-        }  
+      String id = "";  
+      for (uint8_t i = 0; i < uidLength; i++) {  
+          id += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");  
+      }  
+      Serial.print("UID: ");  
+      Serial.println(id);  
+
+      // Adding the newly Card to the SD Card
+      addRFIDCardToSDCard(name, id);
     }  
     currentState = RUNNING;  
     Serial.println("Kembali ke mode RUNNING.");
@@ -400,29 +384,7 @@ void listAccessPN532() {
 
 /// delete user NFC function
 void deleteUserPN532(String data) {
-  String idToDelete = data;
-
-  File file = SD.open("/data.json", FILE_READ);
-  StaticJsonDocument<JSON_CAPACITY> doc;
-  if (file) {
-    deserializeJson(doc, file);
-    file.close();
-  }
-
-  if (doc.containsKey(idToDelete)) {
-    doc.remove(idToDelete);
-    Serial.println("Data berhasil dihapus.");
-  } else {
-    Serial.println("Nama tidak ditemukan.");
-  }
-
-  file = SD.open("/data.json", FILE_WRITE);
-  if (file) {
-    serializeJson(doc, file);
-    file.close();
-  } else {
-    Serial.println("Gagal menyimpan data.");
-  }
+  deleteRFIDCardFromSDCard(data);
 }
 
 /// function pengolahan apakah id dapat mengakses (NFC)
@@ -481,7 +443,7 @@ void verifyAccessPN532() {
 }
 
 /*
->>>> Fingerprint Section <<<<
+>>>> Fingerprint Sensor Function Section <<<<
 */
 //Compare fingerprints
 void fingerprintMatching(){
@@ -573,6 +535,9 @@ void fingerprintRegistration(String data){
     //Serial.println(desc);
   }
   Serial.println("-----------------------------");
+
+  Serial.println("------ SAVING FINGERPRINT TO PHYSICAL CARD ------");
+  // Save the fingerprint information also in the SD Card
 }
 
 //Fingerprint deletion
@@ -742,6 +707,112 @@ void loop() {
   delay(10);
 }
 
+/*
+>>>> SD Card Function to Add, Delete, and List Access <<<<
+*/
+void addFingerprintToSDCard(uint8_t fingerprintID) {
+  File jsonFile = SD.open("/fingerprints.json", FILE_READ);
+  DynamicJsonDocument doc(1024);
+  DeserializationError error = deserializeJson(doc, jsonFile);
+  jsonFile.close();
+  
+  JsonArray fingerprints = doc["fingerprints"].as<JsonArray>();
+  for (JsonObject fingerprint : fingerprints) {
+    if (fingerprint["id"] == id) {
+      Serial.println("ID sudah terdaftar, pilih ID lain.");
+      enrollMode = false;
+      return;
+    }
+  }
+}
+
+void deleteFingerprintFromSDCard(uint8_t fingerprintID) {
+  // Read the access of the json first
+  File jsonFile = SD.open("/fingerprints.json", FILE_READ);
+  DynamicJsonDocument doc(1024);
+  DeserializationError error = deserializeJson(doc, jsonFile);
+  jsonFile.close();
+
+  if (error) {
+    Serial.println("Gagal membaca file JSON.");
+    return;
+  }
+
+  JsonArray fingerprints = doc["fingerprints"].as<JsonArray>();
+  bool found = false;
+
+  for (JsonArray::iterator it = fingerprints.begin(); it != fingerprints.end(); ++it) {
+    if ((*it)["id"] == fingerprintID) {
+      fingerprints.remove(it);
+      found = true;
+      break;
+    }
+  }
+
+  if (found) {
+
+    File writeFile = SD.open("/fingerprints.json", FILE_WRITE);
+    if (writeFile) {
+      serializeJson(doc, writeFile);
+      writeFile.close();
+      Serial.println("Sidik jari berhasil dihapus dari file JSON.");
+    } else {
+      Serial.println("Gagal menulis file JSON.");
+    }
+  } else {
+    Serial.println("ID tidak ditemukan di file JSON.");
+  }
+  deleteMode = false;
+
+}
+
+void addRFIDCardToSDCard(String username, String RFID){
+  File file = SD.open("/data.json", FILE_READ);  
+  StaticJsonDocument<JSON_CAPACITY> doc;  
+  if (file) {  
+    deserializeJson(doc, file);
+    file.close();
+  }  
+
+  JsonObject user = doc.createNestedObject(username);  
+  user["uid"] = RFID;  
+  if (!user.containsKey("fingerprint_id")) {  
+    user["fingerprint_id"] = nullptr;  
+  }  
+
+  file = SD.open("/data.json", FILE_WRITE);  
+  if (file) {  
+    serializeJson(doc, file);  
+    file.close();  
+    Serial.println("Data berhasil disimpan.");  
+  } else {  
+    Serial.println("Gagal menyimpan data.");  
+  }  
+}
+
+void deleteRFIDCardFromSDCard(String data){
+  File file = SD.open("/data.json", FILE_READ);
+  StaticJsonDocument<JSON_CAPACITY> doc;
+  if (file) {
+    deserializeJson(doc, file);
+    file.close();
+  }
+
+  if (doc.containsKey(data)) {
+    doc.remove(data);
+    Serial.println("Data berhasil dihapus.");
+  } else {
+    Serial.println("Nama tidak ditemukan.");
+  }
+
+  file = SD.open("/data.json", FILE_WRITE);
+  if (file) {
+    serializeJson(doc, file);
+    file.close();
+  } else {
+    Serial.println("Gagal menyimpan data.");
+  }
+}
 
 /*
 >>>> Deprecated Function <<<<
