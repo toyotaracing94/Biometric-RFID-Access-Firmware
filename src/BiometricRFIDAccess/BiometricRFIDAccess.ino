@@ -102,7 +102,7 @@ void taskFingerprint(void* parameter);
 /// Card Sensor (PN532)
 void enrollUserPN532(String visitorName);
 void listAccessPN532();  
-void deleteUserPN532(String data); 
+void deleteUserPN532(String visitorName); 
 void verifyAccessPN532();  
 
 /// Fingerprint Sensor (AS608)
@@ -331,31 +331,6 @@ void taskFingerprint(void *parameter) {
 /*
 >>>> NFC Section <<<<
 */
-
-/// register UID NFC
-void enrollUserPN532(String visitorName) {  
-    String name = visitorName;
-  
-    Serial.println("Dekatkan kartu RFID untuk mendaftar...");  
-    uint8_t uid[7];  
-    uint8_t uidLength;  
-  
-    if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {  
-      String id = "";  
-      for (uint8_t i = 0; i < uidLength; i++) {  
-          id += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");  
-      }  
-      Serial.print("UID: ");  
-      Serial.println(id);  
-
-      // Adding the Card information the SD Card
-      addRFIDCardToSDCard(name, id);
-    }  
-    currentState = RUNNING;  
-    Serial.println("Kembali ke mode RUNNING.");
-    return;
-}
-
 /// Too checking who are registered
 void listAccessPN532() {
   File file = SD.open("/data.json", FILE_READ);
@@ -382,9 +357,33 @@ void listAccessPN532() {
   return;
 }
 
+/// register UID NFC
+void enrollUserPN532(String visitorName) {  
+    String name = visitorName;
+  
+    Serial.println("Dekatkan kartu RFID untuk mendaftar...");  
+    uint8_t uid[7];  
+    uint8_t uidLength;  
+  
+    if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {  
+      String id = "";  
+      for (uint8_t i = 0; i < uidLength; i++) {  
+          id += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");  
+      }  
+      Serial.print("UID: ");  
+      Serial.println(id);  
+
+      // Adding the Card information the SD Card
+      addRFIDCardToSDCard(name, id);
+    }  
+    currentState = RUNNING;  
+    Serial.println("Kembali ke mode RUNNING.");
+    return;
+}
+
 /// delete user NFC function
-void deleteUserPN532(String data) {
-  deleteRFIDCardFromSDCard(data);
+void deleteUserPN532(String visitorName) {
+  deleteRFIDCardFromSDCard(visitorNamed);
 }
 
 /// function pengolahan apakah id dapat mengakses (NFC)
