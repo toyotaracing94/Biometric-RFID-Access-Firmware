@@ -136,8 +136,8 @@ void handleLedCommand(JsonDocument bleJSON);
 
 /// SD Card
 void setupSDCard();  
-void addFingerprintToSDCard(uint8_t fingerprintID);
-void deleteFingerprintFromSDCard(uint8_t fingerprintID);
+bool addFingerprintToSDCard(uint8_t fingerprintID);
+bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete);
 bool addRFIDCardToSDCard(String username, String RFID);
 bool deleteRFIDCardFromSDCard(String data);
 
@@ -574,8 +574,12 @@ void fingerprintRegistration(String visitorName){
 
   Serial.println("------ SAVING FINGERPRINT TO PHYSICAL CARD ------");
   // Save the fingerprint information also in the SD Card
-  addFingerprintToSDCard(visitorName, ID);
-
+  bool status = addFingerprintToSDCard(visitorName, ID);
+  if (status){
+    sendJsonNotification("OK", FINGERPRINT, visitorName, String(ID), "Fingerprint registered successfully!");
+  }else{
+    sendJsonNotification("Error", FINGERPRINT, visitorName, String(ID), "Failed to register Fingerprint!");
+  }
 }
 
 //Fingerprint deletion
@@ -601,6 +605,18 @@ void fingerprintDeletion(uint8_t data){
   /*Turn off fingerprint LED ring*/
   fingerprint.ctrlLED(/*LEDMode = */fingerprint.eNormalClose, /*LEDColor = */fingerprint.eLEDBlue, /*blinkCount = */0);
   Serial.println("-----------------------------");
+
+  Serial.println("------ DELETE FINGERPRINT FROM PHYSICAL CARD ------");
+  // Save the fingerprint information also in the SD Card
+  bool status = deleteFingerprintFromSDCard(data);
+
+  // Also have not decided how to actually achieve this format message notification
+  String visitorName = "UNDECIDED";
+  if (status){
+    sendJsonNotification("OK", FINGERPRINT, visitorName, String(ret), "Fingerprint registered successfully!");
+  }else{
+    sendJsonNotification("Error", FINGERPRINT, visitorName, String(ret), "Failed to register Fingerprint!");
+  }
 }
 
 /*
@@ -770,7 +786,7 @@ void listFingerprintsFromSDCard(){
 
 }
 
-void addFingerprintToSDCard(String userName, uint8_t fingerprintID) {
+bool addFingerprintToSDCard(String userName, uint8_t fingerprintID) {
   File jsonFile = SD.open("/fingerprints.json", FILE_READ);
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, jsonFile);
@@ -779,28 +795,31 @@ void addFingerprintToSDCard(String userName, uint8_t fingerprintID) {
   if (error) {
     Serial.print(F("Failed to read file, error: "));
     Serial.println(error.c_str());
-    return;
+    return false;
   }
 
   if (doc.containsKey(userName)) {
     Serial.println("Username already exists.");
     enrollMode = false;
-    return;
+    return false;
   }
 
   JsonObject user = doc.createNestedObject(userName);
   user["id"] = fingerprintID;
 
   File writeFile = SD.open("/fingerprints.json", FILE_WRITE);
+  writeFile.close();
+
   if (serializeJson(doc, writeFile) == 0) {
     Serial.println(F("Failed to write to file"));
+    return false;
   } else {
     Serial.println(F("Fingerprint data saved successfully"));
+    return true;
   }
-  writeFile.close();
 }
 
-void deleteFingerprintFromSDCard(String userName) {
+bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete) {
   // Read the JSON file first
   File jsonFile = SD.open("/fingerprints.json", FILE_READ);
   DynamicJsonDocument doc(1024);
@@ -809,30 +828,44 @@ void deleteFingerprintFromSDCard(String userName) {
 
   if (error) {
     Serial.println("Failed to read JSON file.");
-    return;
+    return false;
   }
 
-  // Check if the username exists
-  if (!doc.containsKey(userName)) {
-    Serial.println("Username not found in JSON file.");
-    return;
+  // Iterate through each key
+  bool found = false;
+  for (JsonPair user : doc.as<JsonObject>()) {
+    JsonObject userData = user.value();
+    
+    // Compare the 'id' value for each user
+    if (userData.containsKey("id") && userData["id"] == fingerprintToDelete) {
+      // Remove the user from the JSON document
+      doc.remove(user.key());
+      found = true;
+      break;
+    }
   }
 
-  // Remove the user from the JSON file
-  doc.remove(userName);
+  // If the ID was not found, print a message
+  if (!found) {
+    Serial.println("Fingerprint ID not found in JSON file.");
+    return false;
+  }
 
   // Open the file for writing and save the updated data
+  deleteMode = false;
   File writeFile = SD.open("/fingerprints.json", FILE_WRITE);
   if (writeFile) {
     serializeJson(doc, writeFile);
     writeFile.close();
     Serial.println("Fingerprint deleted successfully.");
+    return true;
   } else {
     Serial.println("Failed to write JSON file.");
+    return false;
   }
 
-  deleteMode = false;  // Set delete mode to false
 }
+
 
 bool addRFIDCardToSDCard(String username, String RFID){
   File file = SD.open("/data.json", FILE_READ);  
