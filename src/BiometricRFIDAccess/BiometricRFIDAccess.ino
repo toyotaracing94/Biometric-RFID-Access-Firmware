@@ -50,6 +50,7 @@ TO DO :
 #define MOSI_PIN 23        // Master Out Slave In
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"  
+#define NOTIFICATION_CHARACTERISTIC "01952383-cf1a-705c-8744-2eee6f3f80c8"
 #define LED_REMOTE_CHARACTERISTIC "beb5483e-36e1-4688-b7f5-ea07361b26a8"  
 #define DOOR_CHARACTERISTIC "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
 #define AC_REMOTE_CHARACTERISTIC "9f54dbb9-e127-4d80-a1ab-413d48023ad2"  
@@ -59,6 +60,7 @@ TO DO :
 
 BLEServer* pServer = NULL;                      // BLE Server
 BLEService* pService = NULL;                    // BLE Service
+BLECharacteristic* pNotification = NULL;        // Notification Characteristic
 BLECharacteristic* LEDremoteChar = NULL;        // LED Characteristic
 BLECharacteristic* DoorChar = NULL;             // Door Characteristic
 BLECharacteristic* ACChar = NULL;               // AC Characteristic
@@ -90,6 +92,12 @@ enum State {
   DELETE_RFID,
   DELETE_FP,
   SYNC_VISITOR
+};
+
+// Define the lock type
+enum LockType {
+  RFID,
+  FINGERPRINT
 };
 
 State currentState = RUNNING;               // Initial State
@@ -130,7 +138,8 @@ void handleLedCommand(JsonDocument bleJSON);
 void setupSDCard();  
 void addFingerprintToSDCard(uint8_t fingerprintID);
 void deleteFingerprintFromSDCard(uint8_t fingerprintID);
-void addRFIDCardToSDCard(String username, String RFID);
+bool addRFIDCardToSDCard(String username, String RFID);
+bool deleteRFIDCardFromSDCard(String data);
 
 /// Task Controller
 void taskRFID(void *parameter);
@@ -170,6 +179,7 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
     DeserializationError error = deserializeJson(bleJSON, value);
     if (!error) {
       // Menyalin isi bleJSON ke globalJSON
+      // NOTE : Potentially become a racing condition
       globalJSON.clear(); // Kosongkan globalJSON sebelum menyalin
       globalJSON.set(bleJSON.as<JsonObject>()); // Menyalin isi bleJSON ke globalJSON
     } else {
@@ -374,8 +384,14 @@ void enrollUserPN532(String visitorName) {
       Serial.println(id);  
 
       // Adding the Card information the SD Card
-      addRFIDCardToSDCard(name, id);
-    }  
+      bool status = addRFIDCardToSDCard(name, id);
+      if (status){
+        sendJsonNotification("OK", RFID, name, id, "RFID Card registered successfully!");
+      }else{
+        sendJsonNotification("Error", RFID, name, id, "Failed to register RFID card!");
+      }
+    }
+
     currentState = RUNNING;  
     Serial.println("Kembali ke mode RUNNING.");
     return;
@@ -383,7 +399,19 @@ void enrollUserPN532(String visitorName) {
 
 /// delete user NFC function
 void deleteUserPN532(String visitorName) {
-  deleteRFIDCardFromSDCard(visitorNamed);
+  bool status = deleteRFIDCardFromSDCard(visitorName);
+  // Set the ID null for now, still undecided how this mechanism really work
+  String emptyUUID = "00000000-0000-0000-0000-000000000000";
+
+  if (status){
+    sendJsonNotification("OK", RFID, visitorName, emptyUUID, "RFID Card deleted successfully!");
+  }else{
+    sendJsonNotification("Error", RFID, visitorName, emptyUUID, "Failed to delete RFID card!");
+  }
+
+  currentState = RUNNING;  
+  Serial.println("Kembali ke mode RUNNING.");
+  return;
 }
 
 /// function pengolahan apakah id dapat mengakses (NFC)
@@ -567,6 +595,35 @@ void fingerprintDeletion(uint8_t data){
 }
 
 /*
+>>>> Notification BLE Section <<<<
+*/
+void sendJsonNotification(const String& status, LockType type ,const String& name, const String& id, const String& message) {
+    // Create a JSON document
+    StaticJsonDocument<256> doc;
+
+    // Fill the JSON document
+    doc["status"] = status;
+    doc["type"] = type;
+    JsonObject data = doc.createNestedObject("data");
+    data["name"] = name;
+    data["id"] = id;
+    doc["message"] = message;
+
+    // Serialize the JSON document to a string
+    String jsonString;
+    serializeJson(doc, jsonString);
+
+    // Set the serialized JSON string as the characteristic value
+    pNotification->setValue(jsonString.c_str());
+
+    // Send the notification
+    pNotification->notify();
+
+    Serial.println("Notification sent: ");
+    Serial.println(jsonString);
+}
+
+/*
 >>>> Actuator Section <<<<
 */
 
@@ -632,48 +689,38 @@ void loop() {
   uint16_t i = 0;
   switch (currentState) {
     case RUNNING:
-    if((fingerprint.collectionFingerprint(/*timeout=*/5)) != ERR_ID809){
-      /*Get the time finger pressed down*/
-      /*Set fingerprint LED ring mode, color, and number of blinks 
-        Can be set as follows:
-        Parameter 1:<LEDMode>
-        eBreathing   eFastBlink   eKeepsOn    eNormalClose
-        eFadeIn      eFadeOut     eSlowBlink   
-        Paramerer 2:<LEDColor>
-        eLEDGreen  eLEDRed      eLEDYellow   eLEDBlue
-        eLEDCyan   eLEDMagenta  eLEDWhite
-        Parameter 3:<number of blinks> 0 represents blinking all the time
-        This parameter will only be valid in mode eBreathing, eFastBlink, eSlowBlink
-       */
-      fingerprint.ctrlLED(/*LEDMode = */fingerprint.eFastBlink, /*LEDColor = */fingerprint.eLEDBlue, /*blinkCount = */3);  //blue LED blinks quickly 3 times, means it's in fingerprint comparison mode now
-      /*Wait for finger to relase */
-      while(fingerprint.detectFinger()){
-        delay(50);
-        i++;
-        if(i == 15){             //Yellow LED blinks quickly 3 times, means it's in fingerprint regisrtation mode now
-          /*Set fingerprint LED ring to always ON in yellow*/
-          fingerprint.ctrlLED(/*LEDMode = */fingerprint.eFastBlink, /*LEDColor = */fingerprint.eLEDYellow, /*blinkCount = */3);
-        }else if(i == 30){      //Red LED blinks quickly 3 times, means it's in fingerprint deletion mode now 
-          /*Set fingerprint LED ring to always ON in red*/
-          fingerprint.ctrlLED(/*LEDMode = */fingerprint.eFastBlink, /*LEDColor = */fingerprint.eLEDRed, /*blinkCount = */3);
+      if((fingerprint.collectionFingerprint(/*timeout=*/5)) != ERR_ID809){
+        fingerprint.ctrlLED(/*LEDMode = */fingerprint.eFastBlink, /*LEDColor = */fingerprint.eLEDBlue, /*blinkCount = */3);  //blue LED blinks quickly 3 times, means it's in fingerprint comparison mode now
+        
+        /*Wait for finger to relase */
+        while(fingerprint.detectFinger()){
+          delay(50);
+          i++;
+          if(i == 5){
+            /*Start Set fingerprint LED ring to always ON in yellow color in fingerprint registration mode now*/
+            fingerprint.ctrlLED(/*LEDMode = */fingerprint.eFastBlink, /*LEDColor = */fingerprint.eLEDYellow, /*blinkCount = */3);
+          }else if(i == 10){
+            /*Start Set fingerprint LED ring to always ON in yellow color in fingerprint deletion mode now*/
+            fingerprint.ctrlLED(/*LEDMode = */fingerprint.eFastBlink, /*LEDColor = */fingerprint.eLEDRed, /*blinkCount = */3);
+          }
         }
+
+        if(i < 5){
+          /*Compare fingerprints*/
+          Serial.println("Enter fingerprint comparison mode");
+          fingerprintMatching();
+        }else if(i >= 5 && i < 10){
+          /*Registrate fingerprint*/
+          Serial.println("Enter fingerprint registration mode");
+          fingerprintRegistration(globalJSON["data"]["visitor_name"].as<String>());
+        }else{
+          /*Delete this fingerprint*/
+          Serial.println("Enter fingerprint deletion mode");
+          fingerprintDeletion(globalJSON["data"]["visitor_id"].as<uint8_t>());
+        }
+      }else{
+        Serial.println("Fingerprint capturing failed");
       }
-    }
-    if(i == 0){
-      /*Fingerprint capturing failed*/
-    }else if(i > 0 && i < 15){
-      Serial.println("Enter fingerprint comparison mode");
-      /*Compare fingerprints*/
-      fingerprintMatching();
-    }else if(i >= 15 && i < 30){
-      Serial.println("Enter fingerprint registration mode");
-      /*Registrate fingerprint*/
-      fingerprintRegistration(globalJSON["data"]["visitor_name"].as<String>());
-    }else{
-      Serial.println("Enter fingerprint deletion mode");
-      /*Delete this fingerprint*/
-      fingerprintDeletion(globalJSON["data"]["visitor_id"].as<uint8_t>());
-    }
       break;
     case ENROLL_RFID:
       enrollUserPN532(globalJSON["data"]["visitor_name"].as<String>());
@@ -778,7 +825,7 @@ void deleteFingerprintFromSDCard(String userName) {
   deleteMode = false;  // Set delete mode to false
 }
 
-void addRFIDCardToSDCard(String username, String RFID){
+bool addRFIDCardToSDCard(String username, String RFID){
   File file = SD.open("/data.json", FILE_READ);  
   StaticJsonDocument<JSON_CAPACITY> doc;  
   if (file) {  
@@ -794,12 +841,14 @@ void addRFIDCardToSDCard(String username, String RFID){
     serializeJson(doc, file);  
     file.close();  
     Serial.println("Data berhasil disimpan.");  
+    return true;
   } else {  
     Serial.println("Gagal menyimpan data.");  
+    return false;
   }  
 }
 
-void deleteRFIDCardFromSDCard(String data){
+bool deleteRFIDCardFromSDCard(String data){
   File file = SD.open("/data.json", FILE_READ);
   StaticJsonDocument<JSON_CAPACITY> doc;
   if (file) {
@@ -818,8 +867,10 @@ void deleteRFIDCardFromSDCard(String data){
   if (file) {
     serializeJson(doc, file);
     file.close();
+    return true;
   } else {
     Serial.println("Gagal menyimpan data.");
+    return false;
   }
 }
 
