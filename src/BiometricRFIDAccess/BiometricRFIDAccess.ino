@@ -298,6 +298,15 @@ void setupBle() {
   
   ACChar->addDescriptor(new BLE2902());  
   ACChar->setCallbacks(new CharacteristicCallback());
+
+  NotificationChar = pService->createCharacteristic(  
+    NOTIFICATION_CHARACTERISTIC,  
+    BLECharacteristic::PROPERTY_NOTIFY |  
+    BLECharacteristic::PROPERTY_READ |  
+    BLECharacteristic::PROPERTY_WRITE);  
+  
+  NotificationChar->addDescriptor(new BLE2902());  
+  NotificationChar->setCallbacks(new CharacteristicCallback());
   
   pService->start();  
   
