@@ -29,10 +29,6 @@ ESP32 AC Control (location middle in front seat)
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-/// Requirements for defining semaphore flags
-SemaphoreHandle_t xSemaphoreRFID;
-SemaphoreHandle_t xSemaphoreFingerprint;
-
 /// CONSTANT VARIABLE
 #define Solenoid 15  // Pin Solenoid (prototype)
 #define SDA_PIN 21   // Pin SDA to PN532
@@ -48,6 +44,9 @@ SemaphoreHandle_t xSemaphoreFingerprint;
 /// CONSTANT FILE I/O VARIABLE
 #define FINGERPRINT_FILE_PATH "/fingerprints.json"
 #define RFID_FILE_PATH "/data.json"
+
+TaskHandle_t taskRFIDHandle = NULL;
+TaskHandle_t taskFingerprintHandle = NULL;
 
 // Enum Device state to define process
 enum State {
@@ -112,7 +111,6 @@ bool deleteRFIDCardFromSDCard(String data);
 void taskRFID(void *parameter);
 void taskFingerprint(void *parameter);
 
-
 /// Setup sensors
 void setupPN532();
 void setupR503();
@@ -125,12 +123,7 @@ void taskRFID(void *parameter) {
   LOG_FUNCTION_LOCAL("Start RFID Reading Task!");
   while (1) {
     if (currentState == RUNNING) {
-      if (xSemaphoreTake(xSemaphoreRFID, portMAX_DELAY)) {
-        verifyAccessRFID();
-
-        // Release the sensor after use
-        xSemaphoreGive(xSemaphoreRFID);
-      }
+      verifyAccessRFID();
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -141,12 +134,7 @@ void taskFingerprint(void *parameter) {
   LOG_FUNCTION_LOCAL("Start Fingerprint Reading Task!");
   while (1) {
     if (currentState == RUNNING) {
-      if (xSemaphoreTake(xSemaphoreFingerprint, portMAX_DELAY)) {
-        verifyAccessFingerprint();
-        
-        // Release the sensor after use
-        xSemaphoreGive(xSemaphoreFingerprint);
-      }
+      verifyAccessFingerprint();
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -266,8 +254,7 @@ void listAccessRFID() {
 /// register UID NFC
 void enrollUserRFID() {
   LOG_FUNCTION_LOCAL("Enter name for RFID Registration")
-  while (Serial.available() == 0)
-    ;
+  while (Serial.available() == 0);
   String name = Serial.readStringUntil('\n');
   name.trim();
 
@@ -308,6 +295,7 @@ void deleteUserRFID() {
 
 /// Verify the access of the NFC/RFID Card
 void verifyAccessRFID() {
+  LOG_FUNCTION_LOCAL("Put your Card in the Sensor...");
   uint8_t uid[7];
   uint8_t uidLength;
   unsigned long startTime = millis();
@@ -821,15 +809,8 @@ void setup() {
   digitalWrite(Solenoid, LOW);
 
   // // Running task on this program
-  xSemaphoreRFID = xSemaphoreCreateBinary();
-  xSemaphoreFingerprint = xSemaphoreCreateBinary();
-
-  xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, NULL);
-  xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, NULL);
-
-  // Give the semaphore for any task to be used
-  xSemaphoreGive(xSemaphoreRFID);
-  xSemaphoreGive(xSemaphoreFingerprint);
+  xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, &taskRFIDHandle);
+  xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, &taskFingerprintHandle);
 }
 
 /// Loop
@@ -841,66 +822,50 @@ void loop() {
         command.trim();
         if (command == "register_rfid") {
           currentState = ENROLL_RFID;
+          vTaskSuspend(taskRFIDHandle);
         } else if (command == "register_fp") {
           currentState = ENROLL_FP;
+          vTaskSuspend(taskFingerprintHandle);
         } else if (command == "delete_fp") {
           currentState = DELETE_FP;
+          vTaskSuspend(taskFingerprintHandle);
         } else if (command == "delete_rfid") {
           currentState = DELETE_RFID;
+          vTaskSuspend(taskRFIDHandle);
         }
       }
       break;
+
     case ENROLL_RFID:
       LOG_FUNCTION_LOCAL("Start Registering RFID!");
-      if (xSemaphoreTake(xSemaphoreRFID, portMAX_DELAY)) {
-        enrollUserRFID();
-        xSemaphoreGive(xSemaphoreRFID);
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access RFID sensor");
-        currentState = RUNNING;
-      }
+      enrollUserRFID();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskRFIDHandle);
       break;
+
     case DELETE_RFID:
-    LOG_FUNCTION_LOCAL("Start Deleting RFID!");
-      if (xSemaphoreTake(xSemaphoreRFID, portMAX_DELAY)) {
-        deleteUserRFID();
-        xSemaphoreGive(xSemaphoreRFID);
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access RFID sensor");
-        currentState = RUNNING;
-      }
+      LOG_FUNCTION_LOCAL("Start Deleting RFID!");
+      deleteUserRFID();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskRFIDHandle);
       break;
+
     case ENROLL_FP:
-    LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
-      if (xSemaphoreTake(xSemaphoreFingerprint, portMAX_DELAY)) {
-        enrollUserFingerprint();
-        xSemaphoreGive(xSemaphoreFingerprint);
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access Fingerprint sensor");
-        currentState = RUNNING;
-      }
+      LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
+      enrollUserFingerprint();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskFingerprintHandle);
       break;
+
     case DELETE_FP:
-    LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
-      if (xSemaphoreTake(xSemaphoreFingerprint, portMAX_DELAY)) {
-        deleteUserFingerprint();
-        xSemaphoreGive(xSemaphoreFingerprint); 
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access Fingerprint sensor");
-        currentState = RUNNING;
-      }
+      LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
+      deleteUserFingerprint();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskFingerprintHandle);
       break;
   }
   delay(10);
