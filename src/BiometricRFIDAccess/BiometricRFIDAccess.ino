@@ -125,7 +125,7 @@ void taskRFID(void *parameter) {
   LOG_FUNCTION_LOCAL("Start RFID Reading Task!");
   while (1) {
     if (currentState == RUNNING) {
-      if (xSemaphoreTake(xSemaphoreRFID, portMAX_DELAY)) {
+      if (xSemaphoreTake(xSemaphoreRFID, pdMS_TO_TICKS(100))) {
         verifyAccessRFID();
 
         // Release the sensor after use
@@ -141,7 +141,7 @@ void taskFingerprint(void *parameter) {
   LOG_FUNCTION_LOCAL("Start Fingerprint Reading Task!");
   while (1) {
     if (currentState == RUNNING) {
-      if (xSemaphoreTake(xSemaphoreFingerprint, portMAX_DELAY)) {
+      if (xSemaphoreTake(xSemaphoreFingerprint, pdMS_TO_TICKS(100))) {
         verifyAccessFingerprint();
         
         // Release the sensor after use
@@ -852,7 +852,7 @@ void loop() {
       break;
     case ENROLL_RFID:
       LOG_FUNCTION_LOCAL("Start Registering RFID!");
-      if (xSemaphoreTake(xSemaphoreRFID, portMAX_DELAY)) {
+      if (xSemaphoreTake(xSemaphoreRFID, pdMS_TO_TICKS(500))) {
         enrollUserRFID();
         xSemaphoreGive(xSemaphoreRFID);
         currentState = RUNNING;
@@ -865,7 +865,7 @@ void loop() {
       break;
     case DELETE_RFID:
     LOG_FUNCTION_LOCAL("Start Deleting RFID!");
-      if (xSemaphoreTake(xSemaphoreRFID, portMAX_DELAY)) {
+      if (xSemaphoreTake(xSemaphoreRFID, pdMS_TO_TICKS(500))) {
         deleteUserRFID();
         xSemaphoreGive(xSemaphoreRFID);
         currentState = RUNNING;
@@ -878,7 +878,7 @@ void loop() {
       break;
     case ENROLL_FP:
     LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
-      if (xSemaphoreTake(xSemaphoreFingerprint, portMAX_DELAY)) {
+      if (xSemaphoreTake(xSemaphoreFingerprint, pdMS_TO_TICKS(500))) {
         enrollUserFingerprint();
         xSemaphoreGive(xSemaphoreFingerprint);
         currentState = RUNNING;
@@ -891,7 +891,7 @@ void loop() {
       break;
     case DELETE_FP:
     LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
-      if (xSemaphoreTake(xSemaphoreFingerprint, portMAX_DELAY)) {
+      if (xSemaphoreTake(xSemaphoreFingerprint, pdMS_TO_TICKS(500))) {
         deleteUserFingerprint();
         xSemaphoreGive(xSemaphoreFingerprint); 
         currentState = RUNNING;
