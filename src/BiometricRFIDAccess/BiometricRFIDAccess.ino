@@ -30,7 +30,8 @@ ESP32 AC Control (location middle in front seat)
 #include <BLE2902.h>
 
 /// CONSTANT VARIABLE
-#define Solenoid 15  // Pin Solenoid (prototype)
+#define Solenoid1 25  // Pin Solenoid (prototype)
+#define Solenoid2 26
 #define SDA_PIN 21   // Pin SDA to PN532
 #define SCL_PIN 22   // Pin SCL to PN532
 #define RX_PIN 16    // Pin RX to TX Fingerprint
