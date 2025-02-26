@@ -49,6 +49,9 @@ SemaphoreHandle_t xSemaphoreFingerprint;
 #define FINGERPRINT_FILE_PATH "/fingerprints.json"
 #define RFID_FILE_PATH "/data.json"
 
+TaskHandle_t taskRFIDHandle = NULL;
+TaskHandle_t taskFingerprintHandle = NULL;
+
 // Enum Device state to define process
 enum State {
   RUNNING,
@@ -824,8 +827,8 @@ void setup() {
   xSemaphoreRFID = xSemaphoreCreateBinary();
   xSemaphoreFingerprint = xSemaphoreCreateBinary();
 
-  xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, NULL);
-  xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, NULL);
+  xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, &taskRFIDHandle);
+  xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, &taskFingerprintHandle);
 
   // Give the semaphore for any task to be used
   xSemaphoreGive(xSemaphoreRFID);
