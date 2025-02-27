@@ -1,15 +1,18 @@
 /*
+
 ### >>> DEVELOPER NOTE <<< ###
 This code provided for TELEMATICS EXPERTISE in door Authentication feature on BATCH#2 Development
 
-HARDWARE PIC : AHMADHANI FAJAR ADITAMA 
-SOFTWARE PIC : DHIMAS DWI CAHYO
-MOBILE APP FEATURE PIC : REZKI MUHAMMAD github: @rezkim
+HARDWARE PIC            : AHMADHANI FAJAR ADITAMA     github: @
+SOFTWARE PIC            : JUNIARTO                    github: @WallNutss 
+                          DHIMAS DWI CAHYO            github: @dhimassdwii
+MOBILE APP FEATURE PIC  : REZKI MUHAMMAD              github: @rezkim
 
 This microcontroller is used as BLE Server Controlling another ESP32. 
-ESP32 included :
-ESP32 LED Control (location in dashboard)
-ESP32 AC Control (location middle in front seat)
+ESP32 included:
+  ESP32 Door Control
+  ESP32 LED Control (location in dashboard)
+  ESP32 AC Control (location middle in front seat)
 
 */
 
@@ -29,25 +32,27 @@ ESP32 AC Control (location middle in front seat)
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-/// Requirements for defining semaphore flags
-SemaphoreHandle_t xSemaphoreRFID;
-SemaphoreHandle_t xSemaphoreFingerprint;
+/// CONFIGURATION PIN GPIO FOR RELAY UNLOCK/LOCK
+#define relayUnlock 25    // Relay Unlock
+#define relayLock 26      // Relay Lock
 
-/// CONSTANT VARIABLE
-#define Solenoid 15  // Pin Solenoid (prototype)
-#define SDA_PIN 21   // Pin SDA to PN532
-#define SCL_PIN 22   // Pin SCL to PN532
-#define RX_PIN 16    // Pin RX to TX Fingerprint
-#define TX_PIN 17    // Pin TX to RX Fingerprint
+/// I2C CONFIGURATION FOR RFID SENSOR
+#define SDA_PIN 21            // Pin SDA to PN532
+#define SCL_PIN 22            // Pin SCL to PN532
 
-#define CS_PIN 5     // Chip Select pin
-#define SCK_PIN 18   // Clock pin
-#define MISO_PIN 19  // Master In Slave Out
-#define MOSI_PIN 23  // Master Out Slave In
+/// UART CONFIGURATION FOR FINGERPRINT SENSOR
+#define RX_PIN 16             // Pin RX to TX Fingerprint
+#define TX_PIN 17             // Pin TX to RX Fingerprint
+
+/// SPI PIN CONFIGURATION FOR MEMORY CARD MODULE
+#define CS_PIN 5        // Chip Select pin
+#define SCK_PIN 18      // Clock pin
+#define MISO_PIN 19     // Master In Slave Out
+#define MOSI_PIN 23     // Master Out Slave In
 
 /// CONSTANT FILE I/O VARIABLE
 #define FINGERPRINT_FILE_PATH "/fingerprints.json"
-#define RFID_FILE_PATH "/data.json"
+#define RFID_FILE_PATH "/rfid.json"
 
 TaskHandle_t taskRFIDHandle = NULL;
 TaskHandle_t taskFingerprintHandle = NULL;
@@ -76,16 +81,18 @@ const size_t JSON_CAPACITY = 1024;       // file JSON
 boolean enrollMode = false;              // variabel enrolmode
 boolean deleteMode = false;              // variabel deletemode
 boolean listMode = false;                // variabel listmode
-
-int id;                        // variabel ID
-int solenoidCounter = 0;       // counter Solenoid
-bool deviceConnected = false;  // Device connection status
-State currentState = RUNNING;  // Initial State
+int id;                                  // variabel ID
+bool deviceConnected = false;            // Device connection status
+State currentState = RUNNING;            // Initial State
 JsonObject globalJSON;
 
 /// Define Macro for Logging Purpose
 #define LOG_FUNCTION_LOCAL(message) \
   Serial.println(String(__func__) + ": " + message);
+
+/// Variable Counter and Ouput Relay
+int detectionCounter = 0;                 // Counter
+bool toggleState = false;                 // Output State
 
 // Function Prototypes
 /// Card Sensor (PN532)
@@ -101,39 +108,64 @@ void deleteUserFingerprint();
 void verifyAccessFingerprint();
 
 /// Actuator (Solenoid Doorlock)
-void toggleSolenoid(int &counter);
-void setupSolenoid();
+void toggleRelay();
+void setupRelayDoor();
 
 /// SD Card
 void setupSDCard();
 bool addFingerprintToSDCard(String username, uint8_t fingerprintID);
 bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete);
 bool addRFIDCardToSDCard(String username, String RFID);
-bool deleteRFIDCardFromSDCard(String data);
+bool deleteRFIDCardFromSDCard(String username, String data);
 
 /// Task Controller
 void taskRFID(void *parameter);
 void taskFingerprint(void *parameter);
-
 
 /// Setup sensors
 void setupPN532();
 void setupR503();
 
 /*
+>>>> Actuator Section <<<<
+*/
+
+/// TOGGLESTATE FOR RELAY UNLOCK/LOCK
+void toggleRelay() {
+  detectionCounter++;
+  if (toggleState) {
+    LOG_FUNCTION_LOCAL("relayUnlock ON (DOOR UNLOCK)...");
+    digitalWrite(relayUnlock, LOW);                   // Relay UNLOCK ON
+    delay(500);
+    digitalWrite(relayUnlock, HIGH);                  // Relay UNLOCK OFF
+  } else {
+    LOG_FUNCTION_LOCAL("relayLock ON (DOOR LOCK)...");
+    digitalWrite(relayLock, LOW);                     // Relay LOCK ON
+    delay(500);                                       
+    digitalWrite(relayLock, HIGH);                    // Relay LOCK OFF
+  }
+  toggleState = !toggleState;
+  LOG_FUNCTION_LOCAL("Total Detections: " + detectionCounter);         
+}
+
+void setupRelayDoor() {
+  pinMode(relayUnlock, OUTPUT);
+  pinMode(relayLock, OUTPUT);
+  digitalWrite(relayUnlock, HIGH);
+  digitalWrite(relayLock, HIGH);
+};
+
+
+/*
 >>>> State Section <<<<
 */
+
 /// TaskRFID Multitasking
 void taskRFID(void *parameter) {
   LOG_FUNCTION_LOCAL("Start RFID Reading Task!");
   while (1) {
     if (currentState == RUNNING) {
-      if (xSemaphoreTake(xSemaphoreRFID, pdMS_TO_TICKS(100))) {
-        verifyAccessRFID();
-
-        // Release the sensor after use
-        xSemaphoreGive(xSemaphoreRFID);
-      }
+      verifyAccessRFID();
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -144,12 +176,7 @@ void taskFingerprint(void *parameter) {
   LOG_FUNCTION_LOCAL("Start Fingerprint Reading Task!");
   while (1) {
     if (currentState == RUNNING) {
-      if (xSemaphoreTake(xSemaphoreFingerprint, pdMS_TO_TICKS(100))) {
-        verifyAccessFingerprint();
-        
-        // Release the sensor after use
-        xSemaphoreGive(xSemaphoreFingerprint);
-      }
+      verifyAccessFingerprint();
     }
     vTaskDelay(100 / portTICK_PERIOD_MS);
   }
@@ -269,98 +296,82 @@ void listAccessRFID() {
 /// register UID NFC
 void enrollUserRFID() {
   LOG_FUNCTION_LOCAL("Enter name for RFID Registration")
-  while (Serial.available() == 0)
-    ;
+  while (Serial.available() == 0);
   String name = Serial.readStringUntil('\n');
   name.trim();
 
-  LOG_FUNCTION_LOCAL("Hold the RFID card close to register...")
-  uint8_t uid[7];
-  uint8_t uidLength;
+  LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 10s)...")
+  uint16_t timeout = 10000;
+  String uid_card = gettingRFIDTag(timeout);
 
-  if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
-    String id = "";
-    for (uint8_t i = 0; i < uidLength; i++) {
-      id += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");
-    }
-    LOG_FUNCTION_LOCAL("UID " + id);
-
-    // Adding the Card information the SD Card
-    bool status = addRFIDCardToSDCard(name, id);
+  if(uid_card.isEmpty()){
+    LOG_FUNCTION_LOCAL("There's no card is detected!");
+  }else{
+    bool status = addRFIDCardToSDCard(name, uid_card);
   }
-
-  currentState = RUNNING;
-  LOG_FUNCTION_LOCAL("Back to RUNNING mode.");
-  return;
 }
 
 /// delete user NFC function
 void deleteUserRFID() {
   LOG_FUNCTION_LOCAL("Enter username access to be deleted");
-  while (Serial.available() == 0)
-    ;
+  while (Serial.available() == 0);
   String nameToDelete = Serial.readStringUntil('\n');
   nameToDelete.trim();
 
-  bool status = deleteRFIDCardFromSDCard(nameToDelete);
+  LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 3s)...")
+  uint16_t timeout = 3000;
+  String uid_card = gettingRFIDTag(timeout);
 
-  currentState = RUNNING;
+  if(uid_card.isEmpty()){
+    LOG_FUNCTION_LOCAL("There's no card is detected! Proceed with not deleting anything");
+  }else{
+    bool status = deleteRFIDCardFromSDCard(nameToDelete, uid_card);
+  }
+
   LOG_FUNCTION_LOCAL("Back to RUNNING mode.");
   return;
 }
 
 /// Verify the access of the NFC/RFID Card
 void verifyAccessRFID() {
-  uint8_t uid[7];
-  uint8_t uidLength;
-  unsigned long startTime = millis();
   bool cardDetected = false;
+  uint16_t timeout = 500;
+  String uid_card = gettingRFIDTag(timeout);
 
-  while (millis() - startTime < 5000) {
-    if (nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength)) {
-      cardDetected = true;
-      break;
-    }
-    vTaskDelay(50 / portTICK_PERIOD_MS);
-  }
-
-  if (!cardDetected) {
-    LOG_FUNCTION_LOCAL("Timeout reading RFID.");
+  if (uid_card.isEmpty()){
+    cardDetected = false;
     return;
   }
 
-  String id = "";
-  for (uint8_t i = 0; i < uidLength; i++) {
-    id += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");
-  }
-  LOG_FUNCTION_LOCAL("UID " + id);
-
-  File file = SD.open(RFID_FILE_PATH, FILE_READ);
-  StaticJsonDocument<JSON_CAPACITY> doc;
-  if (file) {
-    deserializeJson(doc, file);
-    file.close();
-  }
-
   bool accessGranted = false;
-  String name;
-  for (JsonPair kv : doc.as<JsonObject>()) {
-    if (kv.value()["uid"] == id) {
-      accessGranted = true;
-      name = kv.key().c_str();
-      break;
-    }
+  if (checkRFIDCardFromSDCard(uid_card)){
+    accessGranted = true;
   }
 
   if (accessGranted) {
-    LOG_FUNCTION_LOCAL("Access granteed");
-    LOG_FUNCTION_LOCAL("Name " + name);
-    toggleSolenoid(solenoidCounter);
+    LOG_FUNCTION_LOCAL("Access granteed! Card UID: " + uid_card);
+    toggleRelay();
     delay(500);
-  } else {
+  }else {
     LOG_FUNCTION_LOCAL("Access denied!");
   }
 }
+
+String gettingRFIDTag(uint16_t timeout){
+  uint8_t uid[7];
+  uint8_t uidLength;
+  String uid_card = "";
+
+  bool success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, timeout);
+  if (success) {
+    for (uint8_t i = 0; i < uidLength; i++) {
+      uid_card += (uid[i] < 0x10 ? "0" : "") + String(uid[i], HEX) + (i == uidLength - 1 ? "" : ":");
+    }
+    LOG_FUNCTION_LOCAL("Found NFC tag with UID: " + uid_card);
+  }
+  return uid_card;
+}
+
 
 /*
 >>>> Fingerprint Sensor Function Section <<<<
@@ -412,32 +423,6 @@ void enrollUserFingerprint() {
     }
   }
 
-  // Check whether the fingerprint already exists before even reading them
-  File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
-  if (!jsonFile) {
-    LOG_FUNCTION_LOCAL("Failed to open the file.");
-    return;
-  }
-
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, jsonFile);
-  jsonFile.close();
-
-  if (error) {
-    LOG_FUNCTION_LOCAL("Failed to read .json file: " + error.c_str());
-    return;
-  }
-
-  // Check if any user already has the given ID
-  for (JsonPair user : doc.as<JsonObject>()) {
-    JsonObject userData = user.value().as<JsonObject>();
-    if (userData["id"] == id) {
-      LOG_FUNCTION_LOCAL("ID has already been registered! Please choose another Fingerprint ID!");
-      enrollMode = false;
-      return;
-    }
-  }
-
   LOG_FUNCTION_LOCAL("Enter user name: ");
   String name;
   while (true) {
@@ -452,8 +437,7 @@ void enrollUserFingerprint() {
   LOG_FUNCTION_LOCAL("Fingerprint registration with name  " + name + " and ID " + id);
   LOG_FUNCTION_LOCAL("Waiting for Fingerprint to be pressed...");
 
-  while (finger.getImage() != FINGERPRINT_OK)
-    ;
+  while (finger.getImage() != FINGERPRINT_OK);
   if (finger.image2Tz(1) != FINGERPRINT_OK) {
     LOG_FUNCTION_LOCAL("Failed to convert first Fingerprint image scan!");
     return;
@@ -546,8 +530,8 @@ void deleteUserFingerprint() {
 
 /// verify access user fingerprint
 void verifyAccessFingerprint() {
-  LOG_FUNCTION_LOCAL("Press your Fingerprint...");
   if (finger.getImage() == FINGERPRINT_OK) {
+    LOG_FUNCTION_LOCAL("Fingerprint image captured successfully.");
     if (finger.image2Tz() == FINGERPRINT_OK && finger.fingerSearch() == FINGERPRINT_OK) {
       int detectedID = finger.fingerID;
       String name = "Unknown";
@@ -568,21 +552,17 @@ void verifyAccessFingerprint() {
         jsonFile.close();
       }
 
-
       LOG_FUNCTION_LOCAL("Fingerprint matched!");
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
-      toggleSolenoid(solenoidCounter);
-
+      toggleRelay(); 
       delay(1000);
       finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
     } else {
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_RED);
       delay(1000);
       finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_RED);
-      LOG_FUNCTION_LOCAL("Fingerprint is not really.");
+      LOG_FUNCTION_LOCAL("Fingerprint does not match the stored data. Access denied.");
     }
-  } else {
-    LOG_FUNCTION_LOCAL("There is no fingerprints are detected!");
   }
 }
 
@@ -607,12 +587,22 @@ bool addFingerprintToSDCard(String username, uint8_t fingerprintID) {
 
   if (error == DeserializationError::EmptyInput) {
     LOG_FUNCTION_LOCAL("Warning! File is Empty");
-  }
+  }else{
+    if (doc.containsKey(username)) {
+      LOG_FUNCTION_LOCAL("Username already exists!");
+      enrollMode = false;
+      return false;
+    }
 
-  if (doc.containsKey(username)) {
-    LOG_FUNCTION_LOCAL("Username already exists!");
-    enrollMode = false;
-    return false;
+    // Check if any user already has the given ID
+    for (JsonPair user : doc.as<JsonObject>()) {
+      JsonObject userData = user.value().as<JsonObject>();
+      if (userData["id"] == id) {
+        LOG_FUNCTION_LOCAL("ID has already been registered! Please choose another Fingerprint ID!");
+        enrollMode = false;
+        return false;
+      }
+    }
   }
 
   JsonObject user = doc.createNestedObject(username);
@@ -639,9 +629,6 @@ bool addFingerprintToSDCard(String username, uint8_t fingerprintID) {
 bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete) {
   LOG_FUNCTION_LOCAL("Delete Fingerprint ID Data, ID: " + String(fingerprintToDelete));
 
-  // Checking First
-  creatingJsonFile(FINGERPRINT_FILE_PATH);
-
   // Read the JSON file first
   File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
   DynamicJsonDocument doc(1024);
@@ -652,11 +639,7 @@ bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete) {
     LOG_FUNCTION_LOCAL("Failed to read file, error: " + error.c_str());
     return false;
   }
-
-  if (error == DeserializationError::EmptyInput) {
-    LOG_FUNCTION_LOCAL("Warning! File is Empty");
-  }
-
+  
   // Iterate through each key
   bool found = false;
   for (JsonPair user : doc.as<JsonObject>()) {
@@ -691,11 +674,16 @@ bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete) {
   }
 }
 
-bool addRFIDCardToSDCard(String username, String RFID) {
-  LOG_FUNCTION_LOCAL("Saving RFID Data, Username: " + username + " RFID: " + RFID);
+bool addRFIDCardToSDCard(String username, String rfid) {
+  LOG_FUNCTION_LOCAL("Saving RFID Data, Username: " + username + " RFID: " + rfid);
 
   // Checking First
   creatingJsonFile(RFID_FILE_PATH);
+
+  if (checkRFIDCardFromSDCard(rfid)){
+    LOG_FUNCTION_LOCAL("RFID " + rfid + " is already registered under another user!");
+    return false;
+  }
 
   File file = SD.open(RFID_FILE_PATH, FILE_READ);
   StaticJsonDocument<JSON_CAPACITY> doc;
@@ -704,8 +692,24 @@ bool addRFIDCardToSDCard(String username, String RFID) {
     file.close();
   }
 
-  JsonObject user = doc.createNestedObject(username);
-  user["uid"] = RFID;
+  // Adding the RFID to the user
+  JsonObject user;
+  if (doc.containsKey(username)) {
+    user = doc[username].as<JsonObject>();
+    JsonArray idArray;
+    if (user.containsKey("id")) {
+        idArray = user["id"].as<JsonArray>();
+    } else {
+        idArray = user.createNestedArray("id");
+    }
+    idArray.add(rfid);
+    LOG_FUNCTION_LOCAL("Added new UID to existing user: " + username + " RFID: " + rfid);
+  } else {
+    user = doc.createNestedObject(username);
+    JsonArray idArray = user.createNestedArray("id");
+    idArray.add(rfid);
+    LOG_FUNCTION_LOCAL("Created new user with UID: " + username);
+  }
 
   file = SD.open(RFID_FILE_PATH, FILE_WRITE);
   if (file) {
@@ -719,11 +723,13 @@ bool addRFIDCardToSDCard(String username, String RFID) {
   }
 }
 
-bool deleteRFIDCardFromSDCard(String data) {
-  LOG_FUNCTION_LOCAL("Delete RFID Data, RFID: " + data);
+bool deleteRFIDCardFromSDCard(String username, String rfid) {
+  LOG_FUNCTION_LOCAL("Delete RFID Data, RFID: " + rfid);
 
-  // Checking First
-  creatingJsonFile(RFID_FILE_PATH);
+  if (!checkRFIDCardFromSDCard(rfid)){
+    LOG_FUNCTION_LOCAL("RFID " + rfid + " is not found in the JSON file!");
+    return false;
+  }
 
   File file = SD.open(RFID_FILE_PATH, FILE_READ);
   StaticJsonDocument<JSON_CAPACITY> doc;
@@ -736,20 +742,57 @@ bool deleteRFIDCardFromSDCard(String data) {
   }
 
   bool found = false;
-  for (JsonPair user : doc.as<JsonObject>()) {
-    JsonObject userData = user.value();
+  if (username.isEmpty()){
+    JsonObject userData = doc[username].as<JsonObject>();
+    if (userData.containsKey("id")) {
+      JsonArray idArray = userData["id"].as<JsonArray>();
 
-    // Compare the 'id' value for each user
-    if (userData.containsKey("uid") && userData["uid"] == data) {
-      // Remove the user from the JSON document
-      doc.remove(user.key());
-      found = true;
-      break;
+      for (int i = 0; i < idArray.size(); i++) {
+        if (idArray[i] == rfid) {
+          idArray.remove(i);
+          found = true;
+          LOG_FUNCTION_LOCAL("Removed RFID: " + rfid + " for user: " + username);
+          break;
+        }
+      }
+
+      if (idArray.size() == 0) {
+        doc.remove(username);
+        LOG_FUNCTION_LOCAL("User " + username + " removed because they have no RFID left!");
+      }
+    } else {
+      LOG_FUNCTION_LOCAL("No 'id' array found for user: " + username);
+      return false;
+    }
+  }else{
+    for (JsonPair user : doc.as<JsonObject>()) {
+      JsonObject userData = user.value();
+      String currentUser = user.key().c_str();
+
+      // Check if the 'id' array exists for this user
+      if (userData.containsKey("id")) {
+        JsonArray idArray = userData["id"].as<JsonArray>();
+
+        // Iterate through the array and find the RFID to delete
+        for (int i = 0; i < idArray.size(); i++) {
+          if (idArray[i] == rfid && currentUser == username) {
+            idArray.remove(i);
+            found = true;
+            LOG_FUNCTION_LOCAL("Removed RFID: " + rfid + " for user: " + String(user.key().c_str()));
+            break;
+          }
+        }
+
+        if (idArray.size() == 0) {
+          doc.remove(user.key());
+          LOG_FUNCTION_LOCAL("User " + String(user.key().c_str()) + " removed because they have no RFID left.");
+        }
+      }
     }
   }
 
   if (!found) {
-    LOG_FUNCTION_LOCAL("RFID Data not found for RFID: " + RFID);
+    LOG_FUNCTION_LOCAL("RFID Data not found for Name: " + username + " UID: " + rfid);
     return false;
   }
 
@@ -763,6 +806,29 @@ bool deleteRFIDCardFromSDCard(String data) {
     LOG_FUNCTION_LOCAL("Failed to delete the RFID data!");
     return false;
   }
+}
+
+bool checkRFIDCardFromSDCard(String rfid){
+  File file = SD.open(RFID_FILE_PATH, FILE_READ);
+  StaticJsonDocument<JSON_CAPACITY> doc;
+  if (file) {
+    deserializeJson(doc, file);
+    file.close();
+  }
+
+  // Check if this RFID is already been added under some user
+  for (JsonPair user : doc.as<JsonObject>()) {
+    JsonObject userData = user.value();
+    if (userData.containsKey("id")) {
+      JsonArray idArray = userData["id"].as<JsonArray>();
+      for (int i = 0; i < idArray.size(); i++) {
+        if (idArray[i] == rfid) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
 }
 
 void creatingJsonFile(String filePath) {
@@ -789,23 +855,6 @@ void creatingJsonFile(String filePath) {
   }
 }
 
-
-/*
->>>> Actuator Section <<<<
-*/
-
-/// toggle state to Lock/Unlock
-void toggleSolenoid(int &counter) {
-  counter++;
-  if (counter % 2 == 1) {
-    LOG_FUNCTION_LOCAL("Unlocking door...");
-    digitalWrite(Solenoid, HIGH);
-  } else {
-    LOG_FUNCTION_LOCAL("Locking door...");
-    digitalWrite(Solenoid, LOW);
-  }
-}
-
 /// Setup
 void setup() {
   Serial.begin(115200);
@@ -819,20 +868,12 @@ void setup() {
   // Initialization of UART for fingerprint sensor
   setupR503();
 
-  // Trial solenoid
-  pinMode(Solenoid, OUTPUT);
-  digitalWrite(Solenoid, LOW);
+  // Initialization of relayUnlock and relayLock
+  setupRelayDoor();
 
-  // // Running task on this program
-  xSemaphoreRFID = xSemaphoreCreateBinary();
-  xSemaphoreFingerprint = xSemaphoreCreateBinary();
-
+  // Running task on this program
   xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, &taskRFIDHandle);
   xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, &taskFingerprintHandle);
-
-  // Give the semaphore for any task to be used
-  xSemaphoreGive(xSemaphoreRFID);
-  xSemaphoreGive(xSemaphoreFingerprint);
 }
 
 /// Loop
@@ -844,66 +885,50 @@ void loop() {
         command.trim();
         if (command == "register_rfid") {
           currentState = ENROLL_RFID;
+          vTaskSuspend(taskRFIDHandle);
         } else if (command == "register_fp") {
           currentState = ENROLL_FP;
+          vTaskSuspend(taskFingerprintHandle);
         } else if (command == "delete_fp") {
           currentState = DELETE_FP;
+          vTaskSuspend(taskFingerprintHandle);
         } else if (command == "delete_rfid") {
           currentState = DELETE_RFID;
+          vTaskSuspend(taskRFIDHandle);
         }
       }
       break;
+
     case ENROLL_RFID:
       LOG_FUNCTION_LOCAL("Start Registering RFID!");
-      if (xSemaphoreTake(xSemaphoreRFID, pdMS_TO_TICKS(500))) {
-        enrollUserRFID();
-        xSemaphoreGive(xSemaphoreRFID);
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access RFID sensor");
-        currentState = RUNNING;
-      }
+      enrollUserRFID();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskRFIDHandle);
       break;
+
     case DELETE_RFID:
-    LOG_FUNCTION_LOCAL("Start Deleting RFID!");
-      if (xSemaphoreTake(xSemaphoreRFID, pdMS_TO_TICKS(500))) {
-        deleteUserRFID();
-        xSemaphoreGive(xSemaphoreRFID);
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access RFID sensor");
-        currentState = RUNNING;
-      }
+      LOG_FUNCTION_LOCAL("Start Deleting RFID!");
+      deleteUserRFID();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskRFIDHandle);
       break;
+
     case ENROLL_FP:
-    LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
-      if (xSemaphoreTake(xSemaphoreFingerprint, pdMS_TO_TICKS(500))) {
-        enrollUserFingerprint();
-        xSemaphoreGive(xSemaphoreFingerprint);
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access Fingerprint sensor");
-        currentState = RUNNING;
-      }
+      LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
+      enrollUserFingerprint();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskFingerprintHandle);
       break;
+
     case DELETE_FP:
-    LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
-      if (xSemaphoreTake(xSemaphoreFingerprint, pdMS_TO_TICKS(500))) {
-        deleteUserFingerprint();
-        xSemaphoreGive(xSemaphoreFingerprint); 
-        currentState = RUNNING;
-      }else {
-        // If semaphore could not be taken in time, handle the timeout case
-        LOG_FUNCTION_LOCAL("Timeout: Could not access Fingerprint sensor");
-        currentState = RUNNING;
-      }
+      LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
+      deleteUserFingerprint();
+      currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskFingerprintHandle);
       break;
   }
   delay(10);
