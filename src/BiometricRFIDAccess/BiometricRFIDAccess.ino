@@ -109,7 +109,7 @@ void verifyAccessFingerprint();
 
 /// Actuator (Solenoid Doorlock)
 void toggleRelay();
-void setupSolenoid();
+void setupRelayDoor();
 
 /// SD Card
 void setupSDCard();
@@ -135,16 +135,25 @@ void toggleRelay() {
   detectionCounter++;
   if (toggleState) {
     LOG_FUNCTION_LOCAL("relayUnlock ON (DOOR UNLOCK)...");
-    digitalWrite(relayUnlock, LOW); delay(500);       // Relay UNLOCK ON
+    digitalWrite(relayUnlock, LOW);                   // Relay UNLOCK ON
+    delay(500);
     digitalWrite(relayUnlock, HIGH);                  // Relay UNLOCK OFF
   } else {
     LOG_FUNCTION_LOCAL("relayLock ON (DOOR LOCK)...");
-    digitalWrite(relayLock, LOW); delay(500);         // Relay LOCK ON
+    digitalWrite(relayLock, LOW);                     // Relay LOCK ON
+    delay(500);                                       
     digitalWrite(relayLock, HIGH);                    // Relay LOCK OFF
   }
   toggleState = !toggleState;
   LOG_FUNCTION_LOCAL("Total Detections: " + detectionCounter);         
 }
+
+void setupRelayDoor() {
+  pinMode(relayUnlock, OUTPUT);
+  pinMode(relayLock, OUTPUT);
+  digitalWrite(relayUnlock, HIGH);
+  digitalWrite(relayLock, HIGH);
+};
 
 
 /*
@@ -589,7 +598,8 @@ void verifyAccessFingerprint() {
 
       LOG_FUNCTION_LOCAL("Fingerprint matched!");
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
-      toggleRelay(); delay(1000);
+      toggleRelay(); 
+      delay(1000);
       finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
     } else {
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_RED);
@@ -818,13 +828,10 @@ void setup() {
   // Initialization of UART for fingerprint sensor
   setupR503();
 
-  // Trial solenoid
-  pinMode(relayUnlock, OUTPUT);         // 
-  pinMode(relayLock, OUTPUT);           // 
-  digitalWrite(relayUnlock, HIGH);      // 
-  digitalWrite(relayLock, HIGH);        // 
+  // Initialization of relayUnlock and relayLock
+  setupRelayDoor();
 
-  // // Running task on this program
+  // Running task on this program
   xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, &taskRFIDHandle);
   xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, &taskFingerprintHandle);
 }
