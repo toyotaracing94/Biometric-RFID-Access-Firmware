@@ -1,15 +1,18 @@
 /*
+
 ### >>> DEVELOPER NOTE <<< ###
 This code provided for TELEMATICS EXPERTISE in door Authentication feature on BATCH#2 Development
 
-HARDWARE PIC : AHMADHANI FAJAR ADITAMA 
-SOFTWARE PIC : DHIMAS DWI CAHYO
-MOBILE APP FEATURE PIC : REZKI MUHAMMAD github: @rezkim
+HARDWARE PIC            : AHMADHANI FAJAR ADITAMA     github: @
+SOFTWARE PIC            : JUNIARTO                    github: @WallNutss 
+                          DHIMAS DWI CAHYO            github: @dhimassdwii
+MOBILE APP FEATURE PIC  : REZKI MUHAMMAD              github: @rezkim
 
 This microcontroller is used as BLE Server Controlling another ESP32. 
-ESP32 included :
-ESP32 LED Control (location in dashboard)
-ESP32 AC Control (location middle in front seat)
+ESP32 included:
+  ESP32 Door Control
+  ESP32 LED Control (location in dashboard)
+  ESP32 AC Control (location middle in front seat)
 
 */
 
@@ -29,18 +32,23 @@ ESP32 AC Control (location middle in front seat)
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
-/// CONSTANT VARIABLE
-#define Solenoid1 25  // Pin Solenoid (prototype)
-#define Solenoid2 26
-#define SDA_PIN 21   // Pin SDA to PN532
-#define SCL_PIN 22   // Pin SCL to PN532
-#define RX_PIN 16    // Pin RX to TX Fingerprint
-#define TX_PIN 17    // Pin TX to RX Fingerprint
+/// CONFIGURATION PIN GPIO FOR RELAY UNLOCK/LOCK
+#define relayUnlock 25    // Relay Unlock
+#define relayLock 26      // Relay Lock
 
-#define CS_PIN 5     // Chip Select pin
-#define SCK_PIN 18   // Clock pin
-#define MISO_PIN 19  // Master In Slave Out
-#define MOSI_PIN 23  // Master Out Slave In
+/// I2C CONFIGURATION FOR RFID SENSOR
+#define SDA_PIN 21            // Pin SDA to PN532
+#define SCL_PIN 22            // Pin SCL to PN532
+
+/// UART CONFIGURATION FOR FINGERPRINT SENSOR
+#define RX_PIN 16             // Pin RX to TX Fingerprint
+#define TX_PIN 17             // Pin TX to RX Fingerprint
+
+/// SPI PIN CONFIGURATION FOR MEMORY CARD MODULE
+#define CS_PIN 5        // Chip Select pin
+#define SCK_PIN 18      // Clock pin
+#define MISO_PIN 19     // Master In Slave Out
+#define MOSI_PIN 23     // Master Out Slave In
 
 /// CONSTANT FILE I/O VARIABLE
 #define FINGERPRINT_FILE_PATH "/fingerprints.json"
@@ -73,16 +81,18 @@ const size_t JSON_CAPACITY = 1024;       // file JSON
 boolean enrollMode = false;              // variabel enrolmode
 boolean deleteMode = false;              // variabel deletemode
 boolean listMode = false;                // variabel listmode
-
-int id;                        // variabel ID
-int solenoidCounter = 0;       // counter Solenoid
-bool deviceConnected = false;  // Device connection status
-State currentState = RUNNING;  // Initial State
+int id;                                  // variabel ID
+bool deviceConnected = false;            // Device connection status
+State currentState = RUNNING;            // Initial State
 JsonObject globalJSON;
 
 /// Define Macro for Logging Purpose
 #define LOG_FUNCTION_LOCAL(message) \
   Serial.println(String(__func__) + ": " + message);
+
+/// Variable Counter and Ouput Relay
+int detectionCounter = 0;                 // Counter
+bool toggleState = false;                 // Output State
 
 // Function Prototypes
 /// Card Sensor (PN532)
@@ -98,7 +108,7 @@ void deleteUserFingerprint();
 void verifyAccessFingerprint();
 
 /// Actuator (Solenoid Doorlock)
-void toggleSolenoid(int &counter);
+void toggleRelay();
 void setupSolenoid();
 
 /// SD Card
@@ -117,8 +127,30 @@ void setupPN532();
 void setupR503();
 
 /*
+>>>> Actuator Section <<<<
+*/
+
+/// TOGGLESTATE FOR RELAY UNLOCK/LOCK
+void toggleRelay() {
+  detectionCounter++;
+  if (toggleState) {
+    LOG_FUNCTION_LOCAL("relayUnlock ON (DOOR UNLOCK)...");
+    digitalWrite(relayUnlock, LOW); delay(500);       // Relay UNLOCK ON
+    digitalWrite(relayUnlock, HIGH);                  // Relay UNLOCK OFF
+  } else {
+    LOG_FUNCTION_LOCAL("relayLock ON (DOOR LOCK)...");
+    digitalWrite(relayLock, LOW); delay(500);         // Relay LOCK ON
+    digitalWrite(relayLock, HIGH);                    // Relay LOCK OFF
+  }
+  toggleState = !toggleState;
+  LOG_FUNCTION_LOCAL("Total Detections: " + detectionCounter);         
+}
+
+
+/*
 >>>> State Section <<<<
 */
+
 /// TaskRFID Multitasking
 void taskRFID(void *parameter) {
   LOG_FUNCTION_LOCAL("Start RFID Reading Task!");
@@ -341,7 +373,7 @@ void verifyAccessRFID() {
   if (accessGranted) {
     LOG_FUNCTION_LOCAL("Access granteed");
     LOG_FUNCTION_LOCAL("Name " + name);
-    toggleSolenoid(solenoidCounter);
+    toggleRelay();
     delay(500);
   } else {
     LOG_FUNCTION_LOCAL("Access denied!");
@@ -557,9 +589,7 @@ void verifyAccessFingerprint() {
 
       LOG_FUNCTION_LOCAL("Fingerprint matched!");
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
-      toggleSolenoid(solenoidCounter);
-
-      delay(1000);
+      toggleRelay(); delay(1000);
       finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
     } else {
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_RED);
@@ -775,23 +805,6 @@ void creatingJsonFile(String filePath) {
   }
 }
 
-
-/*
->>>> Actuator Section <<<<
-*/
-
-/// toggle state to Lock/Unlock
-void toggleSolenoid(int &counter) {
-  counter++;
-  if (counter % 2 == 1) {
-    LOG_FUNCTION_LOCAL("Unlocking door...");
-    digitalWrite(Solenoid, HIGH);
-  } else {
-    LOG_FUNCTION_LOCAL("Locking door...");
-    digitalWrite(Solenoid, LOW);
-  }
-}
-
 /// Setup
 void setup() {
   Serial.begin(115200);
@@ -806,8 +819,10 @@ void setup() {
   setupR503();
 
   // Trial solenoid
-  pinMode(Solenoid, OUTPUT);
-  digitalWrite(Solenoid, LOW);
+  pinMode(relayUnlock, OUTPUT);         // 
+  pinMode(relayLock, OUTPUT);           // 
+  digitalWrite(relayUnlock, HIGH);      // 
+  digitalWrite(relayLock, HIGH);        // 
 
   // // Running task on this program
   xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, &taskRFIDHandle);
