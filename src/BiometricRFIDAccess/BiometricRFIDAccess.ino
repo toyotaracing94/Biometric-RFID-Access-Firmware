@@ -1,5 +1,4 @@
 /*
-
 ### >>> DEVELOPER NOTE <<< ###
 This code provided for TELEMATICS EXPERTISE in door Authentication feature on BATCH#2 Development
 
@@ -13,7 +12,6 @@ ESP32 included:
   ESP32 Door Control
   ESP32 LED Control (location in dashboard)
   ESP32 AC Control (location middle in front seat)
-
 */
 
 /// Requirement for Hardware
@@ -113,10 +111,10 @@ void setupRelayDoor();
 
 /// SD Card
 void setupSDCard();
-bool addFingerprintToSDCard(String username, uint8_t fingerprintID);
-bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete);
-bool addRFIDCardToSDCard(String username, String RFID);
-bool deleteRFIDCardFromSDCard(String username, String data);
+bool addFingerprintToSDCard(String username, uint8_t fingerprintId);
+bool deleteFingerprintFromSDCard(String username, uint8_t fingerprintId);
+bool addRFIDCardToSDCard(String username, String rfid);
+bool deleteRFIDCardFromSDCard(String username, String rfid);
 
 /// Task Controller
 void taskRFID(void *parameter);
@@ -293,7 +291,11 @@ void listAccessRFID() {
   return;
 }
 
-/// register UID NFC
+/**
+ * @brief The higher level function for registering new user RFID Card that will be exposed to external
+ * 
+ * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name and also sensor will be run to get the rfid card number
+ */
 void enrollUserRFID() {
   LOG_FUNCTION_LOCAL("Enter name for RFID Registration")
   while (Serial.available() == 0);
@@ -311,7 +313,11 @@ void enrollUserRFID() {
   }
 }
 
-/// delete user NFC function
+/**
+ * @brief The higher level function for deleting user RFID Card that will be exposed to external. But a terminal will be run for getting the name and also sensor will be run to get the rfid card number
+ * 
+ * This function takes no function whatsoever at the moment
+ */
 void deleteUserRFID() {
   LOG_FUNCTION_LOCAL("Enter username access to be deleted");
   while (Serial.available() == 0);
@@ -332,7 +338,11 @@ void deleteUserRFID() {
   return;
 }
 
-/// Verify the access of the NFC/RFID Card
+/**
+ * @brief The higher level function for verifying the access of user RFID Card that will be exposed to external.
+ * 
+ * This function takes no function whatsoever at the moment
+ */
 void verifyAccessRFID() {
   bool cardDetected = false;
   uint16_t timeout = 500;
@@ -357,6 +367,12 @@ void verifyAccessRFID() {
   }
 }
 
+/**
+ * @brief Function common for getting the UID Card
+ * 
+ * @param timeout The timeout for the PN532. Do not set this to '0' as this will block all the process!
+ * @return The UID Card number. String will be empty or '""' if no card was detected
+ */
 String gettingRFIDTag(uint16_t timeout){
   uint8_t uid[7];
   uint8_t uidLength;
@@ -412,16 +428,14 @@ void listAccessFingerprint() {
   listMode = false;
 }
 
-/// register UID Fingerprint
+/**
+ * @brief The higher level function for registering new user Fingerprint that will be exposed to external
+ * 
+ * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name and also sensor will be run to get the fingerprint image
+ */
 void enrollUserFingerprint() {
-  LOG_FUNCTION_LOCAL("Entering ID for the Fingerprint Unique ID (1-127):");
-  while (true) {
-    if (Serial.available()) {
-      id = Serial.parseInt();
-      if (id > 0 && id <= 127) break;
-      LOG_FUNCTION_LOCAL("ID is not Valid!. Please use Fingerprint ID between 1 to 127");
-    }
-  }
+  LOG_FUNCTION_LOCAL("Generating ID for the Fingerprint Unique ID (1-256)");
+  uint8_t fingerprintId = gettingFingerprintId();
 
   LOG_FUNCTION_LOCAL("Enter user name: ");
   String name;
@@ -434,7 +448,7 @@ void enrollUserFingerprint() {
     }
   }
 
-  LOG_FUNCTION_LOCAL("Fingerprint registration with name  " + name + " and ID " + id);
+  LOG_FUNCTION_LOCAL("Fingerprint registration with name  " + name + " and Fingerprint ID " + fingerprintId);
   LOG_FUNCTION_LOCAL("Waiting for Fingerprint to be pressed...");
 
   while (finger.getImage() != FINGERPRINT_OK);
@@ -460,10 +474,10 @@ void enrollUserFingerprint() {
     return;
   }
 
-  if (finger.storeModel(id) == FINGERPRINT_OK) {
-    LOG_FUNCTION_LOCAL("Fingerprint successfully captured with ID " + id);
+  if (finger.storeModel(fingerprintId) == FINGERPRINT_OK) {
+    LOG_FUNCTION_LOCAL("Fingerprint successfully captured with ID " + fingerprintId);
 
-    bool status = addFingerprintToSDCard(name, id);
+    bool status = addFingerprintToSDCard(name, fingerprintId);
 
   } else {
     LOG_FUNCTION_LOCAL("Failed to stored the fingerprint");
@@ -473,62 +487,60 @@ void enrollUserFingerprint() {
   return;
 }
 
-/// function delete user fingeprint
+/**
+ * @brief The higher level function for deleting user Fingerprint that will be exposed to external. But a terminal will be run for getting the name and also sensor will be run to get the fingerprint image
+ * 
+ * This function takes no function whatsoever at the moment
+ */
 void deleteUserFingerprint() {
-  LOG_FUNCTION_LOCAL("Enter 'ALL' to delete all of the fingeprint ID:");
+  LOG_FUNCTION_LOCAL("Enter Fingerprint ID to be deleted");
+  while (Serial.available() == 0);  // Wait until data is available
+  String input = Serial.readStringUntil('\n');  // Read until newline character
+  input.trim();
 
-  while (true) {
-    if (Serial.available()) {
-      String input = Serial.readStringUntil('\n');
-      input.trim();
+  uint8_t fingerprintId = input.toInt();
+  
+  if (fingerprintId >= 0 && fingerprintId <= 127){
+    LOG_FUNCTION_LOCAL("Enter username access to be deleted");
+    while (Serial.available() == 0);
+    String nameToDelete = Serial.readStringUntil('\n');
+    nameToDelete.trim();
 
-      if (input == "ALL") {
-        LOG_FUNCTION_LOCAL("Delete all the Fingerprints ID...");
-        for (int i = 1; i <= 127; i++) {
-          if (finger.deleteModel(i) == FINGERPRINT_OK) {
-            LOG_FUNCTION_LOCAL("Fingerprint ID " + i + " successfully deleted from sensor!");
-          } else {
-            LOG_FUNCTION_LOCAL("Failed to delete Fingerprint ID " + i);
-          }
-        }
-
-        // TODO : Implement function to delete all the fingerprints when command input is 'ALL'
-
-      } else {
-        int id = input.toInt();
-        if (id > 0 && id <= 127) {
-          File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
-          DynamicJsonDocument doc(1024);
-          DeserializationError error = deserializeJson(doc, jsonFile);
-          jsonFile.close();
-
-          if (error) {
-            LOG_FUNCTION_LOCAL("Failed to read the .json file!");
-            break;
-          }
-
-          bool found = deleteFingerprintFromSDCard(id);
-
-          if (found) {
-            if (finger.deleteModel(id) == FINGERPRINT_OK) {
-              LOG_FUNCTION_LOCAL("Fingerprint is successfully deleted from the sensor data!");
-            } else {
-              LOG_FUNCTION_LOCAL("Failed to delete Fingerprint from the sensor data!");
-            }
-
-          } else {
-            LOG_FUNCTION_LOCAL("Fingerprint ID is not found on the .json file!");
-          }
-          break;
+    // Delete all or not. But for now not implemented the all delete
+    // TODO : Implement the all delete, this is really hard to abstract as not only we need to delete the fingerprint data on SD Card but also on the sensor
+    // TODO : Search for new good ways, for now this will do
+    if (fingerprintId == 0) {
+      LOG_FUNCTION_LOCAL("Delete all the Fingerprints ID...");
+      for (int i = 1; i <= 127; i++) {
+        if (finger.deleteModel(i) == FINGERPRINT_OK) {
+          LOG_FUNCTION_LOCAL("Fingerprint ID " + i + " successfully deleted from sensor!");
         } else {
-          LOG_FUNCTION_LOCAL("ID is not valid! Please use ID between 1 to 127 or use 'ALL' to delete all.");
+          LOG_FUNCTION_LOCAL("Failed to delete Fingerprint ID " + i);
         }
       }
     }
+    bool found = deleteFingerprintFromSDCard(nameToDelete, fingerprintId);
+
+    if (found) {
+      if (finger.deleteModel(fingerprintId) == FINGERPRINT_OK) {
+        LOG_FUNCTION_LOCAL("Fingerprint is successfully deleted from the sensor data!");
+      } else{
+        LOG_FUNCTION_LOCAL("Failed to delete Fingerprint from the sensor data!");
+      }
+    }else {
+      LOG_FUNCTION_LOCAL("Fingerprint ID is not found on the .json file!");
+    }
+  }else {
+    LOG_FUNCTION_LOCAL("ID is not valid! Please use ID between 1 to 256 or use '0' to delete all.");
   }
+
 }
 
-/// verify access user fingerprint
+/**
+ * @brief The higher level function for verifying the access of user Fingerprint that will be exposed to external.
+ * 
+ * This function takes no function whatsoever at the moment
+ */
 void verifyAccessFingerprint() {
   if (finger.getImage() == FINGERPRINT_OK) {
     LOG_FUNCTION_LOCAL("Fingerprint image captured successfully.");
@@ -566,156 +578,285 @@ void verifyAccessFingerprint() {
   }
 }
 
+/**
+ * @brief Function common for getting the Fingerprint ID
+ * 
+ * @return The Fingerprint ID number
+ */
+uint8_t gettingFingerprintId(){
+  uint8_t fingerprintId;
+  while (true) {
+    fingerprintId = random(1,20);
+    // Check if the generated fingerprint ID exists on the SD card
+    if (!checkFingerprintIdFromSDCard(fingerprintId)) {
+      // If the ID doesn't exist on the SD card, it's valid
+      LOG_FUNCTION_LOCAL("Generated valid fingerprint ID: " + fingerprintId);
+      break;
+    } else {
+      // If the ID exists on the SD card, try again
+      LOG_FUNCTION_LOCAL("Fingerprint ID " + fingerprintId + " already exists, generating a new ID...");
+    }
+  }
+  return fingerprintId;
+}
+
 /*
 >>>> SD Card Function to Add, Delete, and List Access <<<<
 */
-bool addFingerprintToSDCard(String username, uint8_t fingerprintID) {
-  LOG_FUNCTION_LOCAL("Saving Fingerprint ID Data, Username: " + username + " ID: " + String(fingerprintID));
+/**
+ * @brief Add a new Fingerprint access to the SD card.
+ * 
+ * This function takes a username and Fingerprint ID, and add the corresponding
+ * Fingerprint data to the SD card. It returns `true` if the add was successful,
+ * or `false` if there was an error or the card was not found.
+ * 
+ * @param username The username associated with the RFID card. It's required.
+ * @param fingerprintID The Fingerprint ID associated with the Fingerprint sensor number to be added. It's required
+ * @return `true` if the RFID card(s) were successfully deleted, `false` otherwise.
+ */
+bool addFingerprintToSDCard(String username, uint8_t fingerprintId) {
+  LOG_FUNCTION_LOCAL("Saving Fingerprint ID Data, Username: " + username + " ID: " + String(fingerprintId));
 
   // Checking First
   creatingJsonFile(FINGERPRINT_FILE_PATH);
 
+  if (checkFingerprintIdFromSDCard(fingerprintId)){
+    LOG_FUNCTION_LOCAL("Fingerprint ID " + fingerprintId + " is already registered under another user!");
+    return false;
+  }
+
   File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, jsonFile);
-  jsonFile.close();
-
-  if (error && error != DeserializationError::EmptyInput) {
-    LOG_FUNCTION_LOCAL("Failed to read file, error: " + error.c_str());
-    return false;
-  }
-
-  if (error == DeserializationError::EmptyInput) {
-    LOG_FUNCTION_LOCAL("Warning! File is Empty");
-  }else{
-    if (doc.containsKey(username)) {
-      LOG_FUNCTION_LOCAL("Username already exists!");
-      enrollMode = false;
-      return false;
-    }
-
-    // Check if any user already has the given ID
-    for (JsonPair user : doc.as<JsonObject>()) {
-      JsonObject userData = user.value().as<JsonObject>();
-      if (userData["id"] == id) {
-        LOG_FUNCTION_LOCAL("ID has already been registered! Please choose another Fingerprint ID!");
-        enrollMode = false;
-        return false;
-      }
-    }
-  }
-
-  JsonObject user = doc.createNestedObject(username);
-  user["id"] = fingerprintID;
-
-  File writeFile = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
-
-  if (!writeFile) {
-    LOG_FUNCTION_LOCAL(F("Failed to open file for writing"));
-    return false;
-  }
-
-  if (serializeJson(doc, writeFile) == 0) {
-    LOG_FUNCTION_LOCAL(F("Failed to write to file"));
-    writeFile.close();
-    return false;
-  } else {
-    LOG_FUNCTION_LOCAL(F("Fingerprint data saved successfully"));
-    writeFile.close();
-    return true;
-  }
-}
-
-bool deleteFingerprintFromSDCard(uint8_t fingerprintToDelete) {
-  LOG_FUNCTION_LOCAL("Delete Fingerprint ID Data, ID: " + String(fingerprintToDelete));
-
-  // Read the JSON file first
-  File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, jsonFile);
-  jsonFile.close();
-
-  if (error && error != DeserializationError::EmptyInput) {
-    LOG_FUNCTION_LOCAL("Failed to read file, error: " + error.c_str());
-    return false;
-  }
+  StaticJsonDocument<JSON_CAPACITY> doc;
   
-  // Iterate through each key
-  bool found = false;
-  for (JsonPair user : doc.as<JsonObject>()) {
-    JsonObject userData = user.value();
+  // Read existing JSON data if file exists
+  if (jsonFile) {
+    deserializeJson(doc, jsonFile);
+    jsonFile.close();
+  }
 
-    // Compare the 'id' value for each user
-    if (userData.containsKey("id") && userData["id"] == fingerprintToDelete) {
-      // Remove the user from the JSON document
-      doc.remove(user.key());
-      found = true;
+  // Check if we are adding a new user
+  bool userFound = false;
+  for (JsonObject user : doc.as<JsonArray>()) {
+    if (user["name"] == username) {
+      JsonArray idArray = user["key_access"].as<JsonArray>();
+      idArray.add(fingerprintId);
+      userFound = true;
+      LOG_FUNCTION_LOCAL("Added new Fingerprint ID to existing user: " + username + " Fingerprint ID: " + fingerprintId);
       break;
     }
   }
 
-  // If the ID was not found, print a message
-  if (!found) {
-    LOG_FUNCTION_LOCAL("Fingerprint ID not found in JSON file.");
-    return false;
+  // If user doesn't exist, create a new object for the user
+  if (!userFound) {
+    JsonObject newUser = doc.createNestedObject();
+    newUser["name"] = username;
+    JsonArray idArray = newUser.createNestedArray("key_access");
+    idArray.add(fingerprintId);
+    LOG_FUNCTION_LOCAL("Created new user with Fingerprint ID: " + username);
   }
 
-  // Open the file for writing and save the updated data
-  deleteMode = false;
-  File writeFile = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
-  if (writeFile) {
-    serializeJson(doc, writeFile);
-    writeFile.close();
-    LOG_FUNCTION_LOCAL("Fingerprint deleted successfully.");
+  // Write the modified JSON data back to the SD card
+  jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
+  if (jsonFile) {
+    serializeJson(doc, jsonFile);
+    jsonFile.close();
+    LOG_FUNCTION_LOCAL("Fingerprint data is successfully stored to SD Card");
     return true;
   } else {
-    LOG_FUNCTION_LOCAL("Failed to write JSON file.");
+    LOG_FUNCTION_LOCAL("Failed to store Fingerprint data to SD Card");
     return false;
   }
 }
 
+/**
+ * @brief Deletes the Fingerprint associated with a specific username from the SD card.
+ * 
+ * This function takes a username and an Fingerprint ID number, and removes the corresponding
+ * Fingerprint data from the SD card. It returns `true` if the deletion was successful,
+ * or `false` if there was an error or the card was not found.
+ * 
+ * @param username The username associated with the RFID card. It's required.
+ * @param fingerprintId The Fingerprint number to be deleted. If no Fingerprint number is provided (0),
+ *             all Fingerprint data under that specified username will be deleted.
+ * @return `true` if the Fingerprint(s) were successfully deleted, `false` otherwise.
+ */
+bool deleteFingerprintFromSDCard(String username, uint8_t fingerprintId) {
+  LOG_FUNCTION_LOCAL("Delete Fingerprint ID Data, ID: " + String(fingerprintId));
+
+  // Read the JSON file first
+  File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+  StaticJsonDocument<JSON_CAPACITY> doc;
+  if (!file) {
+    LOG_FUNCTION_LOCAL("Failed to open file for reading");
+    return false;
+  }
+
+  deserializeJson(doc, file);
+  file.close();
+
+  bool found = false;
+  bool userFound = false;
+  
+  for (JsonObject user : doc.as<JsonArray>()) {
+    String currentUser = user["name"].as<String>();
+
+    // Check if the current user matches the provided username and not delete all the fingerprint ID
+    if (fingerprintId != 0 && currentUser == username) {
+      userFound = true;
+      if (user.containsKey("key_access")) {
+        JsonArray fingerprintArray = user["key_access"].as<JsonArray>();
+        // If a specific Fingerprint is provided, search for it and remove it
+        for (int i = 0; i < fingerprintArray.size(); i++) {
+          if (fingerprintArray[i].as<uint8_t>() == fingerprintId) {
+            fingerprintArray.remove(i);
+            found = true;
+            LOG_FUNCTION_LOCAL("Removed Fingerprint ID: " + fingerprintId + " for user: " + currentUser);
+            break;
+          }
+        }
+      }
+    }else{ // Will delete all if the fingerprintId == 0
+      // If no Fingerprint is provided or 0, just clear all
+      userFound = true;
+      found = true;
+      user.clear();
+      LOG_FUNCTION_LOCAL("All Fingerprints Access removed for user: " + username);
+    }
+  }
+
+  // If the user was not found, log and return false
+  if (!userFound) {
+    LOG_FUNCTION_LOCAL("Username " + username + " not found.");
+    return false;
+  }
+
+  // If no RFID was found to remove, log and return false
+  if (!found) {
+    LOG_FUNCTION_LOCAL("Fingerprint ID " + fingerprintId + " not found for deletion.");
+    return false;
+  }
+
+  // Write the modified data back to the file
+  file = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
+  if (file) {
+    serializeJson(doc, file);
+    file.close();
+    LOG_FUNCTION_LOCAL("Fingerprint data successfully updated on SD Card.");
+    return true;
+  } else {
+    LOG_FUNCTION_LOCAL("Failed to open Fingerprint file for writing!");
+    return false;
+  }
+}
+
+/**
+ * @brief Checking does Fingerprint ID already registered on the ESP32 system which is on the json file at then moment
+ * 
+ * This function takes an Fingerprint ID number, and check wether there was and Fingerprint ID already registered or not . It returns `true` if the data is registered,
+ * or `false` if the data is not registered on the ESP32
+ * 
+ * @param rfid The RFID number to be checked
+ * @return `true` if the RFID card(s) were already registered, `false`.
+ */
+bool checkFingerprintIdFromSDCard(uint8_t fingerprintId) {
+  LOG_FUNCTION_LOCAL("Checking Fingerprint ID: " + String(fingerprintId));
+
+  File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+  if (!jsonFile) {
+    LOG_FUNCTION_LOCAL("Failed to open fingerprint data file for reading!");
+    return false;
+  }
+
+  StaticJsonDocument<JSON_CAPACITY> doc;
+  DeserializationError error = deserializeJson(doc, jsonFile);
+  jsonFile.close();
+  if (error) {
+    LOG_FUNCTION_LOCAL("Failed to parse JSON file!");
+    return false;
+  }
+
+  // Loop through the array of users
+  for (JsonObject user : doc.as<JsonArray>()) {
+    // Check if the fingerprintId array exists
+    if (user.containsKey("key_access")) {
+      JsonArray idArray = user["key_access"].as<JsonArray>();
+
+      // Loop through the fingerprintId array to check for the given ID
+      for (int i = 0; i < idArray.size(); ++i) {
+        if (idArray[i].as<uint8_t>() == fingerprintId) {
+          LOG_FUNCTION_LOCAL("Fingerprint ID " + String(fingerprintId) + " found in user: " + user["name"].as<String>());
+          return true;
+        }
+      }
+    }
+  }
+
+  LOG_FUNCTION_LOCAL("Fingerprint ID " + String(fingerprintId) + " not found in any user.");
+  return false;
+}
+
+/**
+ * @brief Add a new RFID card to the SD card.
+ * 
+ * This function takes a username and an RFID number get from the RFID sensor, and add the corresponding
+ * RFID card data to the SD card. It returns `true` if the add was successful,
+ * or `false` if there was an error or the card was not found.
+ * 
+ * @param username The username associated with the RFID card. It's required.
+ * @param rfid The RFID number to be added. It's required
+ * @return `true` if the RFID card(s) were successfully deleted, `false` otherwise.
+ */
 bool addRFIDCardToSDCard(String username, String rfid) {
   LOG_FUNCTION_LOCAL("Saving RFID Data, Username: " + username + " RFID: " + rfid);
 
   // Checking First
   creatingJsonFile(RFID_FILE_PATH);
 
-  if (checkRFIDCardFromSDCard(rfid)){
+  // Prevent rfid to be registered under two same account user 
+  if (checkRFIDCardFromSDCard(rfid)) {
     LOG_FUNCTION_LOCAL("RFID " + rfid + " is already registered under another user!");
     return false;
   }
 
   File file = SD.open(RFID_FILE_PATH, FILE_READ);
   StaticJsonDocument<JSON_CAPACITY> doc;
+
+  // If the file exists, read the content
   if (file) {
     deserializeJson(doc, file);
     file.close();
   }
 
-  // Adding the RFID to the user
+  // Look for the user and add RFID to the user's array
   JsonObject user;
-  if (doc.containsKey(username)) {
-    user = doc[username].as<JsonObject>();
-    JsonArray idArray;
-    if (user.containsKey("id")) {
-        idArray = user["id"].as<JsonArray>();
-    } else {
-        idArray = user.createNestedArray("id");
+  bool userFound = false;
+
+  // Loop through existing users to find the one to update
+  for (JsonObject existingUser : doc.as<JsonArray>()) {
+    if (existingUser["name"] == username) {
+      JsonArray rfidArray = existingUser["key_access"].as<JsonArray>();
+      rfidArray.add(rfid);
+      userFound = true;
+      LOG_FUNCTION_LOCAL("Added RFID to existing user: " + username + " RFID: " + rfid);
+      break;
     }
-    idArray.add(rfid);
-    LOG_FUNCTION_LOCAL("Added new UID to existing user: " + username + " RFID: " + rfid);
-  } else {
-    user = doc.createNestedObject(username);
-    JsonArray idArray = user.createNestedArray("id");
-    idArray.add(rfid);
-    LOG_FUNCTION_LOCAL("Created new user with UID: " + username);
   }
 
+  // If the user doesn't exist, create a new user entry
+  if (!userFound) {
+    JsonObject newUser = doc.createNestedObject();
+    newUser["name"] = username;
+    JsonArray rfidArray = newUser.createNestedArray("key_access");
+    rfidArray.add(rfid);
+    LOG_FUNCTION_LOCAL("Created new user with RFID: " + username);
+  }
+
+  // Reopen the file for writing the updated JSON
   file = SD.open(RFID_FILE_PATH, FILE_WRITE);
   if (file) {
     serializeJson(doc, file);
     file.close();
-    LOG_FUNCTION_LOCAL("RFID data is successfully store to SD Card");
+    LOG_FUNCTION_LOCAL("RFID data is successfully stored to SD Card");
     return true;
   } else {
     LOG_FUNCTION_LOCAL("Failed to store RFID data to SD Card");
@@ -723,114 +864,141 @@ bool addRFIDCardToSDCard(String username, String rfid) {
   }
 }
 
+/**
+ * @brief Deletes the RFID card associated with a specific username from the SD card.
+ * 
+ * This function takes a username and an RFID number, and removes the corresponding
+ * RFID card data from the SD card. It returns `true` if the deletion was successful,
+ * or `false` if there was an error or the card was not found.
+ * 
+ * @param username The username associated with the RFID card. It's required.
+ * @param rfid The RFID number to be deleted. If no RFID number is provided (empty string),
+ *             all RFID cards under the specified username will be deleted.
+ * @return `true` if the RFID card(s) were successfully deleted, `false` otherwise.
+ */
 bool deleteRFIDCardFromSDCard(String username, String rfid) {
-  LOG_FUNCTION_LOCAL("Delete RFID Data, RFID: " + rfid);
-
-  if (!checkRFIDCardFromSDCard(rfid)){
-    LOG_FUNCTION_LOCAL("RFID " + rfid + " is not found in the JSON file!");
-    return false;
-  }
+  LOG_FUNCTION_LOCAL("Delete RFID Card Data, Username: " + username + ", RFID: " + rfid);
 
   File file = SD.open(RFID_FILE_PATH, FILE_READ);
   StaticJsonDocument<JSON_CAPACITY> doc;
-  if (file) {
-    deserializeJson(doc, file);
-    file.close();
-  } else {
+  if (!file) {
     LOG_FUNCTION_LOCAL("Failed to open file for reading");
     return false;
   }
 
+  deserializeJson(doc, file);
+  file.close();
+
   bool found = false;
-  if (username.isEmpty()){
-    JsonObject userData = doc[username].as<JsonObject>();
-    if (userData.containsKey("id")) {
-      JsonArray idArray = userData["id"].as<JsonArray>();
+  bool userFound = false;
 
-      for (int i = 0; i < idArray.size(); i++) {
-        if (idArray[i] == rfid) {
-          idArray.remove(i);
+  for (JsonObject user : doc.as<JsonArray>()) {
+    String currentUser = user["name"].as<String>();
+
+    // Check if the current user matches the provided username
+    if (currentUser == username) {
+      userFound = true;
+      
+      if (user.containsKey("key_access")) {
+        JsonArray rfidArray = user["key_access"].as<JsonArray>();
+
+        if (rfid.isEmpty()) {
+          // If no RFID is provided, remove all RFID cards for the user
+          rfidArray.clear();
           found = true;
-          LOG_FUNCTION_LOCAL("Removed RFID: " + rfid + " for user: " + username);
-          break;
-        }
-      }
-
-      if (idArray.size() == 0) {
-        doc.remove(username);
-        LOG_FUNCTION_LOCAL("User " + username + " removed because they have no RFID left!");
-      }
-    } else {
-      LOG_FUNCTION_LOCAL("No 'id' array found for user: " + username);
-      return false;
-    }
-  }else{
-    for (JsonPair user : doc.as<JsonObject>()) {
-      JsonObject userData = user.value();
-      String currentUser = user.key().c_str();
-
-      // Check if the 'id' array exists for this user
-      if (userData.containsKey("id")) {
-        JsonArray idArray = userData["id"].as<JsonArray>();
-
-        // Iterate through the array and find the RFID to delete
-        for (int i = 0; i < idArray.size(); i++) {
-          if (idArray[i] == rfid && currentUser == username) {
-            idArray.remove(i);
-            found = true;
-            LOG_FUNCTION_LOCAL("Removed RFID: " + rfid + " for user: " + String(user.key().c_str()));
-            break;
+          LOG_FUNCTION_LOCAL("All RFID cards removed for user: " + username);
+        } else {
+          // If a specific RFID is provided, search for it and remove it
+          for (int i = 0; i < rfidArray.size(); i++) {
+            if (rfidArray[i].as<String>() == rfid) {
+              rfidArray.remove(i);
+              found = true;
+              LOG_FUNCTION_LOCAL("Removed RFID: " + rfid + " for user: " + currentUser);
+              break;
+            }
           }
         }
 
-        if (idArray.size() == 0) {
-          doc.remove(user.key());
-          LOG_FUNCTION_LOCAL("User " + String(user.key().c_str()) + " removed because they have no RFID left.");
-        }
+        // If the user has no RFID cards left, remove the user entirely
+        // TODO : Implement this, I still don't get it how we can do this
+
       }
     }
   }
 
-  if (!found) {
-    LOG_FUNCTION_LOCAL("RFID Data not found for Name: " + username + " UID: " + rfid);
+  // If the user was not found, log and return false
+  if (!userFound) {
+    LOG_FUNCTION_LOCAL("Username " + username + " not found.");
     return false;
   }
 
+  // If no RFID was found to remove, log and return false
+  if (!found) {
+    LOG_FUNCTION_LOCAL("RFID " + rfid + " not found for deletion.");
+    return false;
+  }
+
+  // Write the modified data back to the file
   file = SD.open(RFID_FILE_PATH, FILE_WRITE);
   if (file) {
     serializeJson(doc, file);
     file.close();
-    LOG_FUNCTION_LOCAL("Successfully delete the RFID data!");
+    LOG_FUNCTION_LOCAL("RFID data successfully updated on SD Card.");
     return true;
   } else {
-    LOG_FUNCTION_LOCAL("Failed to delete the RFID data!");
+    LOG_FUNCTION_LOCAL("Failed to open RFID file for writing!");
     return false;
   }
 }
 
-bool checkRFIDCardFromSDCard(String rfid){
+/**
+ * @brief Checking does RFID already registered on the ESP32 system which is on the json file at then moment
+ * 
+ * This function takes an RFID number, and check wether there was and RFID already registered or not . It returns `true` if the data is registered,
+ * or `false` if the data is not registered on the ESP32
+ * 
+ * @param rfid The RFID number to be checked
+ * @return `true` if the RFID card(s) were already registered, `false`.
+ */
+bool checkRFIDCardFromSDCard(String rfid) {
+  // Open the file for reading
   File file = SD.open(RFID_FILE_PATH, FILE_READ);
   StaticJsonDocument<JSON_CAPACITY> doc;
-  if (file) {
-    deserializeJson(doc, file);
-    file.close();
+
+  // If the file exists, deserialize the content
+  if (!file) {
+    LOG_FUNCTION_LOCAL("Failed to open the file for reading");
+    return false;
   }
 
-  // Check if this RFID is already been added under some user
-  for (JsonPair user : doc.as<JsonObject>()) {
-    JsonObject userData = user.value();
-    if (userData.containsKey("id")) {
-      JsonArray idArray = userData["id"].as<JsonArray>();
-      for (int i = 0; i < idArray.size(); i++) {
-        if (idArray[i] == rfid) {
+  deserializeJson(doc, file);
+    file.close();
+
+  // Loop through all users to check for the RFID
+  for (JsonObject user : doc.as<JsonArray>()) {
+    if (user.containsKey("key_access")) {
+      JsonArray rfidArray = user["key_access"].as<JsonArray>();
+
+      // Check if the RFID is in the user's rfid array
+      for (int i = 0; i < rfidArray.size(); i++) {
+        if (rfidArray[i].as<String>() == rfid) {
+          LOG_FUNCTION_LOCAL("RFID " + rfid + " found under user: " + user["name"].as<String>());
           return true;
         }
       }
     }
   }
+
+  // Return false if RFID is not found
+  LOG_FUNCTION_LOCAL("RFID " + rfid + " not found in the SD card.");
   return false;
 }
 
+/**
+ * @brief Creating Initial JSON if the file is not already initialized on the 
+ * 
+ * @param filePath The filePath of the JSON File need to be initiated
+ */
 void creatingJsonFile(String filePath) {
   // Check if the file exists, if not, create it
   if (!SD.exists(filePath)) {
