@@ -111,6 +111,7 @@ void setupRelayDoor();
 
 /// SD Card
 void setupSDCard();
+std::vector<String> getKeyAccessFromSDCard(String username, bool isFingerprint);
 bool addFingerprintToSDCard(String username, uint8_t fingerprintId);
 bool deleteFingerprintFromSDCard(String username, uint8_t fingerprintId);
 bool addRFIDCardToSDCard(String username, String rfid);
@@ -146,19 +147,22 @@ void toggleRelay() {
   LOG_FUNCTION_LOCAL("Total Detections: " + detectionCounter);         
 }
 
-void setupRelayDoor() {
-  pinMode(relayUnlock, OUTPUT);
-  pinMode(relayLock, OUTPUT);
-  digitalWrite(relayUnlock, HIGH);
-  digitalWrite(relayLock, HIGH);
-};
-
 
 /*
 >>>> State Section <<<<
 */
 
-/// TaskRFID Multitasking
+/**
+ * @brief The taskRFID function runs the RFID reading task in a loop, continuously runs in the background with a delay between 
+ *        iterations to manage the timing of the RFID checks.
+ * 
+ * This function does not take any input parameters, but it operates in an infinite loop, calling the verifyAccessRFID function
+ * when the system's current state is "RUNNING."
+ * 
+ * The RFID reading process helps manage access control based on RFID tags.
+ * 
+ * @param parameter A pointer to any additional parameters for the task (not used in this implementation).
+ */
 void taskRFID(void *parameter) {
   LOG_FUNCTION_LOCAL("Start RFID Reading Task!");
   while (1) {
@@ -169,7 +173,17 @@ void taskRFID(void *parameter) {
   }
 }
 
-/// Task Fingerprint Multitasking
+/**
+ * @brief The taskFingerprint function runs the Fingerprint sensor reading task in a loop, continuously runs in the background with a delay between 
+ *        iterations to manage the timing of the Fingerprint checks.
+ * 
+ * This function does not take any input parameters, but it operates in an infinite loop, calling the verifyAccessFingerprint function
+ * when the system's current state is "RUNNING."
+ * 
+ * The Fingerprint reading process helps manage access control based on Fingerprint matches.
+ * 
+ * @param parameter A pointer to any additional parameters for the task (not used in this implementation).
+ */
 void taskFingerprint(void *parameter) {
   LOG_FUNCTION_LOCAL("Start Fingerprint Reading Task!");
   while (1) {
@@ -183,6 +197,11 @@ void taskFingerprint(void *parameter) {
 /*
 >>>> Sensor Setup Implementation Section <<<<
 */
+/**
+ * @brief Initializes the PN532 NFC sensor for RFID functionality.
+ *        Attempts to initialize the sensor up to 5 times with exponential backoff between retries.
+ *        If initialization fails after all retries, the system will restart.
+ */
 void setupPN532() {
   Wire.begin(SDA_PIN, SCL_PIN);
   nfc.begin();
@@ -213,6 +232,11 @@ void setupPN532() {
   ESP.restart();
 }
 
+/**
+ * @brief Initializes the R503 fingerprint sensor.
+ *        Attempts to initialize the sensor up to 5 times with exponential backoff between retries.
+ *        If initialization fails after all retries, the system will restart.
+ */
 void setupR503() {
   mySerial.begin(57600, SERIAL_8N1, RX_PIN, TX_PIN);
 
@@ -240,6 +264,11 @@ void setupR503() {
   ESP.restart();
 }
 
+/**
+ * @brief Initializes the SD card using SPI interface.
+ *        Attempts to initialize the SD card up to 5 times with exponential backoff between retries.
+ *        If initialization fails after all retries, the system will restart.
+ */
 void setupSDCard() {
   SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
 
@@ -267,28 +296,41 @@ void setupSDCard() {
   ESP.restart();
 }
 
+/**
+ * @brief Initializes Relay connected to Door's output Lock state
+ *        Initializes the relay door system by setting up the unlock and lock relays.
+ *        Configures the relays as output and sets both relays to the HIGH state (inactive).
+ */
+void setupRelayDoor() {
+  pinMode(relayUnlock, OUTPUT);
+  pinMode(relayLock, OUTPUT);
+  digitalWrite(relayUnlock, HIGH);
+  digitalWrite(relayLock, HIGH);
+};
 
 
 /*
 >>>> NFC Section <<<<
 */
-/// Too checking who are registered
-void listAccessRFID() {
-  File file = SD.open(RFID_FILE_PATH, FILE_READ);
-  StaticJsonDocument<JSON_CAPACITY> doc;
-  if (file) {
-    deserializeJson(doc, file);
-    file.close();
-
-    LOG_FUNCTION_LOCAL("Getting List of RFID Access :");
-    for (JsonPair kv : doc.as<JsonObject>()) {
-      const char *uid = kv.value()["uid"] | "Tidak tersedia";
-      LOG_FUNCTION_LOCAL("RFID Data : Name " + kv.key().c_str() + " UID: " + uid);
+/**
+ * @brief The higher level function for getting the list of key access of fingereprint under such username
+ * 
+ * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name
+ */
+std::vector<String> listAccessRfid() {
+  LOG_FUNCTION_LOCAL("Enter user name: ");
+  String name;
+  while (true) {
+    if (Serial.available()) {
+      name = Serial.readStringUntil('\n');
+      name.trim();
+      if (name.length() > 0) break;
+      LOG_FUNCTION_LOCAL("Name cannot be empty! Please input a name!: ");
     }
-  } else {
-    LOG_FUNCTION_LOCAL("Failed to read the list of RFID Access!");
   }
-  return;
+
+  std::vector<String> keyAccessList = getKeyAccessFromSDCard(name, false);
+  return keyAccessList;
 }
 
 /**
@@ -392,40 +434,25 @@ String gettingRFIDTag(uint16_t timeout){
 /*
 >>>> Fingerprint Sensor Function Section <<<<
 */
-/// function to list fingeprint user
-void listAccessFingerprint() {
-  File jsonFile = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
-  if (!jsonFile) {
-    LOG_FUNCTION_LOCAL("Failed to open the file");
-    return;
+/**
+ * @brief The higher level function for getting the list of key access of fingereprint under such username
+ * 
+ * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name
+ */
+std::vector<String> listAccessFingerprint() {
+  LOG_FUNCTION_LOCAL("Enter user name: ");
+  String name;
+  while (true) {
+    if (Serial.available()) {
+      name = Serial.readStringUntil('\n');
+      name.trim();
+      if (name.length() > 0) break;
+      LOG_FUNCTION_LOCAL("Name cannot be empty! Please input a name!: ");
+    }
   }
 
-  DynamicJsonDocument doc(1024);
-  DeserializationError error = deserializeJson(doc, jsonFile);
-  jsonFile.close();
-
-  if (error) {
-    LOG_FUNCTION_LOCAL("Failed to read .json file: " + error.c_str());
-    return;
-  }
-
-  // Check if the document has any fingerprint data
-  if (doc.size() == 0) {
-    LOG_FUNCTION_LOCAL("No fingerprints stored in SD Card.");
-    return;
-  }
-
-  // Listing the fingerprints
-  LOG_FUNCTION_LOCAL("Listing Fingerprints:");
-  for (JsonPair user : doc.as<JsonObject>()) {
-    JsonObject userData = user.value().as<JsonObject>();
-    String name = userData["name"].as<String>();
-    int id = userData["id"].as<int>();
-
-    LOG_FUNCTION_LOCAL("Name: " + name + " ID: " + String(id));
-  }
-
-  listMode = false;
+  std::vector<String> keyAccessList = getKeyAccessFromSDCard(name, true);
+  return keyAccessList;
 }
 
 /**
@@ -603,6 +630,47 @@ uint8_t gettingFingerprintId(){
 /*
 >>>> SD Card Function to Add, Delete, and List Access <<<<
 */
+/**
+ * @brief Return the list of RFID or list of Fingerprint from a user got from the JSON File on the ESP32 System
+ * 
+ * This function takes an username, and check wether there was list associated
+ * if there is will return the list of array of that user access
+ * @param username The username
+ * @param isFingerprint `true` if getting the list of fingerprint key access, otherwise rfid key access
+ * @return list of key access
+ */
+std::vector<String> getKeyAccessFromSDCard(String username, bool isFingerprint) {
+  LOG_FUNCTION_LOCAL("Getting RFID List for User: " + username);
+  
+  String filePath = isFingerprint ? FINGERPRINT_FILE_PATH : RFID_FILE_PATH;
+
+  // Open the file to read the RFID data
+  File file = SD.open(filePath, FILE_READ);
+  StaticJsonDocument<JSON_CAPACITY> doc;
+  std::vector<String> accessList;
+
+  // If the file exists, read the content
+  if (file) {
+    deserializeJson(doc, file);
+    file.close();
+
+    // Loop through existing users to find the user's RFID cards
+    for (JsonObject existingUser : doc.as<JsonArray>()) {
+      if (existingUser["name"] == username) {
+        JsonArray keyAccessArray = existingUser["key_access"].as<JsonArray>();
+        for (JsonVariant v : keyAccessArray) {
+          accessList.push_back(v.as<String>());
+        }
+        break;
+      }
+    }
+  } else {
+    LOG_FUNCTION_LOCAL("Failed to open the RFID data file");
+  }
+
+  return accessList;
+}
+
 /**
  * @brief Add a new Fingerprint access to the SD card.
  * 
