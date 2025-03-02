@@ -30,6 +30,17 @@ ESP32 included:
 #include <BLEUtils.h>
 #include <BLE2902.h>
 
+/// BLE Characteristic and Configuration
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"  
+#define DOOR_CHARACTERISTIC "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
+#define bleServerName "YarisCross_DoorControl_Auth"
+BLEServer* pServer = NULL;                                          // BLE Server
+BLEService* pService = NULL;                                        // BLE Service
+BLECharacteristic* DoorChar = NULL;                                 // Door Characteristic
+BLEAdvertising* pAdvertising = NULL;                                // Device Advertise
+String bleCommand;
+JsonObject bleData;
+
 /// CONFIGURATION PIN GPIO FOR RELAY UNLOCK/LOCK
 #define relayUnlock 25    // Relay Unlock
 #define relayLock 26      // Relay Lock
@@ -95,14 +106,14 @@ bool toggleState = false;                 // Output State
 // Function Prototypes
 /// Card Sensor (PN532)
 void listAccessRFID();
-void enrollUserRFID();
-void deleteUserRFID();
+void enrollUserRFID(String username);
+void deleteUserRFID(String username, String uidCard);
 void verifyAccessRFID();
 
 /// Fingerprint Sensor (R503)
 void listFingerprint();
-void enrollUserFingerprint();
-void deleteUserFingerprint();
+void enrollUserFingerprint(String username);
+void deleteUserFingerprint(String username, String fingerprintId);
 void verifyAccessFingerprint();
 
 /// Actuator (Solenoid Doorlock)
@@ -122,6 +133,7 @@ void taskRFID(void *parameter);
 void taskFingerprint(void *parameter);
 
 /// Setup sensors
+void setupBLE();
 void setupPN532();
 void setupR503();
 
@@ -194,9 +206,92 @@ void taskFingerprint(void *parameter) {
   }
 }
 
+/* 
+>>>> Bluetooth Utilities Section<<<<
+*/
+/**
+ * @brief The MyServerCallbacks class handles BLE server connection events. It manages the connection state and initiates BLE advertising when disconnected.
+ * 
+ * This class defines two callback functions:
+ * - `onConnect`: Called when a device connects to the BLE server, setting the `deviceConnected` flag to true and printing a connection message.
+ * - `onDisconnect`: Called when a device disconnects, setting the `deviceConnected` flag to false, printing a disconnection message, and restarting BLE advertising to allow new connections.
+ * 
+ * These callbacks enable the BLE server to handle connections and disconnections, maintaining proper device connection management.
+ */
+class MyServerCallbacks : public BLEServerCallbacks {  
+  void onConnect(BLEServer* pServer) {  
+    deviceConnected = true;  
+    LOG_FUNCTION_LOCAL("BLE: connected!");  
+
+  };  
+  
+  void onDisconnect(BLEServer* pServer) {  
+    deviceConnected = false;  
+    LOG_FUNCTION_LOCAL("BLE: disconnected!");  
+    BLEDevice::startAdvertising();  
+  }  
+};  
+
+class CharacteristicCallback : public BLECharacteristicCallbacks {    
+  void onWrite(BLECharacteristic* pCharacteristic) {    
+    String bleCharacteristicValue = pCharacteristic -> getValue();    
+    LOG_FUNCTION_LOCAL("Incoming Characteristic value: " + String(bleCharacteristicValue.c_str()));
+    
+    // Parse the incoming JSON command  
+    JsonDocument bleJSON;
+    DeserializationError error = deserializeJson(bleJSON, bleCharacteristicValue);
+
+    if (!error) {
+      bleCommand = bleJSON["command"].as<String>();
+      bleData = bleJSON["data"].as<JsonObject>();
+
+      String dataStr;
+      serializeJson(bleData, dataStr);
+      LOG_FUNCTION_LOCAL("Received Data: Command = " + bleCommand + ", Data = " + dataStr);
+    } else {
+      LOG_FUNCTION_LOCAL("Failed to parse JSON: " + String(error.f_str()));
+    }
+  } 
+};
+
 /*
 >>>> Sensor Setup Implementation Section <<<<
 */
+/**
+ * @brief Initializes BLE, creates a server, service, and characteristic, and starts advertising.
+ * 
+ * This function initializes the BLE device, sets up the server, and configures a characteristic for communication. It then starts advertising to allow devices to connect.
+ */
+void setupBLE() {  
+  LOG_FUNCTION_LOCAL("Initializing BLE...");
+  BLEDevice::init(bleServerName);  
+  
+  pServer = BLEDevice::createServer();  
+  pServer->setCallbacks(new MyServerCallbacks());  
+  pService = pServer->createService(SERVICE_UUID);  
+  
+  DoorChar = pService->createCharacteristic(  
+    DOOR_CHARACTERISTIC,  
+    BLECharacteristic::PROPERTY_NOTIFY |  
+    BLECharacteristic::PROPERTY_READ |  
+    BLECharacteristic::PROPERTY_WRITE);  
+  
+  DoorChar->addDescriptor(new BLE2902());  
+  DoorChar->setCallbacks(new CharacteristicCallback());
+  
+  pService->start();  
+  
+  pAdvertising = BLEDevice::getAdvertising();  
+  pAdvertising->addServiceUUID(SERVICE_UUID);  
+  pAdvertising->setScanResponse(true);  
+  pAdvertising->setMinPreferred(0x06);  
+  pAdvertising->setMinPreferred(0x12);  
+  
+  BLEDevice::startAdvertising();  
+  
+  LOG_FUNCTION_LOCAL("BLE initialized. Waiting for client to connect...");  
+}  
+
 /**
  * @brief Initializes the PN532 NFC sensor for RFID functionality.
  *        Attempts to initialize the sensor up to 5 times with exponential backoff between retries.
@@ -338,11 +433,13 @@ std::vector<String> listAccessRfid() {
  * 
  * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name and also sensor will be run to get the rfid card number
  */
-void enrollUserRFID() {
-  LOG_FUNCTION_LOCAL("Enter name for RFID Registration")
-  while (Serial.available() == 0);
-  String name = Serial.readStringUntil('\n');
-  name.trim();
+void enrollUserRFID(String username) {
+  if (username.isEmpty()){
+    LOG_FUNCTION_LOCAL("Enter name for RFID Registration")
+    while (Serial.available() == 0);
+    username = Serial.readStringUntil('\n');
+    username.trim();
+  }
 
   LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 10s)...")
   uint16_t timeout = 10000;
@@ -351,7 +448,7 @@ void enrollUserRFID() {
   if(uid_card.isEmpty()){
     LOG_FUNCTION_LOCAL("There's no card is detected!");
   }else{
-    bool status = addRFIDCardToSDCard(name, uid_card);
+    bool status = addRFIDCardToSDCard(username, uid_card);
   }
 }
 
@@ -360,20 +457,24 @@ void enrollUserRFID() {
  * 
  * This function takes no function whatsoever at the moment
  */
-void deleteUserRFID() {
-  LOG_FUNCTION_LOCAL("Enter username access to be deleted");
-  while (Serial.available() == 0);
-  String nameToDelete = Serial.readStringUntil('\n');
-  nameToDelete.trim();
+void deleteUserRFID(String username, String uidCard) {
+  if (username.isEmpty()){
+    LOG_FUNCTION_LOCAL("Enter username access to be deleted");
+    while (Serial.available() == 0);
+    username = Serial.readStringUntil('\n');
+    username.trim();
+  }
 
-  LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 3s)...")
-  uint16_t timeout = 3000;
-  String uid_card = gettingRFIDTag(timeout);
+  if (uidCard.isEmpty()){
+    LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 3s)...")
+    uint16_t timeout = 3000;
+    uidCard = gettingRFIDTag(timeout);
+  }
 
-  if(uid_card.isEmpty()){
-    LOG_FUNCTION_LOCAL("There's no card is detected! Proceed with not deleting anything");
+  if(uidCard.isEmpty()){
+    LOG_FUNCTION_LOCAL("There's no card is detected or ID Card was passed! Proceed with not deleting anything");
   }else{
-    bool status = deleteRFIDCardFromSDCard(nameToDelete, uid_card);
+    bool status = deleteRFIDCardFromSDCard(username, uidCard);
   }
 
   LOG_FUNCTION_LOCAL("Back to RUNNING mode.");
@@ -460,22 +561,23 @@ std::vector<String> listAccessFingerprint() {
  * 
  * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name and also sensor will be run to get the fingerprint image
  */
-void enrollUserFingerprint() {
+void enrollUserFingerprint(String username) {
   LOG_FUNCTION_LOCAL("Generating ID for the Fingerprint Unique ID (1-256)");
   uint8_t fingerprintId = gettingFingerprintId();
 
-  LOG_FUNCTION_LOCAL("Enter user name: ");
-  String name;
-  while (true) {
-    if (Serial.available()) {
-      name = Serial.readStringUntil('\n');
-      name.trim();
-      if (name.length() > 0) break;
-      LOG_FUNCTION_LOCAL("Name cannot be empty! Please input a name!: ");
+  if (username.isEmpty()){
+    LOG_FUNCTION_LOCAL("Enter user name: ");
+    while (true) {
+      if (Serial.available()) {
+        username = Serial.readStringUntil('\n');
+        username.trim();
+        if (username.length() > 0) break;
+        LOG_FUNCTION_LOCAL("Name cannot be empty! Please input a name!: ");
+      }
     }
   }
 
-  LOG_FUNCTION_LOCAL("Fingerprint registration with name  " + name + " and Fingerprint ID " + fingerprintId);
+  LOG_FUNCTION_LOCAL("Fingerprint registration with name  " + username + " and Fingerprint ID " + fingerprintId);
   LOG_FUNCTION_LOCAL("Waiting for Fingerprint to be pressed...");
 
   while (finger.getImage() != FINGERPRINT_OK);
@@ -504,7 +606,7 @@ void enrollUserFingerprint() {
   if (finger.storeModel(fingerprintId) == FINGERPRINT_OK) {
     LOG_FUNCTION_LOCAL("Fingerprint successfully captured with ID " + fingerprintId);
 
-    bool status = addFingerprintToSDCard(name, fingerprintId);
+    bool status = addFingerprintToSDCard(username, fingerprintId);
 
   } else {
     LOG_FUNCTION_LOCAL("Failed to stored the fingerprint");
@@ -519,19 +621,23 @@ void enrollUserFingerprint() {
  * 
  * This function takes no function whatsoever at the moment
  */
-void deleteUserFingerprint() {
-  LOG_FUNCTION_LOCAL("Enter Fingerprint ID to be deleted");
-  while (Serial.available() == 0);  // Wait until data is available
-  String input = Serial.readStringUntil('\n');  // Read until newline character
-  input.trim();
-
-  uint8_t fingerprintId = input.toInt();
+void deleteUserFingerprint(String username, String keyAccessFingerprint) {
+  if (keyAccessFingerprint.isEmpty()){
+    LOG_FUNCTION_LOCAL("Enter Fingerprint ID to be deleted");
+    while (Serial.available() == 0);  // Wait until data is available
+    keyAccessFingerprint = Serial.readStringUntil('\n');  // Read until newline character
+    keyAccessFingerprint.trim();
+  }
+  
+  uint8_t fingerprintId = keyAccessFingerprint.toInt();
   
   if (fingerprintId >= 0 && fingerprintId <= 127){
-    LOG_FUNCTION_LOCAL("Enter username access to be deleted");
-    while (Serial.available() == 0);
-    String nameToDelete = Serial.readStringUntil('\n');
-    nameToDelete.trim();
+    if (username.isEmpty()){
+      LOG_FUNCTION_LOCAL("Enter username access to be deleted");
+      while (Serial.available() == 0);
+      username = Serial.readStringUntil('\n');
+      username.trim();
+    }
 
     // Delete all or not. But for now not implemented the all delete
     // TODO : Implement the all delete, this is really hard to abstract as not only we need to delete the fingerprint data on SD Card but also on the sensor
@@ -546,7 +652,7 @@ void deleteUserFingerprint() {
         }
       }
     }
-    bool found = deleteFingerprintFromSDCard(nameToDelete, fingerprintId);
+    bool found = deleteFingerprintFromSDCard(username, fingerprintId);
 
     if (found) {
       if (finger.deleteModel(fingerprintId) == FINGERPRINT_OK) {
@@ -1114,6 +1220,8 @@ void setup() {
 
 /// Loop
 void loop() {
+  bool hasExecuted = false;
+
   switch (currentState) {
     case RUNNING:
       if (Serial.available()) {
@@ -1133,39 +1241,77 @@ void loop() {
           vTaskSuspend(taskRFIDHandle);
         }
       }
+
+      if (bleCommand != "") {
+        // Process the command received via BLE
+        if (bleCommand == "register_fp") {
+          currentState = ENROLL_FP;
+          vTaskSuspend(taskFingerprintHandle);
+        }
+        else if (bleCommand == "register_rfid") {
+          currentState = ENROLL_RFID;
+          vTaskSuspend(taskRFIDHandle);
+        }
+        else if (bleCommand == "delete_rfid") {
+          currentState = DELETE_RFID;
+          vTaskSuspend(taskRFIDHandle); 
+        }
+        else if (bleCommand == "delete_fp") {
+          currentState = DELETE_FP;
+          vTaskSuspend(taskFingerprintHandle);
+        }
+        bleCommand = "";
+      }
       break;
 
     case ENROLL_RFID:
       LOG_FUNCTION_LOCAL("Start Registering RFID!");
-      enrollUserRFID();
+      // Can't store them in such manner as `String username = bleData["name"].as<String>();` so will directly pass it like this so. Switch case in c++ doesn't support
+      enrollUserRFID(bleData["name"].as<String>());
+
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       vTaskResume(taskRFIDHandle);
+      hasExecuted = true;
       break;
 
     case DELETE_RFID:
       LOG_FUNCTION_LOCAL("Start Deleting RFID!");
-      deleteUserRFID();
+      deleteUserRFID(bleData["name"].as<String>(), bleData["keyAccess"].as<String>());
+
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       vTaskResume(taskRFIDHandle);
+      hasExecuted = true;
       break;
 
     case ENROLL_FP:
       LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
-      enrollUserFingerprint();
+      enrollUserFingerprint(bleData["name"].as<String>());
+
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       vTaskResume(taskFingerprintHandle);
+      hasExecuted = true;
       break;
 
     case DELETE_FP:
       LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
-      deleteUserFingerprint();
+      deleteUserFingerprint(bleData["name"].as<String>(), bleData["keyAccess"].as<String>());
+
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       vTaskResume(taskFingerprintHandle);
+      hasExecuted = true;
       break;
+  }
+
+  // Clear the command of the ble because using global, it should have not do this, but I don't know any other method for now
+  // TODO : Search for a way to incoporate the BLE callback to the loop without using global function
+  if (hasExecuted) {
+    bleCommand = "";
+    bleData = JsonObject();
+    hasExecuted = false;
   }
   delay(10);
 }
