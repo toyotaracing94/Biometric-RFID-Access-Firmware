@@ -309,7 +309,7 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
  * @param id The identifier associated with the user or RFID.
  * @param message The custom message to include in the notification.
  */
-void sendJsonNotification(const String& status, LockType type ,const String& name, const String& id, const String& message) {
+void sendJsonNotification(const String& status, LockType type , const String& name, const String& id, const String& message) {
     LOG_FUNCTION_LOCAL("Sending Notification: Status = " + status + ", Lock Type = " + type + ", Username = " + name + ", ID = " + id + ", Message = " + message);
     
     // Create a JSON document
@@ -317,8 +317,8 @@ void sendJsonNotification(const String& status, LockType type ,const String& nam
 
     // Fill the JSON document
     doc["status"] = status;
-    doc["type"] = type;
     JsonObject data = doc.createNestedObject("data");
+    data["type"] = type;
     data["name"] = name;
     data["id"] = id;
     doc["message"] = message;
