@@ -1213,6 +1213,9 @@ void setup() {
   // Initialization of relayUnlock and relayLock
   setupRelayDoor();
 
+  // Initialization of Bluetooth
+  setupBLE();
+
   // Running task on this program
   xTaskCreate(taskRFID, "RFID Task", 4096, NULL, 1, &taskRFIDHandle);
   xTaskCreate(taskFingerprint, "Fingerprint Task", 4096, NULL, 1, &taskFingerprintHandle);
