@@ -32,11 +32,16 @@ ESP32 included:
 
 /// BLE Characteristic and Configuration
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define LED_REMOTE_CHARACTERISTIC "beb5483e-36e1-4688-b7f5-ea07361b26a8"  
+#define AC_REMOTE_CHARACTERISTIC "9f54dbb9-e127-4d80-a1ab-413d48023ad2"  
 #define NOTIFICATION_CHARACTERISTIC "01952383-cf1a-705c-8744-2eee6f3f80c8"
 #define DOOR_CHARACTERISTIC "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
 #define bleServerName "Yaris Cross Door Auth"
+
 BLEServer* pServer = NULL;                                          // BLE Server
 BLEService* pService = NULL;                                        // BLE Service
+BLECharacteristic* LEDremoteChar = NULL;                            // LED Characteristic
+BLECharacteristic* ACChar = NULL;                                   // AC Characteristic
 BLECharacteristic* pNotification = NULL;                            // Notification Characteristic
 BLECharacteristic* DoorChar = NULL;                                 // Door Characteristic
 BLEAdvertising* pAdvertising = NULL;                                // Device Advertise
@@ -140,6 +145,10 @@ void taskFingerprint(void *parameter);
 void setupBLE();
 void setupPN532();
 void setupR503();
+
+/// Additional handlers for additional characteristic
+void handleAcCommand(JsonDocument bleJSON);
+void handleLedCommand(JsonDocument bleJSON);
 
 /*
 >>>> Actuator Section <<<<
@@ -260,14 +269,22 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
       bleName = bleJSON["data"]["name"].as<String>();
       bleKeyAccess = bleJSON["data"]["keyAccess"].as<String>();
 
-      LOG_FUNCTION_LOCAL("Testing the name? : " + bleData["name"].as<String>());
-
       String dataStr;
       serializeJson(bleData, dataStr);
       LOG_FUNCTION_LOCAL("Received Data: Command = " + bleCommand + ", Data = " + dataStr);
     } else {
       LOG_FUNCTION_LOCAL("Failed to parse JSON: " + String(error.f_str()));
     }
+
+    // Pass this command to others microcontroller by notifying or broadcast them to this characteristic service
+    if (pCharacteristic->getUUID().toString() == LED_REMOTE_CHARACTERISTIC) {  
+      handleLedCommand(bleJSON);
+    }
+    
+    if (pCharacteristic->getUUID().toString() == AC_REMOTE_CHARACTERISTIC) {  
+      handleAcCommand(bleJSON);
+    }
+
   } 
 };
 
@@ -319,6 +336,37 @@ void sendJsonNotification(const String& status, LockType type ,const String& nam
     LOG_FUNCTION_LOCAL("Notification sent: " + jsonString);
 }
 
+/// Additional Characteristic Bluetooth Data Handler
+/**
+ * @brief Handles LED control commands received via Bluetooth.
+ * 
+ * This function serializes the JSON command for the LED, updates the characteristic value, 
+ * and sends a notification to the connected Bluetooth client to update the LED status.
+ */
+void handleLedCommand(JsonDocument bleJSON) {  
+  LOG_FUNCTION_LOCAL("Handling LED command: ");  
+  String jsonString;  
+  serializeJson(bleJSON, jsonString);
+  LEDremoteChar->setValue(jsonString);
+  LEDremoteChar->notify();
+}
+
+
+/**
+ * @brief Handles AC control commands received via Bluetooth.
+ * 
+ * This function serializes the JSON command for the AC, updates the characteristic value, 
+ * and sends a notification to the connected Bluetooth client to update the AC status.
+ */
+void handleAcCommand(JsonDocument bleJSON) {  
+  LOG_FUNCTION_LOCAL("Handling AC command: ");  
+  String jsonString;  
+  serializeJson(bleJSON, jsonString);
+  ACChar->setValue(jsonString);
+  ACChar->notify();
+}
+
+
 /*
 >>>> Sensor Setup Implementation Section <<<<
 */
@@ -331,10 +379,12 @@ void setupBLE() {
   LOG_FUNCTION_LOCAL("Initializing BLE...");
   BLEDevice::init(bleServerName);  
   
+  // Creating the BLE Server for client to connect
   pServer = BLEDevice::createServer();  
   pServer->setCallbacks(new MyServerCallbacks());  
   pService = pServer->createService(SERVICE_UUID);  
   
+  // Door Characteristic Service Initialization
   DoorChar = pService->createCharacteristic(  
     DOOR_CHARACTERISTIC,  
     BLECharacteristic::PROPERTY_NOTIFY |  
@@ -344,6 +394,7 @@ void setupBLE() {
   DoorChar->addDescriptor(new BLE2902());  
   DoorChar->setCallbacks(new CharacteristicCallback());
 
+  // Notification to Titan Characteristic Service Initialization
   pNotification = pService->createCharacteristic(  
     NOTIFICATION_CHARACTERISTIC,  
     BLECharacteristic::PROPERTY_NOTIFY |  
@@ -352,15 +403,36 @@ void setupBLE() {
   
   pNotification->addDescriptor(new BLE2902());  
   pNotification->setCallbacks(new CharacteristicCallback());
+
+  // LED Remote Characteristic Service Initalization
+  LEDremoteChar = pService->createCharacteristic(  
+    LED_REMOTE_CHARACTERISTIC,  
+    BLECharacteristic::PROPERTY_NOTIFY |  
+    BLECharacteristic::PROPERTY_READ |  
+    BLECharacteristic::PROPERTY_WRITE);  
   
+  LEDremoteChar->addDescriptor(new BLE2902());  
+  LEDremoteChar->setCallbacks(new CharacteristicCallback());
+
+  // AC Characteristic Service Initalization
+  ACChar = pService->createCharacteristic(  
+    AC_REMOTE_CHARACTERISTIC,  
+    BLECharacteristic::PROPERTY_NOTIFY |  
+    BLECharacteristic::PROPERTY_READ |  
+    BLECharacteristic::PROPERTY_WRITE);  
+  
+  ACChar->addDescriptor(new BLE2902());  
+  ACChar->setCallbacks(new CharacteristicCallback());
+
+  // Start Overall Service
   pService->start();  
 
+  // Broadcast the BLE Connection to external
   pAdvertising = BLEDevice::getAdvertising();  
   pAdvertising->addServiceUUID(SERVICE_UUID);  
   pAdvertising->setScanResponse(true);  
   pAdvertising->setMinPreferred(0x06);  
   pAdvertising->setMinPreferred(0x12);  
-  
   BLEDevice::startAdvertising();  
   
   LOG_FUNCTION_LOCAL("BLE initialized. Waiting for client to connect...");  
@@ -736,13 +808,6 @@ void deleteUserFingerprint(String username, String keyAccessFingerprint) {
   uint8_t fingerprintId = keyAccessFingerprint.toInt();
   
   if (fingerprintId >= 0 && fingerprintId <= 127){
-    if (username.isEmpty() || username == "null"){
-      LOG_FUNCTION_LOCAL("Enter username access to be deleted");
-      while (Serial.available() == 0);
-      username = Serial.readStringUntil('\n');
-      username.trim();
-    }
-
     // Delete all or not. But for now not implemented the all delete
     // TODO : Implement the all delete, this is really hard to abstract as not only we need to delete the fingerprint data on SD Card but also on the sensor
     // TODO : Search for new good ways, for now this will do
@@ -754,6 +819,14 @@ void deleteUserFingerprint(String username, String keyAccessFingerprint) {
         } else {
           LOG_FUNCTION_LOCAL("Failed to delete Fingerprint ID " + i);
         }
+      }
+      username = "";
+    }else{
+      if (username.isEmpty() || username == "null"){
+        LOG_FUNCTION_LOCAL("Enter username access to be deleted");
+        while (Serial.available() == 0);
+        username = Serial.readStringUntil('\n');
+        username.trim();
       }
     }
     bool found = deleteFingerprintFromSDCard(username, fingerprintId);
@@ -1353,7 +1426,6 @@ void loop() {
 
       if (bleCommand != "") {
         LOG_FUNCTION_LOCAL("Received Command: " + bleCommand);
-
         // Process the command received via BLE
         if (bleCommand == "register_fp") {
           currentState = ENROLL_FP;
@@ -1396,7 +1468,6 @@ void loop() {
 
     case ENROLL_FP:
       LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
-      LOG_FUNCTION_LOCAL(bleCommand)
       enrollUserFingerprint(bleName);
 
       currentState = RUNNING;
