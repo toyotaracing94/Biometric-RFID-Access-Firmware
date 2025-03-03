@@ -32,14 +32,19 @@ ESP32 included:
 
 /// BLE Characteristic and Configuration
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define NOTIFICATION_CHARACTERISTIC "01952383-cf1a-705c-8744-2eee6f3f80c8"
 #define DOOR_CHARACTERISTIC "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
 #define bleServerName "Yaris Cross Door Auth"
 BLEServer* pServer = NULL;                                          // BLE Server
 BLEService* pService = NULL;                                        // BLE Service
+BLECharacteristic* pNotification = NULL;                            // Notification Characteristic
 BLECharacteristic* DoorChar = NULL;                                 // Door Characteristic
 BLEAdvertising* pAdvertising = NULL;                                // Device Advertise
+
+/// BLE Command and Data initialization
 String bleCommand;
-JsonObject bleData;
+String bleName;
+String bleKeyAccess;
 
 /// CONFIGURATION PIN GPIO FOR RELAY UNLOCK/LOCK
 #define relayUnlock 25    // Relay Unlock
@@ -78,8 +83,8 @@ enum State {
 
 // Enum Define the lock type
 enum LockType {
-  RFID,
-  FINGERPRINT
+  RFID = 0,
+  FINGERPRINT = 1
 };
 
 /// INITIALIZATION VARIABLE
@@ -93,7 +98,6 @@ boolean listMode = false;                // variabel listmode
 int id;                                  // variabel ID
 bool deviceConnected = false;            // Device connection status
 State currentState = RUNNING;            // Initial State
-JsonObject globalJSON;
 
 /// Define Macro for Logging Purpose
 #define LOG_FUNCTION_LOCAL(message) \
@@ -232,6 +236,12 @@ class MyServerCallbacks : public BLEServerCallbacks {
   }  
 };  
 
+/**
+ * @brief Handles BLE characteristic write events and parses the incoming JSON data.
+ * 
+ * This class listens for write events on a BLE characteristic. Upon receiving data, it attempts to parse the incoming JSON string and extract values such as `command`, `name`, and `keyAccess`. 
+ * If the JSON parsing is successful, it logs the received command and data. If parsing fails, an error message is logged.
+ */
 class CharacteristicCallback : public BLECharacteristicCallbacks {    
   void onWrite(BLECharacteristic* pCharacteristic) {    
     String bleCharacteristicValue = pCharacteristic -> getValue();    
@@ -242,8 +252,15 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
     DeserializationError error = deserializeJson(bleJSON, bleCharacteristicValue);
 
     if (!error) {
+      // I don't know why we can have simply bleData set to bleJSON["data"]
+      // Without using this set, the bleData value will simply lost when going on the loop function
+      // ArduinoJson is really hard to handle
+      JsonObject bleData = bleJSON["data"].as<JsonObject>();
       bleCommand = bleJSON["command"].as<String>();
-      bleData = bleJSON["data"].as<JsonObject>();
+      bleName = bleJSON["data"]["name"].as<String>();
+      bleKeyAccess = bleJSON["data"]["keyAccess"].as<String>();
+
+      LOG_FUNCTION_LOCAL("Testing the name? : " + bleData["name"].as<String>());
 
       String dataStr;
       serializeJson(bleData, dataStr);
@@ -253,6 +270,54 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
     }
   } 
 };
+
+/*
+>>>> Notification BLE Section <<<<
+*/
+
+/**
+ * @brief Sends a JSON notification with status, lock type, user details, and a message.
+ * 
+ * This function creates a JSON object containing:
+ * - The status of the notification (`status`)
+ * - The type of lock (`type`)
+ * - User information (`name`, `id`)
+ * - A custom message (`message`)
+ * 
+ * The JSON document is serialized and sent as a notification.
+ * 
+ * @param status The status of the notification (e.g., "success", "failure").
+ * @param type The type of lock (enumerated type `LockType`).
+ * @param name The name of the user.
+ * @param id The identifier associated with the user or RFID.
+ * @param message The custom message to include in the notification.
+ */
+void sendJsonNotification(const String& status, LockType type ,const String& name, const String& id, const String& message) {
+    LOG_FUNCTION_LOCAL("Sending Notification: Status = " + status + ", Lock Type = " + type + ", Username = " + name + ", ID = " + id + ", Message = " + message);
+    
+    // Create a JSON document
+    StaticJsonDocument<256> doc;
+
+    // Fill the JSON document
+    doc["status"] = status;
+    doc["type"] = type;
+    JsonObject data = doc.createNestedObject("data");
+    data["name"] = name;
+    data["id"] = id;
+    doc["message"] = message;
+
+    // Serialize the JSON document to a string
+    String jsonString;
+    serializeJson(doc, jsonString);
+
+    // Set the serialized JSON string as the characteristic value
+    pNotification->setValue(jsonString.c_str());
+
+    // Send the notification
+    pNotification->notify();
+
+    LOG_FUNCTION_LOCAL("Notification sent: " + jsonString);
+}
 
 /*
 >>>> Sensor Setup Implementation Section <<<<
@@ -278,9 +343,18 @@ void setupBLE() {
   
   DoorChar->addDescriptor(new BLE2902());  
   DoorChar->setCallbacks(new CharacteristicCallback());
+
+  pNotification = pService->createCharacteristic(  
+    NOTIFICATION_CHARACTERISTIC,  
+    BLECharacteristic::PROPERTY_NOTIFY |  
+    BLECharacteristic::PROPERTY_READ |  
+    BLECharacteristic::PROPERTY_WRITE);  
+  
+  pNotification->addDescriptor(new BLE2902());  
+  pNotification->setCallbacks(new CharacteristicCallback());
   
   pService->start();  
-  
+
   pAdvertising = BLEDevice::getAdvertising();  
   pAdvertising->addServiceUUID(SERVICE_UUID);  
   pAdvertising->setScanResponse(true);  
@@ -453,6 +527,12 @@ void enrollUserRFID(String username) {
     LOG_FUNCTION_LOCAL("There's no card is detected!");
   }else{
     bool status = addRFIDCardToSDCard(username, uid_card);
+    if (status){
+      sendJsonNotification("OK", RFID, username, uid_card, "RFID Card registered successfully!");
+    }else{
+      sendJsonNotification("Error", RFID, username, uid_card, "Failed to register RFID card!");
+    }
+
   }
 }
 
@@ -473,8 +553,8 @@ void deleteUserRFID(String username, String uidCard) {
   }
 
   if (uidCard.isEmpty() || uidCard == "null"){
-    LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 3s)...")
-    uint16_t timeout = 3000;
+    LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 5s)...")
+    uint16_t timeout = 5000;
     uidCard = gettingRFIDTag(timeout);
   }
 
@@ -482,6 +562,11 @@ void deleteUserRFID(String username, String uidCard) {
     LOG_FUNCTION_LOCAL("There's no card is detected or ID Card was passed! Proceed with not deleting anything");
   }else{
     bool status = deleteRFIDCardFromSDCard(username, uidCard);
+    if (status){
+      sendJsonNotification("OK", RFID, username, uidCard, "RFID Card deleted successfully!");
+    }else{
+      sendJsonNotification("Error", RFID, username, uidCard, "Failed to delete RFID card!");
+    }
   }
 
   LOG_FUNCTION_LOCAL("Back to RUNNING mode.");
@@ -616,6 +701,11 @@ void enrollUserFingerprint(String username) {
     LOG_FUNCTION_LOCAL("Fingerprint successfully captured with ID " + fingerprintId);
 
     bool status = addFingerprintToSDCard(username, fingerprintId);
+    if (status){
+      sendJsonNotification("OK", FINGERPRINT, username, String(fingerprintId), "Fingerprint registered successfully!");
+    }else{
+      sendJsonNotification("Error", FINGERPRINT, username, String(fingerprintId), "Failed to register Fingerprint!");
+    }
 
   } else {
     LOG_FUNCTION_LOCAL("Failed to stored the fingerprint");
@@ -671,8 +761,10 @@ void deleteUserFingerprint(String username, String keyAccessFingerprint) {
     if (found) {
       if (finger.deleteModel(fingerprintId) == FINGERPRINT_OK) {
         LOG_FUNCTION_LOCAL("Fingerprint is successfully deleted from the sensor data!");
+        sendJsonNotification("OK", FINGERPRINT, username, String(fingerprintId), "Fingerprint deleted successfully!");
       } else{
         LOG_FUNCTION_LOCAL("Failed to delete Fingerprint from the sensor data!");
+        sendJsonNotification("Error", FINGERPRINT, username, String(fingerprintId), "Failed to delete Fingerprint!");
       }
     }else {
       LOG_FUNCTION_LOCAL("Fingerprint ID is not found on the .json file!");
@@ -1260,6 +1352,8 @@ void loop() {
       }
 
       if (bleCommand != "") {
+        LOG_FUNCTION_LOCAL("Received Command: " + bleCommand);
+
         // Process the command received via BLE
         if (bleCommand == "register_fp") {
           currentState = ENROLL_FP;
@@ -1277,14 +1371,12 @@ void loop() {
           currentState = DELETE_FP;
           vTaskSuspend(taskFingerprintHandle);
         }
-        bleCommand = "";
       }
       break;
 
     case ENROLL_RFID:
       LOG_FUNCTION_LOCAL("Start Registering RFID!");
-      // Can't store them in such manner as `String username = bleData["name"].as<String>();` so will directly pass it like this so. Switch case in c++ doesn't support
-      enrollUserRFID(bleData["name"].as<String>());
+      enrollUserRFID(bleName);
 
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1294,7 +1386,7 @@ void loop() {
 
     case DELETE_RFID:
       LOG_FUNCTION_LOCAL("Start Deleting RFID!");
-      deleteUserRFID(bleData["name"].as<String>(), bleData["keyAccess"].as<String>());
+      deleteUserRFID(bleName, bleKeyAccess);
 
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1304,7 +1396,8 @@ void loop() {
 
     case ENROLL_FP:
       LOG_FUNCTION_LOCAL("Start Registering Fingerprint!");
-      enrollUserFingerprint(bleData["name"].as<String>());
+      LOG_FUNCTION_LOCAL(bleCommand)
+      enrollUserFingerprint(bleName);
 
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1314,7 +1407,7 @@ void loop() {
 
     case DELETE_FP:
       LOG_FUNCTION_LOCAL("Start Deleting Fingerprint!");
-      deleteUserFingerprint(bleData["name"].as<String>(), bleData["keyAccess"].as<String>());
+      deleteUserFingerprint(bleName, bleKeyAccess);
 
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -1322,13 +1415,12 @@ void loop() {
       hasExecuted = true;
       break;
   }
-
   // Clear the command of the ble because using global, it should have not do this, but I don't know any other method for now
   // TODO : Search for a way to incoporate the BLE callback to the loop without using global function
-  if (hasExecuted) {
+  if (hasExecuted && !bleCommand.isEmpty()) {
     bleCommand = "";
-    bleData = JsonObject();
-    hasExecuted = false;
+    bleName = "";
+    bleKeyAccess = "";
   }
   delay(10);
 }
