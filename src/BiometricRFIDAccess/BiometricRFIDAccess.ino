@@ -31,9 +31,9 @@ ESP32 included:
 #include <BLE2902.h>
 
 /// BLE Characteristic and Configuration
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"  
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define DOOR_CHARACTERISTIC "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
-#define bleServerName "YarisCross_DoorControl_Auth"
+#define bleServerName "Yaris Cross Door Auth"
 BLEServer* pServer = NULL;                                          // BLE Server
 BLEService* pService = NULL;                                        // BLE Service
 BLECharacteristic* DoorChar = NULL;                                 // Door Characteristic
@@ -428,13 +428,17 @@ std::vector<String> listAccessRfid() {
   return keyAccessList;
 }
 
+
 /**
- * @brief The higher level function for registering new user RFID Card that will be exposed to external
+ * @brief The higher level function for registering new user RFID Card that will be exposed to external. It will prompts for username if not provided.
  * 
- * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name and also sensor will be run to get the rfid card number
+ * @param username The user's name for RFID card registration.
  */
 void enrollUserRFID(String username) {
-  if (username.isEmpty()){
+  LOG_FUNCTION_LOCAL("Enroling new RFID User! Username = " + username);
+
+  // Based on this https://forum.arduino.cc/t/null-type/72515/4. But idk why it doesn't hold username == NULL, but instead username == "null" lmao. Weird Arduino String object
+  if (username.isEmpty() || username == "null"){
     LOG_FUNCTION_LOCAL("Enter name for RFID Registration")
     while (Serial.available() == 0);
     username = Serial.readStringUntil('\n');
@@ -453,25 +457,28 @@ void enrollUserRFID(String username) {
 }
 
 /**
- * @brief The higher level function for deleting user RFID Card that will be exposed to external. But a terminal will be run for getting the name and also sensor will be run to get the rfid card number
+ * @brief The higher level function for deletes an RFID card for a specified user. It prompts for username and scans the RFID card if not provided.
  * 
- * This function takes no function whatsoever at the moment
+ * @param username The user's name for RFID card deletion.
+ * @param uidCard The UID of the RFID card to delete. Such format like these (e.g d5:67:44:37)
  */
 void deleteUserRFID(String username, String uidCard) {
-  if (username.isEmpty()){
+  LOG_FUNCTION_LOCAL("Deleting RFID User! Username = " + username + " UID = " + uidCard);
+
+  if (username.isEmpty() || username == "null"){
     LOG_FUNCTION_LOCAL("Enter username access to be deleted");
     while (Serial.available() == 0);
     username = Serial.readStringUntil('\n');
     username.trim();
   }
 
-  if (uidCard.isEmpty()){
+  if (uidCard.isEmpty() || uidCard == "null"){
     LOG_FUNCTION_LOCAL("Hold the RFID card close to register (maximum 3s)...")
     uint16_t timeout = 3000;
     uidCard = gettingRFIDTag(timeout);
   }
 
-  if(uidCard.isEmpty()){
+  if(uidCard.isEmpty() || uidCard == "null"){
     LOG_FUNCTION_LOCAL("There's no card is detected or ID Card was passed! Proceed with not deleting anything");
   }else{
     bool status = deleteRFIDCardFromSDCard(username, uidCard);
@@ -557,15 +564,17 @@ std::vector<String> listAccessFingerprint() {
 }
 
 /**
- * @brief The higher level function for registering new user Fingerprint that will be exposed to external
+ * @brief The higher level function for registering new user Fingerprint that will be exposed to external. It will prompts for username if not provided.
  * 
- * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name and also sensor will be run to get the fingerprint image
+* @param username The user's name for RFID card registration.
  */
 void enrollUserFingerprint(String username) {
+  LOG_FUNCTION_LOCAL("Enroling new Fingerprint User! Username = " + username);
+
   LOG_FUNCTION_LOCAL("Generating ID for the Fingerprint Unique ID (1-256)");
   uint8_t fingerprintId = gettingFingerprintId();
 
-  if (username.isEmpty()){
+  if (username.isEmpty() || username == "null"){
     LOG_FUNCTION_LOCAL("Enter user name: ");
     while (true) {
       if (Serial.available()) {
@@ -616,23 +625,28 @@ void enrollUserFingerprint(String username) {
   return;
 }
 
+
 /**
  * @brief The higher level function for deleting user Fingerprint that will be exposed to external. But a terminal will be run for getting the name and also sensor will be run to get the fingerprint image
- * 
- * This function takes no function whatsoever at the moment
+ * It prompts for username and scans the RFID card if not provided.
+ *
+ * @param username The user's name for RFID card registration.
+ * @param keyAccessFingerprint The Fingerprint ID that was reference to the Fingerprint Image on the Sensor
  */
 void deleteUserFingerprint(String username, String keyAccessFingerprint) {
-  if (keyAccessFingerprint.isEmpty()){
+  LOG_FUNCTION_LOCAL("Deleting Fingerprint User! Username = " + username + " FingerprintID = " + keyAccessFingerprint);
+
+  if (keyAccessFingerprint.isEmpty() || keyAccessFingerprint == "null"){
     LOG_FUNCTION_LOCAL("Enter Fingerprint ID to be deleted");
-    while (Serial.available() == 0);  // Wait until data is available
-    keyAccessFingerprint = Serial.readStringUntil('\n');  // Read until newline character
+    while (Serial.available() == 0);
+    keyAccessFingerprint = Serial.readStringUntil('\n');
     keyAccessFingerprint.trim();
   }
   
   uint8_t fingerprintId = keyAccessFingerprint.toInt();
   
   if (fingerprintId >= 0 && fingerprintId <= 127){
-    if (username.isEmpty()){
+    if (username.isEmpty() || username == "null"){
       LOG_FUNCTION_LOCAL("Enter username access to be deleted");
       while (Serial.available() == 0);
       username = Serial.readStringUntil('\n');
