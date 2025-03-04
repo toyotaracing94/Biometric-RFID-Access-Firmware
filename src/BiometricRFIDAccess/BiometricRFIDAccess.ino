@@ -1163,7 +1163,7 @@ bool deleteFingerprintFromSDCard(String username, uint8_t fingerprintId) {
   for (JsonObject user : doc.as<JsonArray>()) {
     String currentUser = user["name"].as<String>();
 
-    // Check if the current user matches the provided username and not delete all the fingerprint ID
+    // Check if the current user matches the provided username and not in mode of delete all the fingerprint ID
     if (fingerprintId != 0 && currentUser == username) {
       userFound = true;
       if (user.containsKey("key_access")) {
@@ -1178,13 +1178,17 @@ bool deleteFingerprintFromSDCard(String username, uint8_t fingerprintId) {
           }
         }
       }
-    }else{ // Will delete all if the fingerprintId == 0
-      // If no Fingerprint is provided or 0, just clear all
+    }
+
+    // Delete all the fingerprint access for all username
+    // If no Fingerprint is provided or 0, just clear all
+    if (fingerprintId == 0){
       userFound = true;
       found = true;
       user.clear();
-      LOG_FUNCTION_LOCAL("All Fingerprints Access removed for user: " + username);
+      LOG_FUNCTION_LOCAL("Removed all Fingerprints Access for user: " + currentUser);
     }
+
   }
 
   // If the user was not found, log and return false
