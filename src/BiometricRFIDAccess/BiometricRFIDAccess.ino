@@ -95,6 +95,23 @@ enum LockType {
   FINGERPRINT = 1
 };
 
+// Helper to get the name of the Enum LockType
+String getLockTypeName(LockType type) {
+  switch (type) {
+    case RFID: return "RFID";
+    case FINGERPRINT: return "FINGERPRINT";
+    default: return "Unknown";
+  }
+}
+
+String getLockTypeName(int type) {
+  switch (type) {
+    case RFID: return "RFID";
+    case FINGERPRINT: return "FINGERPRINT";
+    default: return "Unknown";
+  }
+}
+
 /// INITIALIZATION VARIABLE
 HardwareSerial mySerial(2);              // HardwareSerial
 Adafruit_Fingerprint finger(&mySerial);  // Address Fingeprint
@@ -127,6 +144,9 @@ void listAccessFingerprint(String username);
 void enrollUserFingerprint(String username);
 void deleteUserFingerprint(String username, String fingerprintId);
 void verifyAccessFingerprint();
+
+/// Sync Service Status
+void syncService();
 
 /// Actuator (Solenoid Doorlock)
 void toggleRelay();
@@ -951,6 +971,56 @@ uint8_t gettingFingerprintId(){
   return fingerprintId;
 }
 
+/**
+ * @brief Function to synchronize data by reading RFID and FINGERPRINT files from SD card and send it to TITAN
+ * 
+ */
+void syncService(){
+  // Prepare the data payload
+  StaticJsonDocument<192> dataDoc;
+  JsonObject data = dataDoc.to<JsonObject>();
+  String filePaths[] = {RFID_FILE_PATH, FINGERPRINT_FILE_PATH};
+
+  // For future dev!
+  // TODO : I'm lazy to do this in proper way, and I don't know when will it scale but for now this will do
+  for(int i = 0; i<2; i++){
+    String filePath = filePaths[i];
+    LOG_FUNCTION_LOCAL("Reading file: " + filePath);
+
+    // Open the file from SD card
+    File file = SD.open(filePath, FILE_READ);
+    StaticJsonDocument<96> dataEachFile;
+
+    // Check if the file was opened successfully
+    if (file) {
+      DeserializationError error = deserializeJson(dataEachFile, file);
+      if (error) {
+        LOG_FUNCTION_LOCAL("Failed to read file: " + filePath);
+        sendJsonNotification("Error", StaticJsonDocument<8>().to<JsonObject>(), "Failed to read file");
+        return;
+      } else {
+        if (dataEachFile.isNull() || dataEachFile.size() == 0) {
+          LOG_FUNCTION_LOCAL("Empty content in file: " + filePath);
+        }
+
+        // Log the deserialized data to confirm it's not empty
+        String dataStr;
+        serializeJson(dataEachFile, dataStr);
+        LOG_FUNCTION_LOCAL(dataStr);
+
+        // Now assign to data
+        data[getLockTypeName(i)] = dataEachFile;
+      }
+      file.close();
+    } else {
+      LOG_FUNCTION_LOCAL("Failed to open file: " + filePath);
+      sendJsonNotification("Error", StaticJsonDocument<8>().to<JsonObject>(), "Failed to open file");
+      return;
+    }
+  }
+  sendJsonNotification("Ok", data, "Success Getting Updated Content!");
+}
+
 /*
 >>>> SD Card Function to Add, Delete, and List Access <<<<
 */
@@ -1493,6 +1563,11 @@ void loop() {
         else if (bleCommand == "getting_fp"){
           currentState = GETTING_FP;
         }
+        else if (bleCommand == "update_visitor"){
+          currentState = SYNC_VISITOR;
+          vTaskSuspend(taskFingerprintHandle);
+          vTaskSuspend(taskRFIDHandle);
+        }
         
       }
       break;
@@ -1552,6 +1627,17 @@ void loop() {
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       vTaskResume(taskFingerprintHandle);
+      hasExecuted = true;
+      break;
+
+    case SYNC_VISITOR:
+      LOG_FUNCTION_LOCAL("Start Sync Service!");
+      syncService();
+
+      currentState = RUNNING;
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      vTaskResume(taskFingerprintHandle);
+      vTaskResume(taskRFIDHandle);
       hasExecuted = true;
       break;
   }
