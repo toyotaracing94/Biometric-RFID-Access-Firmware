@@ -23,6 +23,7 @@ ESP32 included:
 #include <Adafruit_PN532.h>
 #include <esp_log.h>
 #include <ArduinoJson.h>
+#include <vector>
 
 /// Requirement for BLE Connection
 #include <BLEDevice.h>
@@ -79,6 +80,8 @@ TaskHandle_t taskFingerprintHandle = NULL;
 // Enum Device state to define process
 enum State {
   RUNNING,
+  GETTING_RFID,
+  GETTING_FP,
   ENROLL_RFID,
   ENROLL_FP,
   DELETE_RFID,
@@ -114,13 +117,13 @@ bool toggleState = false;                 // Output State
 
 // Function Prototypes
 /// Card Sensor (PN532)
-void listAccessRFID();
+void listAccessRFID(String username);
 void enrollUserRFID(String username);
 void deleteUserRFID(String username, String uidCard);
 void verifyAccessRFID();
 
 /// Fingerprint Sensor (R503)
-void listFingerprint();
+void listAccessFingerprint(String username);
 void enrollUserFingerprint(String username);
 void deleteUserFingerprint(String username, String fingerprintId);
 void verifyAccessFingerprint();
@@ -267,7 +270,7 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
       JsonObject bleData = bleJSON["data"].as<JsonObject>();
       bleCommand = bleJSON["command"].as<String>();
       bleName = bleJSON["data"]["name"].as<String>();
-      bleKeyAccess = bleJSON["data"]["keyAccess"].as<String>();
+      bleKeyAccess = bleJSON["data"]["key_access"].as<String>();
 
       String dataStr;
       serializeJson(bleData, dataStr);
@@ -304,23 +307,18 @@ class CharacteristicCallback : public BLECharacteristicCallbacks {
  * The JSON document is serialized and sent as a notification.
  * 
  * @param status The status of the notification (e.g., "success", "failure").
- * @param type The type of lock (enumerated type `LockType`).
- * @param name The name of the user.
- * @param id The identifier associated with the user or RFID.
+ * @param data The JSON object containing the details like lock type, user info, etc.
  * @param message The custom message to include in the notification.
  */
-void sendJsonNotification(const String& status, LockType type , const String& name, const String& id, const String& message) {
-    LOG_FUNCTION_LOCAL("Sending Notification: Status = " + status + ", Lock Type = " + type + ", Username = " + name + ", ID = " + id + ", Message = " + message);
+void sendJsonNotification(const String& status, const JsonObject& data, const String& message) {
+    LOG_FUNCTION_LOCAL("Sending Notification: Status = " + status + ", Message = " + message);
     
     // Create a JSON document
     StaticJsonDocument<256> doc;
 
     // Fill the JSON document
     doc["status"] = status;
-    JsonObject data = doc.createNestedObject("data");
-    data["type"] = type;
-    data["name"] = name;
-    data["id"] = id;
+    doc["data"] = data;
     doc["message"] = message;
 
     // Serialize the JSON document to a string
@@ -335,6 +333,7 @@ void sendJsonNotification(const String& status, LockType type , const String& na
 
     LOG_FUNCTION_LOCAL("Notification sent: " + jsonString);
 }
+
 
 /// Additional Characteristic Bluetooth Data Handler
 /**
@@ -558,20 +557,26 @@ void setupRelayDoor() {
  * 
  * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name
  */
-std::vector<String> listAccessRfid() {
-  LOG_FUNCTION_LOCAL("Enter user name: ");
-  String name;
-  while (true) {
-    if (Serial.available()) {
-      name = Serial.readStringUntil('\n');
-      name.trim();
-      if (name.length() > 0) break;
-      LOG_FUNCTION_LOCAL("Name cannot be empty! Please input a name!: ");
-    }
+void listAccessRFID(String username) {
+  LOG_FUNCTION_LOCAL("Getting the list of key Access RFID under username of " + username);
+  if (username.isEmpty() || username == "null"){
+    LOG_FUNCTION_LOCAL("Enter name for getting the list: ")
+    while (Serial.available() == 0);
+    username = Serial.readStringUntil('\n');
+    username.trim();
   }
 
-  std::vector<String> keyAccessList = getKeyAccessFromSDCard(name, false);
-  return keyAccessList;
+  std::vector<String> keyAccessList = getKeyAccessFromSDCard(username, false);
+  // Prepare the data payload
+  StaticJsonDocument<128> dataDoc;
+  JsonObject data = dataDoc.to<JsonObject>();
+  data["name"] = username;
+  JsonArray keyAccessArray = data.createNestedArray("key_access");
+  for (const String& key : keyAccessList) {
+      keyAccessArray.add(key);
+  }
+
+  sendJsonNotification("OK", data, "Success Getting the List of Key Access!");
 }
 
 
@@ -599,10 +604,18 @@ void enrollUserRFID(String username) {
     LOG_FUNCTION_LOCAL("There's no card is detected!");
   }else{
     bool status = addRFIDCardToSDCard(username, uid_card);
+
+    // Prepare the data payload
+    StaticJsonDocument<128> dataDoc;
+    JsonObject data = dataDoc.to<JsonObject>();
+    data["type"] = RFID;
+    data["name"] = username;
+    data["key_access"] = uid_card;
+
     if (status){
-      sendJsonNotification("OK", RFID, username, uid_card, "RFID Card registered successfully!");
+      sendJsonNotification("OK", data, "RFID Card registered successfully!");
     }else{
-      sendJsonNotification("Error", RFID, username, uid_card, "Failed to register RFID card!");
+      sendJsonNotification("Error", data, "Failed to register RFID card!");
     }
 
   }
@@ -634,10 +647,17 @@ void deleteUserRFID(String username, String uidCard) {
     LOG_FUNCTION_LOCAL("There's no card is detected or ID Card was passed! Proceed with not deleting anything");
   }else{
     bool status = deleteRFIDCardFromSDCard(username, uidCard);
+    // Prepare the data payload
+    StaticJsonDocument<128> dataDoc;
+    JsonObject data = dataDoc.to<JsonObject>();
+    data["type"] = RFID;
+    data["name"] = username;
+    data["key_access"] = uidCard;
+    
     if (status){
-      sendJsonNotification("OK", RFID, username, uidCard, "RFID Card deleted successfully!");
+      sendJsonNotification("OK", data, "RFID Card deleted successfully!");
     }else{
-      sendJsonNotification("Error", RFID, username, uidCard, "Failed to delete RFID card!");
+      sendJsonNotification("Error", data, "Failed to delete RFID card!");
     }
   }
 
@@ -704,26 +724,32 @@ String gettingRFIDTag(uint16_t timeout){
  * 
  * This function takes no function whatsoever at the moment. But a terminal will be run for getting the name
  */
-std::vector<String> listAccessFingerprint() {
-  LOG_FUNCTION_LOCAL("Enter user name: ");
-  String name;
-  while (true) {
-    if (Serial.available()) {
-      name = Serial.readStringUntil('\n');
-      name.trim();
-      if (name.length() > 0) break;
-      LOG_FUNCTION_LOCAL("Name cannot be empty! Please input a name!: ");
-    }
+void listAccessFingerprint(String username) {
+  LOG_FUNCTION_LOCAL("Getting the list of key Access Fingerprint under username of " + username);
+  if (username.isEmpty() || username == "null"){
+    LOG_FUNCTION_LOCAL("Enter name for getting the list: ")
+    while (Serial.available() == 0);
+    username = Serial.readStringUntil('\n');
+    username.trim();
   }
 
-  std::vector<String> keyAccessList = getKeyAccessFromSDCard(name, true);
-  return keyAccessList;
+  std::vector<String> keyAccessList = getKeyAccessFromSDCard(username, true);
+  // Prepare the data payload
+  StaticJsonDocument<128> dataDoc;
+  JsonObject data = dataDoc.to<JsonObject>();
+  data["name"] = username;
+  JsonArray keyAccessArray = data.createNestedArray("key_access");
+  for (const String& key : keyAccessList) {
+    keyAccessArray.add(key);
+  }
+
+  sendJsonNotification("OK", data, "Success Getting the List of Key Access!");
 }
 
 /**
  * @brief The higher level function for registering new user Fingerprint that will be exposed to external. It will prompts for username if not provided.
  * 
-* @param username The user's name for RFID card registration.
+ * @param username The user's name for RFID card registration.
  */
 void enrollUserFingerprint(String username) {
   LOG_FUNCTION_LOCAL("Enroling new Fingerprint User! Username = " + username);
@@ -773,10 +799,17 @@ void enrollUserFingerprint(String username) {
     LOG_FUNCTION_LOCAL("Fingerprint successfully captured with ID " + fingerprintId);
 
     bool status = addFingerprintToSDCard(username, fingerprintId);
+    // Prepare the data payload
+    StaticJsonDocument<128> dataDoc;
+    JsonObject data = dataDoc.to<JsonObject>();
+    data["type"] = RFID;
+    data["name"] = username;
+    data["key_access"] = String(fingerprintId);
+
     if (status){
-      sendJsonNotification("OK", FINGERPRINT, username, String(fingerprintId), "Fingerprint registered successfully!");
+      sendJsonNotification("OK", data, "Fingerprint registered successfully!");
     }else{
-      sendJsonNotification("Error", FINGERPRINT, username, String(fingerprintId), "Failed to register Fingerprint!");
+      sendJsonNotification("Error", data, "Failed to register Fingerprint!");
     }
 
   } else {
@@ -830,14 +863,20 @@ void deleteUserFingerprint(String username, String keyAccessFingerprint) {
       }
     }
     bool found = deleteFingerprintFromSDCard(username, fingerprintId);
+    // Prepare the data payload
+    StaticJsonDocument<128> dataDoc;
+    JsonObject data = dataDoc.to<JsonObject>();
+    data["type"] = FINGERPRINT;
+    data["name"] = username;
+    data["key_access"] = String(fingerprintId);
 
     if (found) {
       if (finger.deleteModel(fingerprintId) == FINGERPRINT_OK) {
         LOG_FUNCTION_LOCAL("Fingerprint is successfully deleted from the sensor data!");
-        sendJsonNotification("OK", FINGERPRINT, username, String(fingerprintId), "Fingerprint deleted successfully!");
+        sendJsonNotification("OK", data, "Fingerprint deleted successfully!");
       } else{
         LOG_FUNCTION_LOCAL("Failed to delete Fingerprint from the sensor data!");
-        sendJsonNotification("Error", FINGERPRINT, username, String(fingerprintId), "Failed to delete Fingerprint!");
+        sendJsonNotification("Error", data, "Failed to delete Fingerprint!");
       }
     }else {
       LOG_FUNCTION_LOCAL("Fingerprint ID is not found on the .json file!");
@@ -925,7 +964,8 @@ uint8_t gettingFingerprintId(){
  * @return list of key access
  */
 std::vector<String> getKeyAccessFromSDCard(String username, bool isFingerprint) {
-  LOG_FUNCTION_LOCAL("Getting RFID List for User: " + username);
+  String keyAccessFile = isFingerprint ? "Fingerprint" : "RFID";
+  LOG_FUNCTION_LOCAL("Getting " + keyAccessFile + " List for User: " + username);
   
   String filePath = isFingerprint ? FINGERPRINT_FILE_PATH : RFID_FILE_PATH;
 
@@ -950,7 +990,7 @@ std::vector<String> getKeyAccessFromSDCard(String username, bool isFingerprint) 
       }
     }
   } else {
-    LOG_FUNCTION_LOCAL("Failed to open the RFID data file");
+    LOG_FUNCTION_LOCAL("Failed to open the " + keyAccessFile +" data file");
   }
 
   return accessList;
@@ -1421,6 +1461,10 @@ void loop() {
         } else if (command == "delete_rfid") {
           currentState = DELETE_RFID;
           vTaskSuspend(taskRFIDHandle);
+        } else if (command == "getting_rfid"){
+          currentState = GETTING_RFID;
+        } else if (command == "getting_fp"){
+          currentState = GETTING_FP;
         }
       }
 
@@ -1443,7 +1487,23 @@ void loop() {
           currentState = DELETE_FP;
           vTaskSuspend(taskFingerprintHandle);
         }
+        else if (bleCommand == "getting_rfid"){
+          currentState = GETTING_RFID;
+        } 
+        else if (bleCommand == "getting_fp"){
+          currentState = GETTING_FP;
+        }
+        
       }
+      break;
+
+    case GETTING_RFID:
+      LOG_FUNCTION_LOCAL("Start Getting RFID!");
+      listAccessRFID(bleName);
+
+      currentState = RUNNING;
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
+      hasExecuted = true;
       break;
 
     case ENROLL_RFID:
@@ -1463,6 +1523,15 @@ void loop() {
       currentState = RUNNING;
       vTaskDelay(1000 / portTICK_PERIOD_MS);
       vTaskResume(taskRFIDHandle);
+      hasExecuted = true;
+      break;
+
+    case GETTING_FP:
+      LOG_FUNCTION_LOCAL("Start Getting FP!");
+      listAccessFingerprint(bleName);
+
+      currentState = RUNNING;
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
       hasExecuted = true;
       break;
 
