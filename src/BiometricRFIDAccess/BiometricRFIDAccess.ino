@@ -22,8 +22,11 @@ ESP32 included:
 #include <Adafruit_Fingerprint.h>
 #include <Adafruit_PN532.h>
 #include <esp_log.h>
-#include <ArduinoJson.h>
 #include <vector>
+
+///added libraries
+#include <WiFi.h>
+#include <HTTPClient.h>
 
 /// Requirement for BLE Connection
 #include <BLEDevice.h>
@@ -38,6 +41,10 @@ ESP32 included:
 #define NOTIFICATION_CHARACTERISTIC "01952383-cf1a-705c-8744-2eee6f3f80c8"
 #define DOOR_CHARACTERISTIC "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
 #define bleServerName "Yaris Cross Door Auth"
+
+//Wifi network credential
+const char* ssid = "REZQ";
+const char* password = "your_PASSWORD";
 
 BLEServer* pServer = NULL;                                          // BLE Server
 BLEService* pService = NULL;                                        // BLE Service
@@ -354,6 +361,58 @@ void sendJsonNotification(const String& status, const JsonObject& data, const St
     LOG_FUNCTION_LOCAL("Notification sent: " + jsonString);
 }
 
+/**
+ * @brief Sends a POST request to server to record tapping from RFID/Fingerprint using uid.
+ * 
+ * This function creates a POST to Titan server using:
+ * - uid as request body wrapped on key_access
+ * 
+ * The JSON document is serialized and sent as post request.
+ * 
+ * @param key_access is key of uid (the parameter will updated on backend updated 3rd of march 2025)
+ */
+void postActivityRecord(string uidCard){
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+
+    // Prepare JSON data
+    StaticJsonDocument<200> doc;
+    
+    /*
+    for temporary, key_access used for communication to server
+    */
+    doc["key_access"] = uidCard;
+
+    String jsonString;
+    serializeJson(doc, jsonString);
+
+    // Configure HTTP client
+    http.begin(serverName);
+    http.addHeader("Content-Type", "application/json");
+
+    // Send POST request
+    int httpResponseCode = http.POST(jsonString);
+
+    if (httpResponseCode > 0) {
+      String response = http.getString();
+      LOG_FUNCTION_LOCAL("HTTP Response code: " + String(httpResponseCode));
+      LOG_FUNCTION_LOCAL("Response: " + response);
+    } else {
+      LOG_FUNCTION_LOCAL("Error on sending POST: ");
+      LOG_FUNCTION_LOCAL(httpResponseCode);
+    }
+
+    // Free resources
+    http.end();
+  } else {
+    LOG_FUNCTION_LOCAL("Error in WiFi connection");
+  }
+
+  // Delay before the next request
+  delay(1000); // 1 seconds
+};
+
+
 
 /// Additional Characteristic Bluetooth Data Handler
 /**
@@ -394,6 +453,17 @@ void handleAcCommand(JsonDocument bleJSON) {
  * 
  * This function initializes the BLE device, sets up the server, and configures a characteristic for communication. It then starts advertising to allow devices to connect.
  */
+
+
+void setupWifi(){
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    LOG_FUNCTION_LOCAL("Connecting to WiFi...");
+  }
+  LOG_FUNCTION_LOCAL("Connected Wifi Network:" + WiFi.localIP());
+}
+
 void setupBLE() {  
   LOG_FUNCTION_LOCAL("Initializing BLE...");
   BLEDevice::init(bleServerName);  
@@ -708,6 +778,9 @@ void verifyAccessRFID() {
   if (accessGranted) {
     LOG_FUNCTION_LOCAL("Access granteed! Card UID: " + uid_card);
     toggleRelay();
+    delay(20);
+    //lakukan post disini
+    postActivityRecord(uid_card);
     delay(500);
   }else {
     LOG_FUNCTION_LOCAL("Access denied!");
@@ -937,7 +1010,9 @@ void verifyAccessFingerprint() {
 
       LOG_FUNCTION_LOCAL("Fingerprint matched!");
       finger.LEDcontrol(FINGERPRINT_LED_ON, 0, FINGERPRINT_LED_BLUE);
-      toggleRelay(); 
+      toggleRelay();
+      delay(20);
+      postActivityRecord(String(detectedID));
       delay(1000);
       finger.LEDcontrol(FINGERPRINT_LED_OFF, 0, FINGERPRINT_LED_BLUE);
     } else {
@@ -1493,6 +1568,9 @@ void creatingJsonFile(String filePath) {
 /// Setup
 void setup() {
   Serial.begin(115200);
+
+  //Initialization of Wifi Connection
+  setupWifi();
 
   // Initialization of SPI and SD card
   setupSDCard();
