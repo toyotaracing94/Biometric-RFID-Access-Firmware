@@ -2,7 +2,10 @@
 #include <esp_log.h>
 #define LOG_TAG "FINGERPRINT_SERVICE"
 
-FingerprintService::FingerprintService(FingerprintManager *manager) : _fingerprintManager(manager) {}
+FingerprintService::FingerprintService(FingerprintManager *manager, SDCardModule *sdCardModule) 
+    : _fingerprintManager(manager), _sdCardModule(sdCardModule){
+    setup();
+}
 
 bool FingerprintService::setup(){
     ESP_LOGI(LOG_TAG, "Fingerprint Setup");
@@ -11,9 +14,21 @@ bool FingerprintService::setup(){
 }
 
 bool FingerprintService::addFingerprint(char* username, int fingerprintId){
-    // Add the Fingerprint Image to the sensor
     bool addFingerprintResultSensor = _fingerprintManager -> addFingerprintModel(fingerprintId);
+    if (addFingerprintResultSensor){
+        bool saveFingerprintSDCard = _sdCardModule -> saveFingerprintToSDCard(username, fingerprintId); 
+        return saveFingerprintSDCard;
+    }else{
+        return true;
+    }
+}
 
-    // Add the Fingerprint ID of the relevant Image to SD Card
-    return true;
+bool FingerprintService::deleteFingerprint(char* username, int fingerprintId){
+    bool deleteFingerprintResultSensor = _fingerprintManager -> deleteFingerprintModel(fingerprintId);
+    if(deleteFingerprintResultSensor){
+        bool deleteFingerprintSDCard = _sdCardModule ->deleteFingerprintFromSDCard(username, fingerprintId);
+        return deleteFingerprintSDCard;
+    }else{
+        return false;
+    }
 }

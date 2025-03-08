@@ -1,5 +1,3 @@
-// AdafruitFingerprintSensor.h
-
 #ifndef ADAFRUIT_FINGERPRINT_SENSOR_H
 #define ADAFRUIT_FINGERPRINT_SENSOR_H
 

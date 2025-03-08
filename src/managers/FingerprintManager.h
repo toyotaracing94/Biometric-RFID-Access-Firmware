@@ -1,7 +1,7 @@
 #ifndef FINGERPRINT_MANAGER_H
 #define FINGERPRINT_MANAGER_H
 
-#include "sensors/FingerprintSensor/FingerprintSensor.h"
+#include "FingerprintSensor.h"
 
 class FingerprintManager {
 public:

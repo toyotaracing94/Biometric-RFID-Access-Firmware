@@ -3,7 +3,9 @@
 #include "AdafruitFingerprintSensor.h"
 
 AdafruitFingerprintSensor::AdafruitFingerprintSensor()
-    : _serial(UART_NR), _fingerprintSensor(&_serial) {}
+    : _serial(UART_NR), _fingerprintSensor(&_serial) {
+        setup();
+    }
 
 bool AdafruitFingerprintSensor::setup(){
     _serial.begin(BAUD_RATE_FINGERPRINT, SERIAL_8N1, RX_PIN, TX_PIN);
@@ -64,11 +66,22 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id) {
 
 bool AdafruitFingerprintSensor::deleteFingerprintModel(int id) {
     ESP_LOGI(LOG_TAG, "Deleting Fingerprint Model with ID %d", id);
-    if(_fingerprintSensor.deleteModel(id) == FINGERPRINT_OK){
-        ESP_LOGI(LOG_TAG, "Fingerprint model with ID %d successfully deleted from sensor!", id);
-        return true;
+    
+    if(id == 0){
+        if(_fingerprintSensor.emptyDatabase() == FINGERPRINT_OK){
+            ESP_LOGI(LOG_TAG, "Successfully deleted all Fingerprint Model from sensor!");
+            return true;
+        }else{
+            ESP_LOGI(LOG_TAG, "Unsuccessfull delete all Fingerprint Model from sensor!");
+            return false;
+        }
     }else{
-        ESP_LOGI(LOG_TAG, "Failed to delete Fingerprint Model with ID %d", id);
-        return false;
+        if(_fingerprintSensor.deleteModel(id) == FINGERPRINT_OK){
+            ESP_LOGI(LOG_TAG, "Fingerprint model with ID %d successfully deleted from sensor!", id);
+            return true;
+        }else{
+            ESP_LOGI(LOG_TAG, "Failed to delete Fingerprint Model with ID %d", id);
+            return false;
+        }
     }
 }
