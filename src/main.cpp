@@ -1,11 +1,16 @@
 #define LOG_LEVEL_LOCAL ESP_LOG_VERBOSE
+#define LOG_TAG "MAIN"
+
 #include "main.h"
 #include "esp_log.h"
-#define LOG_TAG "MAIN"
+#include "sensors/FingerprintSensor/AdafruitFingerprintSensor.h"
+#include "managers/FingerprintManager.h"
+#include "service/FingerprintService.h"
 
 extern "C" void app_main(void)
 {
-    ESP_LOGI(LOG_TAG, "Hello World. We are using PlatformIO now where it use ESP-IDF Structure!");
+    // AdafruitFingerprintSensor instance
+    AdafruitFingerprintSensor adafruitFingerprintSensor;
+    FingerprintManager fingerprintManager(&adafruitFingerprintSensor);
+    FingerprintService fingerprintService(&fingerprintManager);
 }
-
-
