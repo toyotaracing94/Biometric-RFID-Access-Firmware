@@ -35,10 +35,51 @@ bool SDCardModule::setup(){
     return false;
 }
 
+bool SDCardModule::isFingerprintIdRegistered(int id){
+    ESP_LOGI(LOG_TAG, "Checking Fingerprint Model with ID %d in SD Card Exist", id);
+
+    // Open the file and then close it and create new Static in heap
+    File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if(file){
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    }else{
+        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
+        return false;
+    }
+
+    for (JsonObject user : document.as<JsonArray>()) {
+        const char* currentUsername = user["name"];
+
+        JsonArray fingerprintIds = user["key_access"].as<JsonArray>();
+
+        for (int i = 0; i < fingerprintIds.size(); ++i) {
+            if (fingerprintIds[i].as<uint8_t>() == id) {
+              ESP_LOGI(LOG_TAG, "Fingerprint ID found %d under User %s", id, currentUsername);
+              return true;
+            }
+        }
+    }
+    ESP_LOGE(LOG_TAG, "Fingerprint ID %d not found in any user", id);
+    return false;
+}
+
 bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     ESP_LOGD(LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
     
     createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
+
+    if (isFingerprintIdRegistered(id)){
+        ESP_LOGE(LOG_TAG, "Fingerprint ID %d is already registered under another user!", id);
+        return false;
+    }
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -61,7 +102,6 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     bool userFound = false;
     for (JsonObject user : document.as<JsonArray>()) {
         if(user["name"] == username){
-            
             JsonArray fingerprintIds = user["key_access"].as<JsonArray>();
             fingerprintIds.add(id);
             userFound = true;
@@ -122,6 +162,8 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
     bool itemFound = false;
 
     for (JsonObject user : document.as<JsonArray>()) {
+        const char* currentUsername = user["name"];
+
         if(user["name"] == username && id != 0){
             userFound = true;
             JsonArray fingerprintArray = user["key_access"].as<JsonArray>();
@@ -141,7 +183,7 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
             userFound = true;
             itemFound = true;
             user.clear();
-            ESP_LOGI(LOG_TAG, "Removed all Fingerprints Access");
+            ESP_LOGI(LOG_TAG, "Removed all Fingerprints Access for User %s", currentUsername);
         }
     }
 
