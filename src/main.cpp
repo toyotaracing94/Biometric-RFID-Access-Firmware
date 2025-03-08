@@ -7,20 +7,18 @@
 #include "AdafruitFingerprintSensor.h"
 #include "SDCardModule.h"
 
-#include "managers/FingerprintManager.h"
 #include "service/FingerprintService.h"
 
 extern "C" void app_main(void)
 {
     // Initialize the Sensor and Electrical Components
-    AdafruitFingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
+    FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     SDCardModule *sdCardModule = new SDCardModule();
 
     // Initialize the Service
-    FingerprintManager *fingerprintManager = new FingerprintManager(adafruitFingerprintSensor);
-    FingerprintService fingerprintService(fingerprintManager, sdCardModule);
+    FingerprintService fingerprintService(adafruitFingerprintSensor, sdCardModule);
 
     // Try first
-    char* username = "Jun";
+    char username[10] = "Jun";
     fingerprintService.addFingerprint(username, 3);
 }
