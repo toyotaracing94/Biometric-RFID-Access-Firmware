@@ -73,11 +73,11 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     
     // If user doesn't exist, create a new object for the user
     if (!userFound) {
-        document.createNestedObject();
-        document["name"] = username;
-        document["key_access"].as<JsonArray>().add(id);
+        JsonObject newUser = document.add<JsonObject>();
+        newUser["name"] = username;
+        newUser["key_access"].as<JsonArray>().add(id);
         
-        ESP_LOGI(LOG_TAG,"Created new user with Fingerprint ID: %s", username);
+        ESP_LOGI(LOG_TAG, "Created new user with Fingerprint ID: %s", username);
     }
 
     // Write the modified JSON data back to the SD card
@@ -124,17 +124,15 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
     for (JsonObject user : document.as<JsonArray>()) {
         if(user["name"] == username && id != 0){
             userFound = true;
-            if (user.containsKey("key_access")) {
-                JsonArray fingerprintArray = user["key_access"].as<JsonArray>();
+            JsonArray fingerprintArray = user["key_access"].as<JsonArray>();
 
-                // If a specific Fingerprint is provided, search for it and remove it
-                for (int i = 0; i < fingerprintArray.size(); i++) {
-                  if (fingerprintArray[i].as<uint8_t>() == id) {
-                    fingerprintArray.remove(i);
-                    itemFound = true;
-                    ESP_LOGI(LOG_TAG, "Removed Fingerprint ID: %d for User: %s", id, username);
-                    break;
-                  }
+            // If a specific Fingerprint is provided, search for it and remove it
+            for (int i = 0; i < fingerprintArray.size(); i++) {
+                if (fingerprintArray[i].as<uint8_t>() == id) {
+                fingerprintArray.remove(i);
+                itemFound = true;
+                ESP_LOGI(LOG_TAG, "Removed Fingerprint ID: %d for User: %s", id, username);
+                break;
                 }
             }
         }
@@ -173,4 +171,3 @@ void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
       }
     }
   }
-  
