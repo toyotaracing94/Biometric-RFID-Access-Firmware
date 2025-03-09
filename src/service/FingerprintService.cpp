@@ -2,8 +2,8 @@
 #include "FingerprintService.h"
 #include <esp_log.h>
 
-FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule) 
-    : _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule){
+FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay) 
+    : _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay){
     setup();
 }
 
@@ -38,15 +38,19 @@ bool FingerprintService::authenticateAccessFingerprint(){
     if(isRegsiteredModel > 0){
         if(_sdCardModule->isFingerprintIdRegistered(isRegsiteredModel)){
             ESP_LOGI(LOG_TAG, "Fingerprint Match with ID %d", isRegsiteredModel);
-            // TODO : Relay Control and Fingerprint LED Control
+            
+            _fingerprintSensor->toggleSuccessFingerprintLED();
+            _doorRelay->toogleRelay();
             return true;
         }
         ESP_LOGI(LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock", isRegsiteredModel);
-        // TODO: Fingerprint LED Control
+        
+        _fingerprintSensor->toggleFailedFingerprintLED();
         return false;
     }else{
         ESP_LOGW(LOG_TAG, "Fingerprint does not match the stored data. Access denied");
-        // TODO: Fingerprint LED Control
+        
+        _fingerprintSensor->toggleFailedFingerprintLED();
         return false;
     }
 }

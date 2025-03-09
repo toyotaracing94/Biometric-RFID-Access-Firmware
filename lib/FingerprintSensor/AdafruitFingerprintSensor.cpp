@@ -1,5 +1,5 @@
 #define LOG_TAG "ADAFRUIT_FINGERPRINT"
-#include "esp_log.h"
+#include <esp_log.h>
 #include "AdafruitFingerprintSensor.h"
 
 AdafruitFingerprintSensor::AdafruitFingerprintSensor()
@@ -101,4 +101,12 @@ bool AdafruitFingerprintSensor::deleteFingerprintModel(int id) {
             return false;
         }
     }
+}
+
+void AdafruitFingerprintSensor::toggleSuccessFingerprintLED(){
+    _fingerprintSensor.LEDcontrol(FINGERPRINT_LED_FLASHING, 5, FINGERPRINT_LED_BLUE,5);
+}
+
+void AdafruitFingerprintSensor::toggleFailedFingerprintLED(){
+    _fingerprintSensor.LEDcontrol(FINGERPRINT_LED_FLASHING, 5, FINGERPRINT_LED_BLUE, 5);
 }

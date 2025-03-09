@@ -16,6 +16,9 @@ class AdafruitFingerprintSensor : public FingerprintSensor {
     int getFingerprintIdModel() override;
     bool addFingerprintModel(int id) override;
     bool deleteFingerprintModel(int id) override;
+
+    void toggleSuccessFingerprintLED(void) override;
+    void toggleFailedFingerprintLED(void) override; 
   
   private:
     HardwareSerial _serial;
