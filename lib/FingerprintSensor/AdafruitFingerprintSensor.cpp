@@ -33,6 +33,23 @@ bool AdafruitFingerprintSensor::setup(){
     return false;
 }
 
+int AdafruitFingerprintSensor::getFingerprintIdModel(){
+    if (_fingerprintSensor.getImage() == FINGERPRINT_OK){
+        ESP_LOGI(LOG_TAG, "Fingerprint image captured successfully.");
+        
+        ESP_LOGD(LOG_TAG, "Prepare the next stage for convert the image to feature model");
+        if(_fingerprintSensor.image2Tz() == FINGERPRINT_OK && _fingerprintSensor.fingerSearch() == FINGERPRINT_OK){
+            uint8_t fingerprintId = _fingerprintSensor.fingerID;
+            ESP_LOGI(LOG_TAG, "Fingerprint matched! Detected ID: %d", fingerprintId);
+            return (int)fingerprintId;
+        }else{
+            ESP_LOGW(LOG_TAG, "Fingerprint match failed or image conversion error.");
+            return FAILED_IMAGE_CONVERSION_ERROR;
+        }
+    }
+    return FAILED_TO_GET_FINGERPRINT_MODEL_ID;
+}
+
 bool AdafruitFingerprintSensor::addFingerprintModel(int id) {
     ESP_LOGI(LOG_TAG, "Fingerprint registration with Relevant ID %d", id);
     while (_fingerprintSensor.getImage() != FINGERPRINT_OK);

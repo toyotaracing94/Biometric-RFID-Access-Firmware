@@ -10,6 +10,8 @@ public:
     bool setup();
     bool addFingerprint(char* username, int fingerprintId);
     bool deleteFingerprint(char* username, int fingerprintId);
+    bool authenticateAccessFingerprint();
+
 private:
     FingerprintSensor* _fingerprintSensor;
     SDCardModule* _sdCardModule;

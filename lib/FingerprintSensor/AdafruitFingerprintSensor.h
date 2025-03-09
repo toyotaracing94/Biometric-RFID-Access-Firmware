@@ -13,6 +13,7 @@ class AdafruitFingerprintSensor : public FingerprintSensor {
   public:
     AdafruitFingerprintSensor();
     bool setup() override;
+    int getFingerprintIdModel() override;
     bool addFingerprintModel(int id) override;
     bool deleteFingerprintModel(int id) override;
   
