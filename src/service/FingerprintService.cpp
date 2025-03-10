@@ -58,19 +58,14 @@ bool FingerprintService::authenticateAccessFingerprint(){
     if(isRegsiteredModel > 0){
         if(_sdCardModule->isFingerprintIdRegistered(isRegsiteredModel)){
             ESP_LOGI(LOG_TAG, "Fingerprint Match with ID %d", isRegsiteredModel);
-            
-            _fingerprintSensor->toggleSuccessFingerprintLED();
             _doorRelay->toggleRelay();
             return true;
         }
+        // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System
         ESP_LOGI(LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock", isRegsiteredModel);
-        
-        _fingerprintSensor->toggleFailedFingerprintLED();
         return false;
     }else{
         ESP_LOGW(LOG_TAG, "Fingerprint does not match the stored data. Access denied");
-        
-        _fingerprintSensor->toggleFailedFingerprintLED();
         return false;
     }
 }

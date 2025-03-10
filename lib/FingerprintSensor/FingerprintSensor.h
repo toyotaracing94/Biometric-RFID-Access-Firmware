@@ -9,9 +9,6 @@ public:
     virtual int getFingerprintIdModel() = 0;
     virtual bool addFingerprintModel(int id) = 0;
     virtual bool deleteFingerprintModel(int id) = 0;
-
-    virtual void toggleSuccessFingerprintLED(void);
-    virtual void toggleFailedFingerprintLED(void);
 };
 
 #endif
