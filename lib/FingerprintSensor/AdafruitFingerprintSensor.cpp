@@ -8,6 +8,7 @@ AdafruitFingerprintSensor::AdafruitFingerprintSensor()
     }
 
 bool AdafruitFingerprintSensor::setup(){
+    ESP_LOGI(LOG_TAG, "Start Fingerprint Sensor Setup!");
     _serial.begin(BAUD_RATE_FINGERPRINT, SERIAL_8N1, RX_PIN, TX_PIN);
 
     uint8_t retries = 1;
@@ -51,7 +52,7 @@ int AdafruitFingerprintSensor::getFingerprintIdModel(){
 }
 
 bool AdafruitFingerprintSensor::addFingerprintModel(int id) {
-    ESP_LOGI(LOG_TAG, "Fingerprint registration with Relevant ID %d", id);
+    ESP_LOGI(LOG_TAG, "Fingerprint registration with Fingerprint ID %d", id);
     while (_fingerprintSensor.getImage() != FINGERPRINT_OK);
     if (_fingerprintSensor.image2Tz(1) != FINGERPRINT_OK) {
         ESP_LOGI(LOG_TAG, "Failed to convert first Fingerprint image scan!");
@@ -59,7 +60,7 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id) {
     }
 
     ESP_LOGI(LOG_TAG, "Remove fingerprint from Sensor....");
-    vTaskDelay(2000);
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
 
     while (_fingerprintSensor.getImage() != FINGERPRINT_NOFINGER);
     ESP_LOGI(LOG_TAG, "Please hold the same Fingerprint back to sensor...");
@@ -104,9 +105,11 @@ bool AdafruitFingerprintSensor::deleteFingerprintModel(int id) {
 }
 
 void AdafruitFingerprintSensor::toggleSuccessFingerprintLED(){
-    _fingerprintSensor.LEDcontrol(FINGERPRINT_LED_FLASHING, 5, FINGERPRINT_LED_BLUE,5);
+    ESP_LOGD(LOG_TAG, "Toggling success fingerprint LED!");
+    _fingerprintSensor.LEDcontrol(FINGERPRINT_LED_BREATHING, 128, FINGERPRINT_LED_BLUE, 1);
 }
 
 void AdafruitFingerprintSensor::toggleFailedFingerprintLED(){
+    ESP_LOGD(LOG_TAG, "Toggling failed fingerprint LED!");
     _fingerprintSensor.LEDcontrol(FINGERPRINT_LED_FLASHING, 5, FINGERPRINT_LED_BLUE, 5);
 }

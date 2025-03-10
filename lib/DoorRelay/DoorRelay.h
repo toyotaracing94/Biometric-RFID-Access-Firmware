@@ -13,10 +13,10 @@ class DoorRelay {
         int stateLockCounter = 0;
         DoorRelay();
         bool setup();
-        void toogleRelay();
+        void toggleRelay();
 
     private:
-        bool toogleState = false;
+        bool toggleState = false;
 };
 
 #endif

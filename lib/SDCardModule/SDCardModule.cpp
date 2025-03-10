@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 
 SDCardModule::SDCardModule() {
+    ESP_LOGI(LOG_TAG, "Start SD Card Module Setup!");
     setup();
 }
 
@@ -192,6 +193,8 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
 }
 
 void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
+    ESP_LOGI(LOG_TAG, "Start creating Empty JSON File");
+
     // Check if the file exists, if not, create it
     if (!SD.exists(filePath)) {
       ESP_LOGD(LOG_TAG, "File does not exist, creating a new one.");
@@ -211,5 +214,7 @@ void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
       } else {
         ESP_LOGD(LOG_TAG, "Failed to open file for writing");
       }
+    }else{
+        ESP_LOGI(LOG_TAG, "There's already JSON file of %s available!", filePath);
     }
   }

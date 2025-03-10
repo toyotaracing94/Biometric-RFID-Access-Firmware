@@ -18,12 +18,14 @@ extern "C" void app_main(void)
     DoorRelay *doorRelay = new DoorRelay();
 
     // Initialize the Service
-    FingerprintService fingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
+    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
 
     // Try FingerprintLED
-    adafruitFingerprintSensor->toggleSuccessFingerprintLED();
+    adafruitFingerprintSensor -> toggleSuccessFingerprintLED();
+
+    doorRelay->toogleRelay();
     
     // Try first
-    char username[10] = "Jun";
-    fingerprintService.addFingerprint(username, 3);
+    // char username[10] = "Jun";
+    // fingerprintService -> addFingerprint(username, 3);
 }

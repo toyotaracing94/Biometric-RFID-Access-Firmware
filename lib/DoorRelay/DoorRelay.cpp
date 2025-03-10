@@ -22,16 +22,16 @@ bool DoorRelay::setup() {
     return true;
 }
 
-void DoorRelay::toogleRelay(){
-    if (toogleState) {
+void DoorRelay::toggleRelay(){
+    if (!toggleState) {
         ESP_LOGI(LOG_TAG, "relayUnlock ON (DOOR UNLOCK)...");
         gpio_set_level(RELAY_UNLOCK_PIN, 0);
-        vTaskDelay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
         gpio_set_level(RELAY_UNLOCK_PIN, 1);
     } else {
         ESP_LOGI(LOG_TAG, "relayLock ON (DOOR LOCK)...");
         gpio_set_level(RELAY_LOCK_PIN, 0);
-        vTaskDelay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
         gpio_set_level(RELAY_LOCK_PIN, 1);
     }
     stateLockCounter++;
