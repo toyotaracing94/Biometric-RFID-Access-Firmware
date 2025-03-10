@@ -5,6 +5,7 @@
 #include <esp_log.h>
 
 #include "AdafruitFingerprintSensor.h"
+#include "AdafruitNFCSensor.h"
 #include "SDCardModule.h"
 #include "DoorRelay.h"
 
@@ -13,16 +14,17 @@
 extern "C" void app_main(void)
 {
     // Initialize the Sensor and Electrical Components
-    FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
-    SDCardModule *sdCardModule = new SDCardModule();
     DoorRelay *doorRelay = new DoorRelay();
+    SDCardModule *sdCardModule = new SDCardModule();
+    FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
+    AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
 
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
 
-    doorRelay->toggleRelay();
+    doorRelay -> toggleRelay();
     
     // Try first
-    char username[10] = "Jun";
-    fingerprintService -> addFingerprint(username, 3);
+    // char username[10] = "Jun";
+    // fingerprintService -> addFingerprint(username, 3);
 }
