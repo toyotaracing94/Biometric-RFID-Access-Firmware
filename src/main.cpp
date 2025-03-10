@@ -10,6 +10,7 @@
 #include "DoorRelay.h"
 
 #include "service/FingerprintService.h"
+#include "service/NFCService.h"
 
 extern "C" void app_main(void)
 {
@@ -21,6 +22,7 @@ extern "C" void app_main(void)
 
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
+    NFCService *nFCService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay);
 
     // Just sensor trial
     doorRelay -> toggleRelay();
