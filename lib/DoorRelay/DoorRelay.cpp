@@ -35,6 +35,6 @@ void DoorRelay::toggleRelay(){
         gpio_set_level(RELAY_LOCK_PIN, 1);
     }
     stateLockCounter++;
-    toogleState = !toogleState;
+    toggleState = !toggleState;
     ESP_LOGD(LOG_TAG, "State Lock Counter Internal %d", stateLockCounter);
 }

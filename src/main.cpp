@@ -23,7 +23,7 @@ extern "C" void app_main(void)
     // Try FingerprintLED
     adafruitFingerprintSensor -> toggleSuccessFingerprintLED();
 
-    doorRelay->toogleRelay();
+    doorRelay->toggleRelay();
     
     // Try first
     // char username[10] = "Jun";
