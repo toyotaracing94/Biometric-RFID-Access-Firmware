@@ -22,7 +22,9 @@ extern "C" void app_main(void)
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
 
+    // Just sensor trial
     doorRelay -> toggleRelay();
+    adafruitNFCSensor->readNFCCard();
     
     // Try first
     // char username[10] = "Jun";

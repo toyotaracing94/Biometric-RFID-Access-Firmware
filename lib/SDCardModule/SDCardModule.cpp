@@ -37,7 +37,7 @@ bool SDCardModule::setup(){
 }
 
 bool SDCardModule::isFingerprintIdRegistered(int id){
-    ESP_LOGI(LOG_TAG, "Checking Fingerprint Model with ID %d in SD Card Exist", id);
+    ESP_LOGI(LOG_TAG, "Checking Fingerprint Model with ID %d in SD Card already exist", id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -68,7 +68,7 @@ bool SDCardModule::isFingerprintIdRegistered(int id){
             }
         }
     }
-    ESP_LOGE(LOG_TAG, "Fingerprint ID %d not found in any user", id);
+    ESP_LOGW(LOG_TAG, "Fingerprint ID %d not found in any user", id);
     return false;
 }
 
@@ -118,7 +118,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
         newUser["name"] = username;
         newUser["key_access"].as<JsonArray>().add(id);
         
-        ESP_LOGI(LOG_TAG, "Created new user with Fingerprint ID: %s", username);
+        ESP_LOGI(LOG_TAG, "Created new user %s with Fingerprint ID: %d", username, id);
     }
 
     // Write the modified JSON data back to the SD card
@@ -167,15 +167,15 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
 
         if(user["name"] == username && id != 0){
             userFound = true;
-            JsonArray fingerprintArray = user["key_access"].as<JsonArray>();
+            JsonArray fingerprintIds = user["key_access"].as<JsonArray>();
 
             // If a specific Fingerprint is provided, search for it and remove it
-            for (int i = 0; i < fingerprintArray.size(); i++) {
-                if (fingerprintArray[i].as<uint8_t>() == id) {
-                fingerprintArray.remove(i);
-                itemFound = true;
-                ESP_LOGI(LOG_TAG, "Removed Fingerprint ID: %d for User: %s", id, username);
-                break;
+            for (int i = 0; i < fingerprintIds.size(); i++) {
+                if (fingerprintIds[i].as<uint8_t>() == id) {
+                    fingerprintIds.remove(i);
+                    itemFound = true;
+                    ESP_LOGI(LOG_TAG, "Removed Fingerprint ID: %d for User: %s", id, username);
+                    break;
                 }
             }
         }
@@ -185,6 +185,165 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
             itemFound = true;
             user.clear();
             ESP_LOGI(LOG_TAG, "Removed all Fingerprints Access for User %s", currentUsername);
+        }
+    }
+
+    if (userFound && itemFound) return true;
+    else return false;
+}
+
+bool SDCardModule::isNFCIdRegistered(char* id){
+    ESP_LOGI(LOG_TAG, "Checking NFC ID %s in SD Card already exist", id);
+
+    // Open the file and then close it and create new Static in heap
+    File file = SD.open(RFID_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if(file){
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    }else{
+        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        return false;
+    }
+
+    for (JsonObject user : document.as<JsonArray>()) {
+        const char* currentUsername = user["name"];
+        JsonArray nfcIds = user["key_access"].as<JsonArray>();
+
+        for (int i = 0; i < nfcIds.size(); ++i) {
+            const char* nfcId = nfcIds[i];
+            if (nfcId == id) {
+              ESP_LOGI(LOG_TAG, "NFC ID found %s under User %s", id, currentUsername);
+              return true;
+            }
+        }
+    }
+    ESP_LOGW(LOG_TAG, "NFC ID %s not found in any user", id);
+    return false;
+}
+
+bool SDCardModule::saveNFCToSDCard(char* username, char* id){
+    ESP_LOGD(LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
+
+    createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
+
+    if (isNFCIdRegistered(id)){
+        ESP_LOGE(LOG_TAG, "NFC ID %s is already registered under another user!", id);
+        return false;
+    }
+
+    // Open the file and then close it and create new Static in heap
+    File file = SD.open(RFID_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if(file){
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    }else{
+        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        return false;
+    }
+
+    // Check if there is already user under that name
+    bool userFound = false;
+    for (JsonObject user : document.as<JsonArray>()) {
+        if(user["name"] == username){
+            JsonArray nfcIds = user["key_access"].as<JsonArray>();
+            nfcIds.add(id);
+            userFound = true;
+
+            ESP_LOGI(LOG_TAG, "Added new NFC ID to existing user, Username %s, NFC ID %s", username, id);
+            break;
+        }
+    }
+
+    // If user doesn't exist, create a new object for the user
+    if (!userFound) {
+        JsonObject newUser = document.add<JsonObject>();
+        newUser["name"] = username;
+        newUser["key_access"].as<JsonArray>().add(id);
+        
+        ESP_LOGI(LOG_TAG, "Created new user of %s with NFC ID: %s", username, id);
+    }
+
+    // Write the modified JSON data back to the SD card
+    file = SD.open(RFID_FILE_PATH, FILE_WRITE);
+    if (file) {
+        serializeJson(document, file);
+        file.close();
+        document.clear();
+
+        ESP_LOGI(LOG_TAG, "NFC data is successfully stored to SD Card");
+        return true;
+    } else {
+        file.close();
+        document.clear();
+
+        ESP_LOGI(LOG_TAG, "Failed to store NFC data to SD Card");
+        return false;
+    }
+
+}
+
+bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
+    ESP_LOGD(LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
+
+    // Open the file and then close it and create new Static in heap
+    File file = SD.open(RFID_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if(file){
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    }else{
+        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        return false;
+    }
+
+    bool userFound = false;
+    bool itemFound = false;
+
+    for (JsonObject user : document.as<JsonArray>()) {
+        const char* currentUsername = user["name"];
+
+        if(user["name"] == username && id != 0){
+            userFound = true;
+            JsonArray nfcIds = user["key_access"].as<JsonArray>();
+
+            // If a specific NFC is provided, search for it and remove it
+            for (int i = 0; i < nfcIds.size(); i++) {
+                const char* nfcId = nfcIds[i];
+
+                if (nfcId == id) {
+                    nfcIds.remove(i);
+                    itemFound = true;
+                    ESP_LOGI(LOG_TAG, "Removed NFC ID: %s for User: %s", id, username);
+                    break;
+                }
+            }
+        }
+
+        if (id == 0){
+            userFound = true;
+            itemFound = true;
+            user.clear();
+            ESP_LOGI(LOG_TAG, "Removed all NFC Access for User %s", currentUsername);
         }
     }
 

@@ -38,4 +38,22 @@ bool AdafruitNFCSensor::setup(){
     ESP.restart();
     return false;
 }
-    
+ 
+char* AdafruitNFCSensor::readNFCCard(uint16_t timeout) {
+    uint8_t uid[7];
+    uint8_t uidLength;
+    static char uid_card[255];
+
+    bool readResult = _pn532Sensor.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, timeout);
+    if (readResult) {
+        uint8_t index = 0;
+        for (uint8_t i = 0; i < uidLength; i++) {
+            index += snprintf(uid_card + index, sizeof(uid_card) - index, "%02X", uid[i]);
+            if (i < uidLength - 1) {
+                index += snprintf(uid_card + index, sizeof(uid_card) - index, ":");
+            }
+        }
+        ESP_LOGI(LOG_TAG, "Found NFC tag with UID: %s", uid_card);
+    }
+    return uid_card;
+}

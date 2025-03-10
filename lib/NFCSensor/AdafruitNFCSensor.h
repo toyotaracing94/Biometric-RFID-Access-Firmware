@@ -11,6 +11,7 @@ class AdafruitNFCSensor {
     public:
         AdafruitNFCSensor();
         bool setup();
+        char* readNFCCard(uint16_t timeout = 5000);
     
     private:
         Adafruit_PN532 _pn532Sensor;
