@@ -23,7 +23,7 @@ bool DoorRelay::setup() {
 }
 
 void DoorRelay::toggleRelay(){
-    if (!toggleState) {
+    if (toggleState) {
         ESP_LOGI(LOG_TAG, "relayUnlock ON (DOOR UNLOCK)...");
         gpio_set_level(RELAY_UNLOCK_PIN, 0);
         vTaskDelay(500 / portTICK_PERIOD_MS);
