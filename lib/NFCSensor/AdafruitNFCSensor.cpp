@@ -44,6 +44,10 @@ char* AdafruitNFCSensor::readNFCCard(uint16_t timeout) {
     uint8_t uidLength;
     static char uid_card[255];
 
+    // Clear the buffer before reading the new card
+    // TODO : Find a way rather resort than this where it use static just for this 
+    memset(uid_card, 0, sizeof(uid_card));
+
     bool readResult = _pn532Sensor.readPassiveTargetID(PN532_MIFARE_ISO14443A, uid, &uidLength, timeout);
     if (readResult) {
         uint8_t index = 0;
