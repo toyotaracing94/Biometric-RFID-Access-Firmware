@@ -4,6 +4,9 @@
 #include "main.h"
 #include <esp_log.h>
 
+#include "enum/SystemState.h"
+#include "enum/LockType.h"
+
 #include "AdafruitFingerprintSensor.h"
 #include "AdafruitNFCSensor.h"
 #include "SDCardModule.h"
@@ -11,6 +14,11 @@
 
 #include "service/FingerprintService.h"
 #include "service/NFCService.h"
+
+#include "tasks/NFCTask/NFCTask.h"
+
+// Initialize public state
+static SystemState systemState = RUNNING;
 
 extern "C" void app_main(void)
 {
@@ -22,13 +30,24 @@ extern "C" void app_main(void)
 
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
-    NFCService *nFCService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay);
+    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay);
 
-    // Just sensor trial
-    doorRelay -> toggleRelay();
-    adafruitNFCSensor->readNFCCard();
+    // Initialize the Task
+    TaskHandle_t nfcTaskHandle;
+    NFCTask *nfcTask = new NFCTask("NFC Task", 1, &nfcTaskHandle, nfcService);
+    nfcTask -> createTask();
     
-    // Try first
-    // char username[10] = "Jun";
-    // fingerprintService -> addFingerprint(username, 3);
+    // Loop Main Mechanism
+    int lod = 1;
+    while(1){
+        ESP_LOGI(LOG_TAG, "Running Main Task");
+        vTaskDelay(1000/ portTICK_PERIOD_MS);
+        lod++;
+        if(lod == 10){
+            nfcTask->suspendTask();
+        }
+        if(lod == 30){
+            nfcTask->resumeTask();
+        }
+    }
 }
