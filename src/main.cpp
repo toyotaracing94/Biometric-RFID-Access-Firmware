@@ -16,6 +16,7 @@
 #include "service/NFCService.h"
 
 #include "tasks/NFCTask/NFCTask.h"
+#include "tasks/FingerprintTask/FingerprintTask.h"
 
 // Initialize public state
 static SystemState systemState = RUNNING;
@@ -36,18 +37,14 @@ extern "C" void app_main(void)
     TaskHandle_t nfcTaskHandle;
     NFCTask *nfcTask = new NFCTask("NFC Task", 1, &nfcTaskHandle, nfcService);
     nfcTask -> createTask();
+
+    TaskHandle_t fingerprintTaskHandle;
+    FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, &fingerprintTaskHandle, fingerprintService);
+    fingerprintTask -> createTask();
     
     // Loop Main Mechanism
-    int lod = 1;
     while(1){
         ESP_LOGI(LOG_TAG, "Running Main Task");
         vTaskDelay(1000/ portTICK_PERIOD_MS);
-        lod++;
-        if(lod == 10){
-            nfcTask->suspendTask();
-        }
-        if(lod == 30){
-            nfcTask->resumeTask();
-        }
     }
 }
