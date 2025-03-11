@@ -4,13 +4,11 @@
 #include "SDCardModule.h"
 #include <ArduinoJson.h>
 
-SDCardModule::SDCardModule() {
-    ESP_LOGI(LOG_TAG, "Start SD Card Module Setup!");
-    setup();
-}
+SDCardModule::SDCardModule() {}
 
 bool SDCardModule::setup(){
-    ESP_LOGD(LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, CS_PIN);
+    ESP_LOGI(LOG_TAG, "Start SD Card Module Setup!");
+    ESP_LOGI(LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, CS_PIN);
     SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
     
     int retries = 1;
@@ -20,6 +18,9 @@ bool SDCardModule::setup(){
     while (retries <= maxRetries) {
         if (SD.begin(CS_PIN, SPI)) {
             ESP_LOGI(LOG_TAG, "SD Card has been found and ready!");
+
+            uint8_t cardType = SD.cardType();
+            ESP_LOGI(LOG_TAG, "Card type %d", cardType);
             return true; 
         } 
         else {
@@ -73,7 +74,7 @@ bool SDCardModule::isFingerprintIdRegistered(int id){
 }
 
 bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
-    ESP_LOGD(LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
+    ESP_LOGI(LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
     
     createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
 
@@ -140,7 +141,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
 } 
 
 bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
-    ESP_LOGD(LOG_TAG, "Delete Fingerprint ID Data, Username %s, ID %d", username, id);
+    ESP_LOGI(LOG_TAG, "Delete Fingerprint ID Data, Username %s, ID %d", username, id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -229,7 +230,7 @@ bool SDCardModule::isNFCIdRegistered(char* id){
 }
 
 bool SDCardModule::saveNFCToSDCard(char* username, char* id){
-    ESP_LOGD(LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
+    ESP_LOGI(LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
 
     createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
 
@@ -297,7 +298,7 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
 }
 
 bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
-    ESP_LOGD(LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
+    ESP_LOGI(LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
@@ -356,22 +357,22 @@ void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
 
     // Check if the file exists, if not, create it
     if (!SD.exists(filePath)) {
-      ESP_LOGD(LOG_TAG, "File does not exist, creating a new one.");
+      ESP_LOGI(LOG_TAG, "File does not exist, creating a new one.");
 
-      File file = SD.open(filePath, FILE_WRITE);
+      File file = SD.open(filePath, FILE_WRITE);    
       if (file) {
         JsonDocument doc;
   
         // Serialize the empty JSON object to the file
         if (serializeJson(doc, file) == 0) {
-          ESP_LOGD(LOG_TAG, "Failed to write empty JSON object to the file");
+          ESP_LOGI(LOG_TAG, "Failed to write empty JSON object to the file");
         } else {
-          ESP_LOGD(LOG_TAG, "Empty JSON object written to file successfully");
+          ESP_LOGI(LOG_TAG, "Empty JSON object written to file successfully");
         }
 
         file.close();
       } else {
-        ESP_LOGD(LOG_TAG, "Failed to open file for writing");
+        ESP_LOGI(LOG_TAG, "Failed to open file for writing");
       }
     }else{
         ESP_LOGI(LOG_TAG, "There's already JSON file of %s available!", filePath);

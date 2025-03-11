@@ -8,9 +8,8 @@ FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDC
 }
 
 bool FingerprintService::setup(){
-    ESP_LOGI(LOG_TAG, "Start Fingerprint Setup");
-    bool result =  _fingerprintSensor -> setup();
-    return result;
+    ESP_LOGI(LOG_TAG, "Fingerprint Service Creation");
+    return true;
 }
 
 bool FingerprintService::addFingerprint(char* username, int fingerprintId){

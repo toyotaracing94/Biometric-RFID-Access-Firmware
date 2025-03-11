@@ -7,7 +7,10 @@ NFCService::NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule,
     setup();
 }
 
-bool NFCService::setup(){ return true; }
+bool NFCService::setup(){
+    ESP_LOGI(LOG_TAG, "NFC Service Creation");
+    return true;
+}
 
 bool NFCService::addNFC(char* username) {
     ESP_LOGI(LOG_TAG, "Enrolling new NFC Access User! Username: %s", username);

@@ -3,9 +3,7 @@
 #include "AdafruitFingerprintSensor.h"
 
 AdafruitFingerprintSensor::AdafruitFingerprintSensor()
-    : _serial(UART_NR), _fingerprintSensor(&_serial) {
-        setup();
-    }
+    : _serial(UART_NR), _fingerprintSensor(&_serial) {}
 
 bool AdafruitFingerprintSensor::setup(){
     ESP_LOGI(LOG_TAG, "Start Fingerprint Sensor Setup!");
@@ -39,7 +37,7 @@ int AdafruitFingerprintSensor::getFingerprintIdModel(){
     if (_fingerprintSensor.getImage() == FINGERPRINT_OK){
         ESP_LOGI(LOG_TAG, "Fingerprint image captured successfully.");
         
-        ESP_LOGD(LOG_TAG, "Prepare the next stage for convert the image to feature model");
+        ESP_LOGI(LOG_TAG, "Prepare the next stage for convert the image to feature model");
         if(_fingerprintSensor.image2Tz() == FINGERPRINT_OK && _fingerprintSensor.fingerSearch() == FINGERPRINT_OK){
             uint8_t fingerprintId = _fingerprintSensor.fingerID;
             ESP_LOGI(LOG_TAG, "Fingerprint matched! Detected ID: %d", fingerprintId);
@@ -125,17 +123,17 @@ bool AdafruitFingerprintSensor::deleteFingerprintModel(int id) {
 }
 
 void AdafruitFingerprintSensor::activateSuccessLED(uint8_t control, uint8_t speed, uint8_t cycles){
-    ESP_LOGD(LOG_TAG, "Activating Fingerprint LED for success operation!");
+    ESP_LOGI(LOG_TAG, "Activating Fingerprint LED for success operation!");
     _fingerprintSensor.LEDcontrol(control, speed, FINGERPRINT_LED_BLUE, cycles);
 } 
 
 void AdafruitFingerprintSensor::activateFailedLED(uint8_t control, uint8_t speed, uint8_t cycles){
-    ESP_LOGD(LOG_TAG, "Activating Fingerprint LED for failed operation!");
+    ESP_LOGI(LOG_TAG, "Activating Fingerprint LED for failed operation!");
     _fingerprintSensor.LEDcontrol(control, speed, FINGERPRINT_LED_RED, cycles);
 } 
 
 void AdafruitFingerprintSensor::activateCustomPresetLED(uint8_t control, uint8_t speed, uint8_t cycles){
-    ESP_LOGD(LOG_TAG, "Activating Fingerprint LED for custom preset operation!");
+    ESP_LOGI(LOG_TAG, "Activating Fingerprint LED for custom preset operation!");
     _fingerprintSensor.LEDcontrol(control, speed, FINGERPRINT_LED_PURPLE, cycles);
 } 
 

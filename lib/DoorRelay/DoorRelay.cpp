@@ -2,9 +2,7 @@
 #include <esp_log.h>
 #include "DoorRelay.h"
 
-DoorRelay::DoorRelay(){
-    setup();
-}
+DoorRelay::DoorRelay(){}
 
 bool DoorRelay::setup() {
     if (gpio_set_direction(RELAY_UNLOCK_PIN, GPIO_MODE_OUTPUT) != ESP_OK) {
@@ -36,5 +34,5 @@ void DoorRelay::toggleRelay(){
     }
     stateLockCounter++;
     toggleState = !toggleState;
-    ESP_LOGD(LOG_TAG, "State Lock Counter Internal %d", stateLockCounter);
+    ESP_LOGI(LOG_TAG, "State Lock Counter Internal %d", stateLockCounter);
 }

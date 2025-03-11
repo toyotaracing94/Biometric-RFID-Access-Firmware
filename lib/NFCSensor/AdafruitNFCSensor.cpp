@@ -3,9 +3,7 @@
 #include "AdafruitNFCSensor.h"
 
 AdafruitNFCSensor::AdafruitNFCSensor()
-    : _pn532Sensor(SDA_PIN, SCL_PIN){
-        setup();
-    }
+    : _pn532Sensor(SDA_PIN, SCL_PIN){}
 
 bool AdafruitNFCSensor::setup(){
     ESP_LOGI(LOG_TAG, "Start NFC Sensor Setup!");
