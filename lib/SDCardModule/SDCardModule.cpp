@@ -8,7 +8,7 @@ SDCardModule::SDCardModule() {}
 
 bool SDCardModule::setup(){
     ESP_LOGI(LOG_TAG, "Start SD Card Module Setup!");
-    ESP_LOGI(LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, CS_PIN);
+    ESP_LOGI(LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, MOSI PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
     SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
     
     int retries = 1;
@@ -21,15 +21,31 @@ bool SDCardModule::setup(){
 
             uint8_t cardType = SD.cardType();
             ESP_LOGI(LOG_TAG, "Card type %d", cardType);
+
+            ESP_LOGI(LOG_TAG, "sd card type: ");
+            if (cardType == CARD_MMC) 
+                ESP_LOGI(LOG_TAG, "MMC");
+            else if (cardType == CARD_SD)
+                ESP_LOGI(LOG_TAG, "SDSC");
+            else if (cardType == CARD_SDHC)
+                ESP_LOGI(LOG_TAG, "SDHC");
+            else
+                ESP_LOGI(LOG_TAG, "unknown");
+
+            ESP_LOGI(LOG_TAG, "SD Card Size: %lluMB", SD.cardSize() / (1024 * 1024));
+            ESP_LOGI(LOG_TAG, "Total space: %lluMB", SD.totalBytes() / (1024 * 1024));
+            ESP_LOGI(LOG_TAG, "Used space: %lluMB", SD.usedBytes() / (1024 * 1024));
+
+            ESP_LOGI(LOG_TAG, "SD Card storage initialized");
             return true; 
         } 
         else {
-        ESP_LOGE(LOG_TAG, "SD Card Module not found! Retrying %d", retries);
-        retries++;
-        delay(backoffTime);
-    
-        // Exponential backoff: double the wait time after each failure
-        backoffTime *= 2;
+            ESP_LOGE(LOG_TAG, "SD Card Module not found! Retrying %d", retries);
+            retries++;
+            delay(backoffTime);
+        
+            // Exponential backoff: double the wait time after each failure
+            backoffTime *= 2;
         }
     }
     
