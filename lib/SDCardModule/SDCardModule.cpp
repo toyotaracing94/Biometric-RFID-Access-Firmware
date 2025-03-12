@@ -108,6 +108,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
             ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+    
             file.close();
             return false;
         }
@@ -236,9 +237,9 @@ bool SDCardModule::isNFCIdRegistered(char* id){
 
         for (int i = 0; i < nfcIds.size(); ++i) {
             const char* nfcId = nfcIds[i];
-            if (nfcId == id) {
-              ESP_LOGI(LOG_TAG, "NFC ID found %s under User %s", id, currentUsername);
-              return true;
+            if (strcmp(nfcId, id) == 0) {
+                ESP_LOGI(LOG_TAG, "NFC ID found %s under User %s", id, currentUsername);
+                return true;
             }
         }
     }
@@ -290,7 +291,7 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
     if (!userFound) {
         JsonObject newUser = document.add<JsonObject>();
         newUser["name"] = username;
-        newUser["key_access"].as<JsonArray>().add(id);
+        newUser["key_access"].to<JsonArray>().add(id);
         
         ESP_LOGI(LOG_TAG, "Created new user of %s with NFC ID: %s", username, id);
     }
@@ -348,7 +349,7 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
             for (int i = 0; i < nfcIds.size(); i++) {
                 const char* nfcId = nfcIds[i];
 
-                if (nfcId == id) {
+                if (strcmp(nfcId, id) == 0) {
                     nfcIds.remove(i);
                     itemFound = true;
                     ESP_LOGI(LOG_TAG, "Removed NFC ID: %s for User: %s", id, username);
@@ -365,8 +366,28 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
         }
     }
 
-    if (userFound && itemFound) return true;
-    else return false;
+    if (userFound && itemFound){
+        // Write the modified JSON data back to the SD card
+        file = SD.open(RFID_FILE_PATH, FILE_WRITE);
+        if (file) {
+            serializeJson(document, file);
+            file.close();
+            document.clear();
+
+            ESP_LOGI(LOG_TAG, "NFC data is successfully stored to SD Card");
+            return true;
+        } else {
+            file.close();
+            document.clear();
+
+            ESP_LOGI(LOG_TAG, "Failed to store NFC data to SD Card");
+            return false;
+        }
+    }
+    else{
+        ESP_LOGE(LOG_TAG, "NFC Data ID %s with User %s not found in Storage system!", id, username);
+        return false;
+    }
 }
 
 void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
