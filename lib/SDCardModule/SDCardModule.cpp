@@ -22,15 +22,14 @@ bool SDCardModule::setup(){
             uint8_t cardType = SD.cardType();
             ESP_LOGI(LOG_TAG, "Card type %d", cardType);
 
-            ESP_LOGI(LOG_TAG, "sd card type: ");
             if (cardType == CARD_MMC) 
-                ESP_LOGI(LOG_TAG, "MMC");
+                ESP_LOGI(LOG_TAG, "SD card type: MMC");
             else if (cardType == CARD_SD)
-                ESP_LOGI(LOG_TAG, "SDSC");
+                ESP_LOGI(LOG_TAG, "SD card type: SDSC");
             else if (cardType == CARD_SDHC)
-                ESP_LOGI(LOG_TAG, "SDHC");
+                ESP_LOGI(LOG_TAG, "SD card type: SDHC");
             else
-                ESP_LOGI(LOG_TAG, "unknown");
+                ESP_LOGI(LOG_TAG, "SD card type: Unknown");
 
             ESP_LOGI(LOG_TAG, "SD Card Size: %lluMB", SD.cardSize() / (1024 * 1024));
             ESP_LOGI(LOG_TAG, "Total space: %lluMB", SD.totalBytes() / (1024 * 1024));
