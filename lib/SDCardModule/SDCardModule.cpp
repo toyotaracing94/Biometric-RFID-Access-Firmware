@@ -6,6 +6,8 @@
 
 SDCardModule::SDCardModule() {
     setup();
+    createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
+    createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
 }
 
 bool SDCardModule::setup(){
@@ -135,7 +137,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     if (!userFound) {
         JsonObject newUser = document.add<JsonObject>();
         newUser["name"] = username;
-        newUser["key_access"].as<JsonArray>().add(id);
+        newUser["key_access"].to<JsonArray>().add(id);
         
         ESP_LOGI(LOG_TAG, "Created new user %s with Fingerprint ID: %d", username, id);
     }
@@ -207,8 +209,29 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
         }
     }
 
-    if (userFound && itemFound) return true;
-    else return false;
+    if (userFound && itemFound){
+        // Write the modified JSON data back to the SD card
+        file = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
+        if (file) {
+            serializeJson(document, file);
+            file.close();
+            document.clear();
+
+            ESP_LOGI(LOG_TAG, "Fingerprint data change is successfully stored to SD Card");
+            return true;
+        } else {
+            file.close();
+            document.clear();
+
+            ESP_LOGI(LOG_TAG, "Failed to change Fingerprint data to SD Card");
+            return false;
+        }
+    }
+    else{
+        ESP_LOGE(LOG_TAG, "Fingerprint Data ID %d with User %s not found in Storage system!", id, username);
+        return false;
+    }
+
 }
 
 bool SDCardModule::isNFCIdRegistered(char* id){
