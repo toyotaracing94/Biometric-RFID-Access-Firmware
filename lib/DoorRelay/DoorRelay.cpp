@@ -2,7 +2,9 @@
 #include <esp_log.h>
 #include "DoorRelay.h"
 
-DoorRelay::DoorRelay(){}
+DoorRelay::DoorRelay(){
+    setup();
+}
 
 bool DoorRelay::setup() {
     if (gpio_set_direction(RELAY_UNLOCK_PIN, GPIO_MODE_OUTPUT) != ESP_OK) {

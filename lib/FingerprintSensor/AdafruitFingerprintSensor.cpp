@@ -3,7 +3,9 @@
 #include "AdafruitFingerprintSensor.h"
 
 AdafruitFingerprintSensor::AdafruitFingerprintSensor()
-    : _serial(UART_NR), _fingerprintSensor(&_serial) {}
+    : _serial(UART_NR), _fingerprintSensor(&_serial) {
+        setup();
+    }
 
 bool AdafruitFingerprintSensor::setup(){
     ESP_LOGI(LOG_TAG, "Start Fingerprint Sensor Setup!");

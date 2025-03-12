@@ -4,7 +4,9 @@
 #include "SDCardModule.h"
 #include <ArduinoJson.h>
 
-SDCardModule::SDCardModule() {}
+SDCardModule::SDCardModule() {
+    setup();
+}
 
 bool SDCardModule::setup(){
     ESP_LOGI(LOG_TAG, "Start SD Card Module Setup!");

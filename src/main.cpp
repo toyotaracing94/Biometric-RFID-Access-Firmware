@@ -26,11 +26,26 @@ extern "C" void app_main(void)
     // Initialize the Sensor and Electrical Components
     DoorRelay *doorRelay = new DoorRelay();
     SDCardModule *sdCardModule = new SDCardModule();
+    FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
+    AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
 
-    // Sensor and Electrical Setup
-    doorRelay -> setup();
-    sdCardModule -> setup();
+    // Initialize the Service
+    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
+    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay);
 
-    sdCardModule -> createEmptyJsonFileIfNotExists("/text.json");
+    // Initialize the Task
+    TaskHandle_t nfcTaskHandle;
+    NFCTask *nfcTask = new NFCTask("NFC Task", 1, &nfcTaskHandle, nfcService);
+    nfcTask -> createTask();
+ 
+    TaskHandle_t fingerprintTaskHandle;
+    FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, &fingerprintTaskHandle, fingerprintService);
+    fingerprintTask -> createTask();
+     
+     // Loop Main Mechanism
+    while(1){
+        ESP_LOGI(LOG_TAG, "Running Main Task");
+        vTaskDelay(1000/ portTICK_PERIOD_MS);
+    }
 
 }
