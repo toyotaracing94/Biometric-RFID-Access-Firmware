@@ -3,6 +3,7 @@
 
 #include "FingerprintErrorCode.h"
 
+/// @brief Base class for any Fingerprint sensor operation
 class FingerprintSensor {
 public:
     virtual bool setup() = 0;
