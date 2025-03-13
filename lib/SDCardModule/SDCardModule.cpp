@@ -1,4 +1,4 @@
-#define LOG_TAG "SD_CARD"
+#define SD_CARD_LOG_TAG "SD_CARD"
 
 #include "esp_log.h"
 #include "SDCardModule.h"
@@ -11,8 +11,8 @@ SDCardModule::SDCardModule() {
 }
 
 bool SDCardModule::setup(){
-    ESP_LOGI(LOG_TAG, "Start SD Card Module Setup!");
-    ESP_LOGI(LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, MOSI PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Start SD Card Module Setup!");
+    ESP_LOGI(SD_CARD_LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, MOSI PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
     SPI.begin(SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
     
     int retries = 1;
@@ -21,29 +21,29 @@ bool SDCardModule::setup(){
     
     while (retries <= maxRetries) {
         if (SD.begin(CS_PIN, SPI)) {
-            ESP_LOGI(LOG_TAG, "SD Card has been found and ready!");
+            ESP_LOGI(SD_CARD_LOG_TAG, "SD Card has been found and ready!");
 
             uint8_t cardType = SD.cardType();
-            ESP_LOGI(LOG_TAG, "Card type %d", cardType);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Card type %d", cardType);
 
             if (cardType == CARD_MMC) 
-                ESP_LOGI(LOG_TAG, "SD card type: MMC");
+                ESP_LOGI(SD_CARD_LOG_TAG, "SD card type: MMC");
             else if (cardType == CARD_SD)
-                ESP_LOGI(LOG_TAG, "SD card type: SDSC");
+                ESP_LOGI(SD_CARD_LOG_TAG, "SD card type: SDSC");
             else if (cardType == CARD_SDHC)
-                ESP_LOGI(LOG_TAG, "SD card type: SDHC");
+                ESP_LOGI(SD_CARD_LOG_TAG, "SD card type: SDHC");
             else
-                ESP_LOGI(LOG_TAG, "SD card type: Unknown");
+                ESP_LOGI(SD_CARD_LOG_TAG, "SD card type: Unknown");
 
-            ESP_LOGI(LOG_TAG, "SD Card Size: %lluMB", SD.cardSize() / (1024 * 1024));
-            ESP_LOGI(LOG_TAG, "Total space: %lluMB", SD.totalBytes() / (1024 * 1024));
-            ESP_LOGI(LOG_TAG, "Used space: %lluMB", SD.usedBytes() / (1024 * 1024));
+            ESP_LOGI(SD_CARD_LOG_TAG, "SD Card Size: %lluMB", SD.cardSize() / (1024 * 1024));
+            ESP_LOGI(SD_CARD_LOG_TAG, "Total space: %lluMB", SD.totalBytes() / (1024 * 1024));
+            ESP_LOGI(SD_CARD_LOG_TAG, "Used space: %lluMB", SD.usedBytes() / (1024 * 1024));
 
-            ESP_LOGI(LOG_TAG, "SD Card storage initialized");
+            ESP_LOGI(SD_CARD_LOG_TAG, "SD Card storage initialized");
             return true; 
         } 
         else {
-            ESP_LOGE(LOG_TAG, "SD Card Module not found! Retrying %d", retries);
+            ESP_LOGE(SD_CARD_LOG_TAG, "SD Card Module not found! Retrying %d", retries);
             retries++;
             delay(backoffTime);
         
@@ -57,7 +57,7 @@ bool SDCardModule::setup(){
 }
 
 bool SDCardModule::isFingerprintIdRegistered(int id){
-    ESP_LOGI(LOG_TAG, "Checking Fingerprint Model with ID %d in SD Card already exist", id);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Checking Fingerprint Model with ID %d in SD Card already exist", id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -66,13 +66,13 @@ bool SDCardModule::isFingerprintIdRegistered(int id){
     if(file){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
-            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
             file.close();
             return false;
         }
         file.close();
     }else{
-        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
         return false;
     }
 
@@ -83,22 +83,22 @@ bool SDCardModule::isFingerprintIdRegistered(int id){
 
         for (int i = 0; i < fingerprintIds.size(); ++i) {
             if (fingerprintIds[i].as<uint8_t>() == id) {
-              ESP_LOGI(LOG_TAG, "Fingerprint ID found %d under User %s", id, currentUsername);
+              ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint ID found %d under User %s", id, currentUsername);
               return true;
             }
         }
     }
-    ESP_LOGW(LOG_TAG, "Fingerprint ID %d not found in any user", id);
+    ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint ID %d not found in any user", id);
     return false;
 }
 
 bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
-    ESP_LOGI(LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
     
     createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
 
     if (isFingerprintIdRegistered(id)){
-        ESP_LOGE(LOG_TAG, "Fingerprint ID %d is already registered under another user!", id);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Fingerprint ID %d is already registered under another user!", id);
         return false;
     }
 
@@ -109,14 +109,14 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     if(file){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
-            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
     
             file.close();
             return false;
         }
         file.close();
     }else{
-        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
         return false;
     }
 
@@ -128,7 +128,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
             fingerprintIds.add(id);
             userFound = true;
 
-            ESP_LOGI(LOG_TAG, "Added new Fingerprint ID to existing user, Username %s, ID %d", username, id);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Added new Fingerprint ID to existing user, Username %s, ID %d", username, id);
             break;
         }
     }
@@ -139,7 +139,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
         newUser["name"] = username;
         newUser["key_access"].to<JsonArray>().add(id);
         
-        ESP_LOGI(LOG_TAG, "Created new user %s with Fingerprint ID: %d", username, id);
+        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s with Fingerprint ID: %d", username, id);
     }
 
     // Write the modified JSON data back to the SD card
@@ -149,19 +149,19 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
         file.close();
         document.clear();
 
-        ESP_LOGI(LOG_TAG, "Fingerprint data is successfully stored to SD Card");
+        ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint data is successfully stored to SD Card");
         return true;
     } else {
         file.close();
         document.clear();
 
-        ESP_LOGI(LOG_TAG, "Failed to store Fingerprint data to SD Card");
+        ESP_LOGI(SD_CARD_LOG_TAG, "Failed to store Fingerprint data to SD Card");
         return false;
     }
 } 
 
 bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
-    ESP_LOGI(LOG_TAG, "Delete Fingerprint ID Data, Username %s, ID %d", username, id);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete Fingerprint ID Data, Username %s, ID %d", username, id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -170,13 +170,13 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
     if(file){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
-            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
             file.close();
             return false;
         }
         file.close();
     }else{
-        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
         return false;
     }
 
@@ -195,7 +195,7 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
                 if (fingerprintIds[i].as<uint8_t>() == id) {
                     fingerprintIds.remove(i);
                     itemFound = true;
-                    ESP_LOGI(LOG_TAG, "Removed Fingerprint ID: %d for User: %s", id, username);
+                    ESP_LOGI(SD_CARD_LOG_TAG, "Removed Fingerprint ID: %d for User: %s", id, username);
                     break;
                 }
             }
@@ -205,7 +205,7 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
             userFound = true;
             itemFound = true;
             user.clear();
-            ESP_LOGI(LOG_TAG, "Removed all Fingerprints Access for User %s", currentUsername);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Removed all Fingerprints Access for User %s", currentUsername);
         }
     }
 
@@ -217,25 +217,25 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
             file.close();
             document.clear();
 
-            ESP_LOGI(LOG_TAG, "Fingerprint data change is successfully stored to SD Card");
+            ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint data change is successfully stored to SD Card");
             return true;
         } else {
             file.close();
             document.clear();
 
-            ESP_LOGI(LOG_TAG, "Failed to change Fingerprint data to SD Card");
+            ESP_LOGI(SD_CARD_LOG_TAG, "Failed to change Fingerprint data to SD Card");
             return false;
         }
     }
     else{
-        ESP_LOGE(LOG_TAG, "Fingerprint Data ID %d with User %s not found in Storage system!", id, username);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Fingerprint Data ID %d with User %s not found in Storage system!", id, username);
         return false;
     }
 
 }
 
 bool SDCardModule::isNFCIdRegistered(char* id){
-    ESP_LOGI(LOG_TAG, "Checking NFC ID %s in SD Card already exist", id);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Checking NFC ID %s in SD Card already exist", id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
@@ -244,13 +244,13 @@ bool SDCardModule::isNFCIdRegistered(char* id){
     if(file){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
-            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
             file.close();
             return false;
         }
         file.close();
     }else{
-        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
         return false;
     }
 
@@ -261,22 +261,22 @@ bool SDCardModule::isNFCIdRegistered(char* id){
         for (int i = 0; i < nfcIds.size(); ++i) {
             const char* nfcId = nfcIds[i];
             if (strcmp(nfcId, id) == 0) {
-                ESP_LOGI(LOG_TAG, "NFC ID found %s under User %s", id, currentUsername);
+                ESP_LOGI(SD_CARD_LOG_TAG, "NFC ID found %s under User %s", id, currentUsername);
                 return true;
             }
         }
     }
-    ESP_LOGW(LOG_TAG, "NFC ID %s not found in any user", id);
+    ESP_LOGW(SD_CARD_LOG_TAG, "NFC ID %s not found in any user", id);
     return false;
 }
 
 bool SDCardModule::saveNFCToSDCard(char* username, char* id){
-    ESP_LOGI(LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
 
     createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
 
     if (isNFCIdRegistered(id)){
-        ESP_LOGE(LOG_TAG, "NFC ID %s is already registered under another user!", id);
+        ESP_LOGE(SD_CARD_LOG_TAG, "NFC ID %s is already registered under another user!", id);
         return false;
     }
 
@@ -287,13 +287,13 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
     if(file){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
-            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
             file.close();
             return false;
         }
         file.close();
     }else{
-        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
         return false;
     }
 
@@ -305,7 +305,7 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
             nfcIds.add(id);
             userFound = true;
 
-            ESP_LOGI(LOG_TAG, "Added new NFC ID to existing user, Username %s, NFC ID %s", username, id);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Added new NFC ID to existing user, Username %s, NFC ID %s", username, id);
             break;
         }
     }
@@ -316,7 +316,7 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
         newUser["name"] = username;
         newUser["key_access"].to<JsonArray>().add(id);
         
-        ESP_LOGI(LOG_TAG, "Created new user of %s with NFC ID: %s", username, id);
+        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user of %s with NFC ID: %s", username, id);
     }
 
     // Write the modified JSON data back to the SD card
@@ -326,20 +326,20 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
         file.close();
         document.clear();
 
-        ESP_LOGI(LOG_TAG, "NFC data is successfully stored to SD Card");
+        ESP_LOGI(SD_CARD_LOG_TAG, "NFC data is successfully stored to SD Card");
         return true;
     } else {
         file.close();
         document.clear();
 
-        ESP_LOGI(LOG_TAG, "Failed to store NFC data to SD Card");
+        ESP_LOGI(SD_CARD_LOG_TAG, "Failed to store NFC data to SD Card");
         return false;
     }
 
 }
 
 bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
-    ESP_LOGI(LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
@@ -348,13 +348,13 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
     if(file){
         DeserializationError error = deserializeJson(document, file);
         if (error) {
-            ESP_LOGE(LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
             file.close();
             return false;
         }
         file.close();
     }else{
-        ESP_LOGE(LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
         return false;
     }
 
@@ -375,7 +375,7 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
                 if (strcmp(nfcId, id) == 0) {
                     nfcIds.remove(i);
                     itemFound = true;
-                    ESP_LOGI(LOG_TAG, "Removed NFC ID: %s for User: %s", id, username);
+                    ESP_LOGI(SD_CARD_LOG_TAG, "Removed NFC ID: %s for User: %s", id, username);
                     break;
                 }
             }
@@ -385,7 +385,7 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
             userFound = true;
             itemFound = true;
             user.clear();
-            ESP_LOGI(LOG_TAG, "Removed all NFC Access for User %s", currentUsername);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Removed all NFC Access for User %s", currentUsername);
         }
     }
 
@@ -397,28 +397,28 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
             file.close();
             document.clear();
 
-            ESP_LOGI(LOG_TAG, "NFC data is successfully stored to SD Card");
+            ESP_LOGI(SD_CARD_LOG_TAG, "NFC data is successfully stored to SD Card");
             return true;
         } else {
             file.close();
             document.clear();
 
-            ESP_LOGI(LOG_TAG, "Failed to store NFC data to SD Card");
+            ESP_LOGI(SD_CARD_LOG_TAG, "Failed to store NFC data to SD Card");
             return false;
         }
     }
     else{
-        ESP_LOGE(LOG_TAG, "NFC Data ID %s with User %s not found in Storage system!", id, username);
+        ESP_LOGE(SD_CARD_LOG_TAG, "NFC Data ID %s with User %s not found in Storage system!", id, username);
         return false;
     }
 }
 
 void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
-    ESP_LOGI(LOG_TAG, "Start creating Empty JSON File");
+    ESP_LOGI(SD_CARD_LOG_TAG, "Start creating Empty JSON File");
 
     // Check if the file exists, if not, create it
     if (!SD.exists(filePath)) {
-      ESP_LOGI(LOG_TAG, "File does not exist, creating a new one.");
+      ESP_LOGI(SD_CARD_LOG_TAG, "File does not exist, creating a new one.");
 
       File file = SD.open(filePath, FILE_WRITE);    
       if (file) {
@@ -426,16 +426,16 @@ void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
   
         // Serialize the empty JSON object to the file
         if (serializeJson(doc, file) == 0) {
-          ESP_LOGI(LOG_TAG, "Failed to write empty JSON object to the file");
+          ESP_LOGI(SD_CARD_LOG_TAG, "Failed to write empty JSON object to the file");
         } else {
-          ESP_LOGI(LOG_TAG, "Empty JSON object written to file successfully");
+          ESP_LOGI(SD_CARD_LOG_TAG, "Empty JSON object written to file successfully");
         }
 
         file.close();
       } else {
-        ESP_LOGI(LOG_TAG, "Failed to open file for writing");
+        ESP_LOGI(SD_CARD_LOG_TAG, "Failed to open file for writing");
       }
     }else{
-        ESP_LOGI(LOG_TAG, "There's already JSON file of %s available!", filePath);
+        ESP_LOGI(SD_CARD_LOG_TAG, "There's already JSON file of %s available!", filePath);
     }
-  }
+}

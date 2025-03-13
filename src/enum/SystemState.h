@@ -7,9 +7,6 @@ enum SystemState {
     ENROLL_RFID,
     DELETE_FP,
     DELETE_RFID,
-    GETTING_FP,
-    GETTING_RFID,
-    SYNC_VISITOR
 };
 
 #endif

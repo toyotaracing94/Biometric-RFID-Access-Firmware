@@ -1,4 +1,4 @@
-#define LOG_TAG "DOOR_RELAY"
+#define DOOR_RELAY_LOG_TAG "DOOR_RELAY"
 #include <esp_log.h>
 #include "DoorRelay.h"
 
@@ -24,17 +24,17 @@ bool DoorRelay::setup() {
 
 void DoorRelay::toggleRelay(){
     if (toggleState) {
-        ESP_LOGI(LOG_TAG, "relayUnlock ON (DOOR UNLOCK)...");
+        ESP_LOGI(DOOR_RELAY_LOG_TAG, "relayUnlock ON (DOOR UNLOCK)...");
         gpio_set_level(RELAY_UNLOCK_PIN, 0);
         vTaskDelay(500 / portTICK_PERIOD_MS);
         gpio_set_level(RELAY_UNLOCK_PIN, 1);
     } else {
-        ESP_LOGI(LOG_TAG, "relayLock ON (DOOR LOCK)...");
+        ESP_LOGI(DOOR_RELAY_LOG_TAG, "relayLock ON (DOOR LOCK)...");
         gpio_set_level(RELAY_LOCK_PIN, 0);
         vTaskDelay(500 / portTICK_PERIOD_MS);
         gpio_set_level(RELAY_LOCK_PIN, 1);
     }
     stateLockCounter++;
     toggleState = !toggleState;
-    ESP_LOGI(LOG_TAG, "State Lock Counter Internal %d", stateLockCounter);
+    ESP_LOGI(DOOR_RELAY_LOG_TAG, "State Lock Counter Internal %d", stateLockCounter);
 }

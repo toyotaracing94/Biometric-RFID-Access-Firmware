@@ -1,7 +1,6 @@
 #ifndef FINGERPRINT_TASK_H
 #define FINGERPRINT_TASK_H
 
-#define LOG_TAG "FINGERPRINT_TASK"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_log.h>

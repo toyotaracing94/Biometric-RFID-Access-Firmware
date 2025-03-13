@@ -1,4 +1,4 @@
-#define LOG_TAG "ADAFRUIT_PN532_RFID"
+#define NFC_SENSOR_LOG_TAG "ADAFRUIT_PN532_RFID"
 #include <esp_log.h>
 #include "AdafruitNFCSensor.h"
 
@@ -8,7 +8,7 @@ AdafruitNFCSensor::AdafruitNFCSensor()
     }
 
 bool AdafruitNFCSensor::setup(){
-    ESP_LOGI(LOG_TAG, "Start NFC Sensor Setup!");
+    ESP_LOGI(NFC_SENSOR_LOG_TAG, "Start NFC Sensor Setup!");
     Wire.begin(SDA_PIN, SCL_PIN);
     _pn532Sensor.begin();
 
@@ -20,11 +20,11 @@ bool AdafruitNFCSensor::setup(){
     while (retries <= maxRetries){
         firmwareVersion = _pn532Sensor.getFirmwareVersion();
         if (firmwareVersion) {
-            ESP_LOGI(LOG_TAG, "Adafruit PN532 Firmware version %d", firmwareVersion);
-            ESP_LOGI(LOG_TAG, "NFC Sensor has been found! Proceed...");
+            ESP_LOGI(NFC_SENSOR_LOG_TAG, "Adafruit PN532 Firmware version %d", firmwareVersion);
+            ESP_LOGI(NFC_SENSOR_LOG_TAG, "NFC Sensor has been found! Proceed...");
             return true;
         } else {
-            ESP_LOGI(LOG_TAG,"Cannot find the NFC Sensor PN532! Retrying %d...", retries);
+            ESP_LOGI(NFC_SENSOR_LOG_TAG,"Cannot find the NFC Sensor PN532! Retrying %d...", retries);
       
             // Exponential backoff: Double the backoff time after each failure
             vTaskDelay(backoffTime / portTICK_PERIOD_MS);
@@ -34,7 +34,7 @@ bool AdafruitNFCSensor::setup(){
     }
 
     // If we reached here, all retries have failed
-    ESP_LOGI(LOG_TAG, "Failed to initialize NFC Sensor after multiple attempts! Reboot...");
+    ESP_LOGI(NFC_SENSOR_LOG_TAG, "Failed to initialize NFC Sensor after multiple attempts! Reboot...");
     ESP.restart();
     return false;
 }
@@ -57,7 +57,7 @@ char* AdafruitNFCSensor::readNFCCard(uint16_t timeout) {
                 index += snprintf(uid_card + index, sizeof(uid_card) - index, ":");
             }
         }
-        ESP_LOGI(LOG_TAG, "Found NFC tag with UID: %s", uid_card);
+        ESP_LOGI(NFC_SENSOR_LOG_TAG, "Found NFC tag with UID: %s", uid_card);
     }
     return uid_card;
 }

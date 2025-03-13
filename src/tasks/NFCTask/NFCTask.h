@@ -1,7 +1,6 @@
 #ifndef NFC_TASK_H
 #define NFC_TASK_H
 
-#define LOG_TAG "nfc_task"
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <esp_log.h>
