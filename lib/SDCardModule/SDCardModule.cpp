@@ -10,6 +10,14 @@ SDCardModule::SDCardModule() {
     createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
 }
 
+/**
+ * @brief Initializes the SD card module using SPI communication.
+ * 
+ * Tries to initialize the SD card with retries and exponential backoff in case of failure. 
+ * Logs information about the SD card type, size, and storage status. 
+ * 
+ * @return true if SD card is successfully initialized, false otherwise.
+ */
 bool SDCardModule::setup(){
     ESP_LOGI(SD_CARD_LOG_TAG, "Start SD Card Module Setup!");
     ESP_LOGI(SD_CARD_LOG_TAG, "Initializing the SPI! SCK PIN %d, MISO PIN %d, MOSI PIN %d, CS_PIN %d", SCK_PIN, MISO_PIN, MOSI_PIN, CS_PIN);
@@ -56,6 +64,12 @@ bool SDCardModule::setup(){
     return false;
 }
 
+/**
+ * @brief Checks if a fingerprint ID is already registered in the SD card.
+ * 
+ * @param id The fingerprint ID to check.
+ * @return true if the fingerprint ID is already registered, false otherwise.
+ */
 bool SDCardModule::isFingerprintIdRegistered(int id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Checking Fingerprint Model with ID %d in SD Card already exist", id);
 
@@ -92,6 +106,16 @@ bool SDCardModule::isFingerprintIdRegistered(int id){
     return false;
 }
 
+/**
+ * @brief Saves a fingerprint ID for a user to the SD card.
+ * 
+ * Creates or updates a user with the given username and fingerprint ID. 
+ * If the fingerprint ID is already registered, returns false.
+ * 
+ * @param username The username of the user.
+ * @param id The fingerprint ID to save.
+ * @return true if the fingerprint data was successfully saved, false otherwise.
+ */
 bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
     
@@ -160,6 +184,16 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
     }
 } 
 
+/**
+ * @brief Deletes a fingerprint ID from a user's record on the SD card.
+ * 
+ * Searches for the given user and removes the specified fingerprint ID. 
+ * If `id == 0`, all fingerprints of the user are removed.
+ * 
+ * @param username The username of the user.
+ * @param id The fingerprint ID to delete.　or `0` to delete allfingerprints models of the user
+ * @return true if the fingerprint ID was successfully deleted, false otherwise.
+ */
 bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Delete Fingerprint ID Data, Username %s, ID %d", username, id);
 
@@ -234,6 +268,13 @@ bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
 
 }
 
+
+/**
+ * @brief Checks if a specific NFC ID is already registered in the SD card.
+ * 
+ * @param id The NFC ID to check.
+ * @return true if the NFC ID is already registered, false otherwise.
+ */
 bool SDCardModule::isNFCIdRegistered(char* id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Checking NFC ID %s in SD Card already exist", id);
 
@@ -270,6 +311,14 @@ bool SDCardModule::isNFCIdRegistered(char* id){
     return false;
 }
 
+
+/**
+ * @brief Saves an NFC ID for a user to the SD card.
+ * 
+ * @param username The username of the user.
+ * @param id The NFC ID to save.
+ * @return true if the NFC data was successfully saved, false otherwise.
+ */
 bool SDCardModule::saveNFCToSDCard(char* username, char* id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
 
@@ -338,6 +387,16 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
 
 }
 
+/**
+ * @brief Deletes an NFC ID from a user's record on the SD card.
+ * 
+ * Searches for the given user and removes the specified NFC ID. 
+ * If `id == 0`, all NFC IDs of the user are removed.
+ * 
+ * @param username The username of the user.
+ * @param id The NFC ID to delete. or `0` to delete all NFC access of the user
+ * @return true if the NFC ID was successfully deleted, false otherwise.
+ */
 bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
 
@@ -413,6 +472,11 @@ bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
     }
 }
 
+/**
+ * @brief Ensures that an empty JSON file exists at the specified path. If there isn't, create the new object in there
+ * 
+ * @param filePath The path to the JSON file to create.
+ */
 void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Start creating Empty JSON File");
 
