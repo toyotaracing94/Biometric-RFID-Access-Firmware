@@ -7,6 +7,7 @@
 #define SCL_PIN 22            // Pin SCL to PN532
 
 
+/// @brief Adafruit NFC Sensor class wrapper to wrap the real thing which is the Adafruit PN532 Class Connector
 class AdafruitNFCSensor {
     public:
         AdafruitNFCSensor();

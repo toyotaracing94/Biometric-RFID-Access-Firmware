@@ -7,6 +7,16 @@ AdafruitNFCSensor::AdafruitNFCSensor()
         setup();
     }
 
+
+/**
+ * @brief  Adafruit NFC Sensor setup
+ *
+ * Initializes the Adafruit NFC sensor and establishes communication with the sensor.
+ *
+ * @return
+ *     - true  : The NFC sensor has been successfully initialized and is ready to use.
+ *     - false : The NFC sensor could not be initialized after the maximum retry attempts.
+ */
 bool AdafruitNFCSensor::setup(){
     ESP_LOGI(NFC_SENSOR_LOG_TAG, "Start NFC Sensor Setup!");
     Wire.begin(SDA_PIN, SCL_PIN);
@@ -39,6 +49,17 @@ bool AdafruitNFCSensor::setup(){
     return false;
 }
  
+/**
+ * @brief  Reads the UID of an NFC card.
+ *
+ * This function reads the UID of an NFC card, formats it as a hexadecimal string, 
+ * and returns the formatted string representing the card's UID.
+ * 
+ * @param timeout  The timeout period for reading the NFC card (in milliseconds).
+ * 
+ * @return A pointer to a static char object containing the formatted NFC card UID. 
+ *         Returns an empty string if no card is detected or if the read fails.
+ */
 char* AdafruitNFCSensor::readNFCCard(uint16_t timeout) {
     uint8_t uid[7];
     uint8_t uidLength;
