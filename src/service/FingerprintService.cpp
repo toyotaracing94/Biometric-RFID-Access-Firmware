@@ -12,6 +12,17 @@ bool FingerprintService::setup(){
     return true;
 }
 
+/**
+ * @brief Add a new fingerprint access control
+ * 
+ * This function will attempts to add a new fingerprint model to the fingerprint sensor using 
+ * the given fingerprint ID and add the associate ID of that model to save it to SD Card
+ * 
+ * @param username The username to associate with the fingerprint ID.
+ * @param fingerprintId The unique ID of the fingerprint being enrolled to match with Fingerprint Model on the Sensor.
+ * @return 
+ *      - true if the fingerprint model was successfully added and Fingerprint ID saved to the SD card; false otherwise.
+ */
 bool FingerprintService::addFingerprint(char* username, int fingerprintId){
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enroling new Fingerprint User! Username %s FingerprintID %d", username, fingerprintId);
     bool addFingerprintResultSensor = _fingerprintSensor -> addFingerprintModel(fingerprintId);
@@ -32,6 +43,17 @@ bool FingerprintService::addFingerprint(char* username, int fingerprintId){
     }
 }
 
+/**
+ * @brief Delete a fingerprint access control
+ * 
+ * This function attempts to delete a fingerprint model from the fingerprint sensor and 
+ * also removes the associated fingerprint data from the SD card.
+ * 
+ * @param username The username associated with the fingerprint ID to be deleted.
+ * @param fingerprintId The unique ID of the fingerprint to be deleted from the sensor and SD card.
+ * @return true if the fingerprint was successfully deleted from both the sensor and the SD card;
+ *         false otherwise.
+ */
 bool FingerprintService::deleteFingerprint(char* username, int fingerprintId){
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint User! Username = %s, FingerprintID = %d", username, fingerprintId);
     bool deleteFingerprintResultSensor = _fingerprintSensor -> deleteFingerprintModel(fingerprintId);
@@ -52,6 +74,17 @@ bool FingerprintService::deleteFingerprint(char* username, int fingerprintId){
     }
 }
 
+/**
+ * @brief Authenticate a fingerprint and grant access if registered.
+ * 
+ * This function checks if the fingerprint captured by the sensor matches a registered fingerprint.
+ * If the fingerprint is recognized and registered in the SD card, it will trigger the door relay 
+ * to grant access. If the fingerprint is recognized by the sensor but not registered in the system,
+ * the access will be denied. If the fingerprint doesn't match, access will also be denied.
+ * 
+ * @return true if the fingerprint is successfully authenticated and access is granted;
+ *         false if the fingerprint is not recognized or registered.
+ */
 bool FingerprintService::authenticateAccessFingerprint(){
     int isRegsiteredModel = _fingerprintSensor-> getFingerprintIdModel();
     if(isRegsiteredModel > 0){

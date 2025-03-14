@@ -12,19 +12,16 @@ bool NFCService::setup(){
     return true;
 }
 
+/**
+ * @brief Add a new NFC card control and save its UID to the SD card.
+ * 
+ * This function attempts to read the NFC card's UID and saves it to the SD card under the 
+ * specified username.
+ * 
+ * @param username The username for NFC registration.
+ * @return true if NFC UID is successfully saved to the SD card, false otherwise.
+ */
 bool NFCService::addNFC(char* username) {
-    if (username == nullptr){
-        ESP_LOGI(NFC_SERVICE_LOG_TAG, "Enter name for RFID Registration");
-        while (Serial.available() == 0);
-
-        String input = Serial.readStringUntil('\n');
-        input.trim();
-
-        int len = input.length() + 1;
-        username = new char[len];
-        input.toCharArray(username, len); 
-    }
-
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Enrolling new NFC Access User! Username: %s", username);
     char* uidCard = _nfcSensor -> readNFCCard();
     
@@ -44,6 +41,16 @@ bool NFCService::addNFC(char* username) {
     }
 }
 
+/**
+ * @brief Delete an NFC card from the SD card associated with the given username.
+ * 
+ * This function attempts to delete the NFC card UID associated with a user from the SD card.
+ * If the NFC card UID is empty or passed as "null", no deletion will occur.
+ * 
+ * @param username The username whose NFC card is to be deleted.
+ * @param uidCard The UID of the NFC card to be deleted.
+ * @return true if the NFC UID was successfully deleted from the SD card, false otherwise.
+ */
 bool NFCService::deleteNFC(char* username, char* uidCard) {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting NFC User! Username = %s, NFC UID = %s", username, uidCard);
 
@@ -63,6 +70,14 @@ bool NFCService::deleteNFC(char* username, char* uidCard) {
     }
 }
 
+/**
+ * @brief Authenticate access using an NFC card.
+ * 
+ * This function reads the NFC card and checks if the UID is registered in the system.
+ * 
+ * @return true if the NFC card UID matches a registered entry and access is granted; 
+ *         false if no card is detected or the UID is not registered.
+ */
 bool NFCService::authenticateAccessNFC(){
     char* uidCard = _nfcSensor -> readNFCCard();
     if (uidCard == nullptr || uidCard[0] == '\0') {
