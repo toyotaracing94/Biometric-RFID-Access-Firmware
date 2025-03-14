@@ -4,11 +4,19 @@
 FingerprintTask::FingerprintTask(const char* taskName, UBaseType_t priority, TaskHandle_t* taskHandle, FingerprintService *fingerprintService)
     : _taskName(taskName), _priority(priority),  _taskHandle(taskHandle), _fingerprintService(fingerprintService) {}
 
+/**
+ * @brief Create the Fingerprint Task.
+ * 
+ */
 void FingerprintTask::createTask() {
     xTaskCreate(taskFunction, _taskName, TASK_STACK_SIZE, this, _priority, &_taskHandle);
     ESP_LOGI(FINGERPRINT_TASK_LOG_TAG, "Fingerprint Task created successfully: Task Name = %s, Priority = %d", _taskName, _priority);
 }
 
+/**
+ * @brief Suspend the Fingerprint Task operation.
+ * 
+ */
 void FingerprintTask::suspendTask(){
     if (_taskHandle != nullptr) {
         vTaskSuspend(_taskHandle);
@@ -18,6 +26,10 @@ void FingerprintTask::suspendTask(){
     }
 }
 
+/**
+ * @brief Resume the Fingerprint Task operation.
+ * 
+ */
 void FingerprintTask::resumeTask(){
     if (_taskHandle != nullptr) {
         vTaskResume(_taskHandle);
@@ -27,6 +39,14 @@ void FingerprintTask::resumeTask(){
     }
 }
 
+/**
+ * @brief Function to be run by the Fingerprint Task.
+ * 
+ * This function is the main task routine that continuously authenticates access 
+ * using the fingerprint sensor.
+ * 
+ * @param params Pointer to the task parameters (in this case, the FingerprintTask instance).
+ */
 void FingerprintTask::taskFunction(void *params){
     // TODO: Search like what the hell is this
     // Embarasing to say, this is what I envision for separating the Task Service

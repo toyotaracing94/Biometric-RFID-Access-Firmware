@@ -9,6 +9,7 @@
 #include "service/FingerprintService.h"
 #define TASK_STACK_SIZE 4096
 
+/// @brief Class for managing the Fingerprint Task Action
 class FingerprintTask : BaseTask {
     public:
         FingerprintTask(const char* taskName, UBaseType_t priority, TaskHandle_t* taskHandle,  FingerprintService *fingerprintService);
