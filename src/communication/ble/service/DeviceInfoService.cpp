@@ -1,28 +1,28 @@
 #include "DeviceInfoService.h"
 
 DeviceInfoService::DeviceInfoService(BLEServer* pServer) {
-    this->pServer = pServer;
-    this->pService = nullptr;
-    this->pManufacturerNameChar = nullptr;
-    this->pFirmwareRevisionChar = nullptr;
+    this -> _pServer = pServer;
+    this -> _pService = nullptr;
+    this -> _pManufacturerNameChar = nullptr;
+    this -> _pFirmwareRevisionChar = nullptr;
 }
 
-DeviceInfoService::~DeviceInfoService() { }
+DeviceInfoService::~DeviceInfoService() {}
 
 void DeviceInfoService::startService() {
     ESP_LOGI(DEVICE_INFO_SERVICE_LOG_TAG, "Initializing BLE Device Info Service");
-    pService = pServer -> createService(DEVICE_INFORMATION_SERVICE_UUID);
+    _pService = _pServer -> createService(DEVICE_INFORMATION_SERVICE_UUID);
 
-    pManufacturerNameChar = pService -> createCharacteristic(
+    _pManufacturerNameChar = _pService -> createCharacteristic(
         MANUFACTURER_NAME_UUID,
         BLECharacteristic::PROPERTY_READ
     );
-    pManufacturerNameChar -> setValue("Capability Center Division");
+    _pManufacturerNameChar -> setValue("Capability Center Division");
 
-    pFirmwareRevisionChar = pService->createCharacteristic(
+    _pFirmwareRevisionChar = _pService->createCharacteristic(
         FIRMWARE_REVISION_UUID,
         BLECharacteristic::PROPERTY_READ
     );
-    pFirmwareRevisionChar -> setValue("0.2.0");
-    pService->start();
+    _pFirmwareRevisionChar -> setValue("0.2.0");
+    _pService -> start();
 }

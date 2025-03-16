@@ -2,10 +2,9 @@
 #define DEVICEINFOSERVICE_H
 #define DEVICE_INFO_SERVICE_LOG_TAG "DEVICE INFO SERVICE"
 
-#include <BLEDevice.h>
 #include <BLEServer.h>
-#include <BLECharacteristic.h>
 #include <BLEService.h>
+#include <BLECharacteristic.h>
 #include <esp_log.h>
 
 // UUIDs for Device Information Service and its Characteristics
@@ -20,10 +19,10 @@ public:
     void startService();
 
 private:
-    BLEServer* pServer;
-    BLEService* pService;
-    BLECharacteristic* pManufacturerNameChar;
-    BLECharacteristic* pFirmwareRevisionChar;
+    BLEServer* _pServer;
+    BLEService* _pService;
+    BLECharacteristic* _pManufacturerNameChar;
+    BLECharacteristic* _pFirmwareRevisionChar;
 };
 
 #endif

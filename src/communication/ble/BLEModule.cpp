@@ -5,6 +5,7 @@
 #include "nvs_flash.h"
 
 #include "communication/ble/service/DeviceInfoService.h"
+#include "communication/ble/service/DoorInfoService.h"
 
 BLEModule::BLEModule(){}
 
@@ -23,21 +24,18 @@ void BLEModule::initBLE(){
 
     _bleServer = BLEDevice::createServer();
     _bleServer -> setCallbacks(new BLEServerCallbacks());
-    _bleService = _bleServer -> createService(SERVICE_UUID);
 }
 
 void BLEModule::setupCharacteristic(){
-    ESP_LOGI(BLE_MODULE_LOG_TAG, "Initializing BLE Characteristic...");
 
-    DeviceInfoService deviceInfoService(_bleServer);
-    deviceInfoService.startService();
+    // Register BLE Service
+    DeviceInfoService *deviceInfoService = new DeviceInfoService(_bleServer);
+    deviceInfoService->startService();
 
-    // Start Overall Service
-    _bleService -> start();  
+    DoorInfoService doorInfoService(_bleServer);
+    doorInfoService.startService();
 
-    // Broadcast the BLE Connection to external
-    _bleAdvertise = BLEDevice::getAdvertising();  
-    _bleAdvertise -> addServiceUUID(SERVICE_UUID);  
+    _bleAdvertise = BLEDevice::getAdvertising();
     _bleAdvertise -> setScanResponse(true);  
     _bleAdvertise -> setMinPreferred(0x06);  
     _bleAdvertise -> setMinPreferred(0x12);  
