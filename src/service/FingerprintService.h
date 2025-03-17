@@ -4,20 +4,24 @@
 #include "FingerprintSensor.h"
 #include "SDCardModule.h"
 #include "DoorRelay.h"
+#include "communication/ble/BLEModule.h"
 
 /// @brief Class that manages the Fingerprint Access Control system by wrapping the functionalitites of Fingerprint sensor, SD Card module, and the Door Relay
 class FingerprintService {
 public:
-    FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay);
+    FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay, BLEModule* bleModule);
     bool setup();
-    bool addFingerprint(char* username, int fingerprintId);
-    bool deleteFingerprint(char* username, int fingerprintId);
+    bool addFingerprint(const char* username);
+    bool deleteFingerprint(const char* username, int fingerprintId);
     bool authenticateAccessFingerprint();
+    uint8_t generateFingerprintId();
+    void sendbleNotification(char* status, const char* username, int fingerprintId, char* message);
 
 private:
     FingerprintSensor* _fingerprintSensor;
     SDCardModule* _sdCardModule;
     DoorRelay* _doorRelay;
+    BLEModule* _bleModule;
 };
 
 #endif

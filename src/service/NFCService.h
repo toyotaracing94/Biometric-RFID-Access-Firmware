@@ -4,20 +4,23 @@
 #include "AdafruitNFCSensor.h"
 #include "SDCardModule.h"
 #include "DoorRelay.h"
+#include "communication/ble/BLEModule.h"
 
 /// @brief Class that manages the NFC Access Control system by wrapping the functionalitites of NFC sensor, SD Card module, and the Door Relay
 class NFCService {
     public:
-        NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay);
+        NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule);
         bool setup();
-        bool addNFC(char* username);
-        bool deleteNFC(char* username, char* NFCuid);
+        bool addNFC(const char* username);
+        bool deleteNFC(const char* username, const char* NFCuid);
         bool authenticateAccessNFC();
+        void sendbleNotification(char* status, const char* username, const char* uidCard, char* message);
 
     private:
         AdafruitNFCSensor* _nfcSensor;
         SDCardModule* _sdCardModule;
         DoorRelay* _doorRelay;
+        BLEModule* _bleModule;
 };
 
 #endif

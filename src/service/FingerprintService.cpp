@@ -2,8 +2,8 @@
 #include "FingerprintService.h"
 #include <esp_log.h>
 
-FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay) 
-    : _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay){
+FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule) 
+    : _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule){
     setup();
 }
 
@@ -23,7 +23,8 @@ bool FingerprintService::setup(){
  * @return 
  *      - true if the fingerprint model was successfully added and Fingerprint ID saved to the SD card; false otherwise.
  */
-bool FingerprintService::addFingerprint(char* username, int fingerprintId){
+bool FingerprintService::addFingerprint(const char* username){
+    uint8_t fingerprintId = generateFingerprintId();
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enroling new Fingerprint User! Username %s FingerprintID %d", username, fingerprintId);
     bool addFingerprintResultSensor = _fingerprintSensor -> addFingerprintModel(fingerprintId);
 
@@ -32,8 +33,12 @@ bool FingerprintService::addFingerprint(char* username, int fingerprintId){
         bool saveFingerprintSDCard = _sdCardModule -> saveFingerprintToSDCard(username, fingerprintId); 
         
         if (saveFingerprintSDCard) {
+            // Prepare the data payload
+            sendbleNotification("OK", username,  fingerprintId, "Fingerprint registered successfully!");
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, FingerprintID: %d", username, fingerprintId);
         } else {
+            // Prepare the data payload
+            sendbleNotification("ERR", username,  fingerprintId, "Failed to register Fingerprint!");
             ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to save fingerprint to SD card for User: %s, FingerprintID: %d", username, fingerprintId);
         }
         return saveFingerprintSDCard;
@@ -54,7 +59,7 @@ bool FingerprintService::addFingerprint(char* username, int fingerprintId){
  * @return true if the fingerprint was successfully deleted from both the sensor and the SD card;
  *         false otherwise.
  */
-bool FingerprintService::deleteFingerprint(char* username, int fingerprintId){
+bool FingerprintService::deleteFingerprint(const char* username, int fingerprintId){
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint User! Username = %s, FingerprintID = %d", username, fingerprintId);
     bool deleteFingerprintResultSensor = _fingerprintSensor -> deleteFingerprintModel(fingerprintId);
 
@@ -63,8 +68,12 @@ bool FingerprintService::deleteFingerprint(char* username, int fingerprintId){
         bool deleteFingerprintSDCard = _sdCardModule ->deleteFingerprintFromSDCard(username, fingerprintId);
 
         if (deleteFingerprintSDCard) {
+            // Prepare the data payload
+            sendbleNotification("OK", username,  fingerprintId, "Fingerprint deleted successfully!");
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint deleted from SD card successfully for User: %s, FingerprintID: %d", username, fingerprintId);
         } else {
+            // Prepare the data payload
+            sendbleNotification("ERR", username,  fingerprintId, "Failed to delete Fingerprint!");
             ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete fingerprint from SD card for User: %s, FingerprintID: %d", username, fingerprintId);
         }
         return deleteFingerprintSDCard;
@@ -100,4 +109,28 @@ bool FingerprintService::authenticateAccessFingerprint(){
         ESP_LOGD(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint does not match the stored data. Access denied");
         return false;
     }
+}
+
+uint8_t FingerprintService::generateFingerprintId(){
+    uint8_t fingerprintId;
+    while (true) {
+      fingerprintId = random(1,20);
+      // Check if the generated fingerprint ID exists on the SD card
+      if (!_sdCardModule->isFingerprintIdRegistered(fingerprintId)) {
+        // If the ID doesn't exist on the SD card, it's valid
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Generated valid fingerprint ID: %d", fingerprintId);
+        break;
+      } else {
+        // If the ID exists on the SD card, try again
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint ID %d already exists, generating a new ID...", fingerprintId);
+      }
+    }
+    return fingerprintId;
+}
+
+void FingerprintService::sendbleNotification(char* status, const char* username, int fingerprintId, char* message){
+    JsonDocument doc;
+    doc["data"]["name"] = username;
+    doc["data"]["key_access"] = fingerprintId;
+    _bleModule -> sendReport(status, doc.as<JsonObject>(), message);
 }

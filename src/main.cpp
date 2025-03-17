@@ -14,15 +14,16 @@
 
 #include "service/FingerprintService.h"
 #include "service/NFCService.h"
+#include "service/SyncService.h"
 
 #include "tasks/NFCTask/NFCTask.h"
 #include "tasks/FingerprintTask/FingerprintTask.h"
 
+#include "communication/ble/BLEModule.h"
+#include "entity/CommandBleData.h"
+
 // Initialize public state
 static SystemState systemState = RUNNING;
-static char* username ;
-static char* nfcId;
-static int fingerprintId;
 
 extern "C" void app_main(void)
 {
@@ -32,9 +33,15 @@ extern "C" void app_main(void)
     FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
 
+    // Initializing the Communication Service
+    BLEModule *bleModule = new BLEModule();
+    bleModule -> initBLE();
+    bleModule -> setupCharacteristic();
+
     // Initialize the Service
-    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
-    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay);
+    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule);
+    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule);
+    SyncService *syncService = new SyncService(sdCardModule, bleModule);
 
     // Initialize the Task
     TaskHandle_t nfcTaskHandle;
@@ -45,49 +52,93 @@ extern "C" void app_main(void)
     FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, &fingerprintTaskHandle, fingerprintService);
     fingerprintTask -> createTask();
      
-     // Loop Main Mechanism
+    // Loop Main Mechanism
     while(1){
         ESP_LOGD(LOG_TAG, "Running Main Thread");
+
+        // Access current command data from extern static
+        const char* command = commandBleData.getCommand();
+        const char* name =  commandBleData.getName();
+        const char* key_access =  commandBleData.getKeyAccess();
+
         switch (systemState) {
             case RUNNING:
-                // Do nothing I guess
+                if (command != nullptr) {
+                    if (strcmp(command, "register_fp") == 0) {
+                        systemState = ENROLL_FP;
+                        fingerprintTask -> suspendTask();
+                    }
+                    if (strcmp(command, "delete_fp") == 0) {
+                        systemState = DELETE_FP;
+                        fingerprintTask -> suspendTask();
+                    }
+                    if (strcmp(command, "register_rfid") == 0) {
+                        systemState = ENROLL_RFID;
+                        nfcTask -> suspendTask();
+                    }
+                    if (strcmp(command, "delete_rfid") == 0) {
+                        systemState = DELETE_RFID;
+                        nfcTask -> suspendTask();
+                    }
+                    if (strcmp(command, "update_visitor") == 0) {
+                        systemState = UPDATE_VISITOR;
+                        fingerprintTask -> suspendTask();
+                        nfcTask -> suspendTask();
+                    }
+                }
                 break;
             
             case ENROLL_RFID:
                 ESP_LOGI(LOG_TAG,"Start Registering RFID!");
-                nfcService -> addNFC(username);
+                nfcService -> addNFC(name);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
                 
                 systemState = RUNNING;
+                commandBleData.clear();
                 nfcTask -> resumeTask();
                 break;
     
             case DELETE_RFID:
                 ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
-                nfcService -> deleteNFC(username, nfcId);
+                nfcService -> deleteNFC(name, key_access);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
         
                 systemState = RUNNING;
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                commandBleData.clear();
                 nfcTask -> resumeTask();
                 break;
     
             case ENROLL_FP:
                 ESP_LOGI(LOG_TAG,"Start Registering Fingerprint!");
-                fingerprintService -> addFingerprint(username, fingerprintId);
+                fingerprintService -> addFingerprint(name);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                commandBleData.clear();
                 fingerprintTask -> resumeTask();
                 break;
     
             case DELETE_FP:
                 ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
-                fingerprintService -> deleteFingerprint(username, fingerprintId);
+                fingerprintService -> deleteFingerprint(name, atoi(key_access));
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
         
                 systemState = RUNNING;
-                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                commandBleData.clear();
                 fingerprintTask -> resumeTask();
                 break;
+
+            case UPDATE_VISITOR:
+                ESP_LOGI(LOG_TAG, "Start Sync Data!");
+                syncService -> sync();
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask -> resumeTask();
+                nfcTask -> resumeTask();
+                break;
+            
         }
         vTaskDelay(50/ portTICK_PERIOD_MS);
     }

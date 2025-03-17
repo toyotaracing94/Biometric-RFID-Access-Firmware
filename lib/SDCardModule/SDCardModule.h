@@ -3,6 +3,8 @@
 
 #include <SPI.h>
 #include <SD.h>
+#include <ArduinoJson.h>
+#include <Arduino.h>
 
 #define CS_PIN      5        // Chip Select pin
 #define SCK_PIN     18       // Clock pin
@@ -18,13 +20,15 @@ class SDCardModule {
         SDCardModule();
         bool setup();
         bool isFingerprintIdRegistered(int id);
-        bool saveFingerprintToSDCard(char* username, int id);
-        bool deleteFingerprintFromSDCard(char* username, int id);
+        bool saveFingerprintToSDCard(const char* username, int id);
+        bool deleteFingerprintFromSDCard(const char* username, int id);
 
         bool isNFCIdRegistered(char* id);
-        bool saveNFCToSDCard(char* username, char* id);
-        bool deleteNFCFromSDCard(char* username, char* id);
+        bool saveNFCToSDCard(const char* username, char* id);
+        bool deleteNFCFromSDCard(const char* username, const char* id);
         void createEmptyJsonFileIfNotExists(const char* filepath);
+
+        JsonDocument syncData();
 };
 
 #endif
