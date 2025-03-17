@@ -77,6 +77,7 @@ void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Info Service");
     _pService = _pServer -> createService(SERVICE_UUID);
 
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Characteristic");
     _pDoorChar = _pService -> createCharacteristic(
         DOOR_CHARACTERISTIC_UUID,
         BLECharacteristic::PROPERTY_WRITE |
@@ -84,6 +85,7 @@ void DoorInfoService::startService() {
     );
     _pDoorChar -> setCallbacks(new DoorCharacteristicCallbacks());
   
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE AC Remote Characteristic");
     _pACChar = _pService->createCharacteristic(
         AC_REMOTE_CHARACTERISTIC_UUID,  
         BLECharacteristic::PROPERTY_WRITE |
@@ -91,6 +93,7 @@ void DoorInfoService::startService() {
     );
     _pACChar -> setCallbacks(new ACCharacteristicCallback());
 
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE LED Remote Characteristic");
     _pLedChar = _pService->createCharacteristic(
         LED_REMOTE_CHARACTERISTIC_UUID,  
         BLECharacteristic::PROPERTY_WRITE |
@@ -98,5 +101,25 @@ void DoorInfoService::startService() {
     );
     _pLedChar -> setCallbacks(new LEDRemoteCharacteristicCallback());
 
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Notification Characteristic");
+    _pNotificationChar = _pService->createCharacteristic(
+        NOTIFICATION_CHARACTERISTIC_UUID,
+        BLECharacteristic::PROPERTY_NOTIFY | 
+        BLECharacteristic::PROPERTY_READ 
+    );
+    _pNotificationChar->addDescriptor(new BLE2902()); 
+
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Add Primary Service for Door Service");
     _pService -> start();
+}
+
+void DoorInfoService::sendNotification(JsonDocument& json){
+    // Creating the std::string buffer for storing the json values
+    size_t jsonSize = measureJson(json);
+    std::string buffer(jsonSize + 1, '\0');
+
+    serializeJson(json, buffer);
+    _pNotificationChar -> setValue(buffer);
+    _pNotificationChar -> notify();
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
 }

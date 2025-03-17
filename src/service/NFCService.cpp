@@ -2,8 +2,8 @@
 #include "NFCService.h"
 #include <esp_log.h>
 
-NFCService::NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay) 
-    : _nfcSensor(nfcSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay){
+NFCService::NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule* bleModule) 
+    : _nfcSensor(nfcSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule){
     setup();
 }
 
@@ -36,8 +36,12 @@ bool NFCService::addNFC(const char* username) {
         bool saveNFCtoSDCard = _sdCardModule->saveNFCToSDCard(username, uidCard);
         
         if (saveNFCtoSDCard) {
+            // Prepare the data payload
+            sendbleNotification("OK", username,  uidCard, "NFC Card registered successfully!");
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID %s successfully saved to SD card for User: %s", uidCard, username);
         } else {
+            // Prepare the data payload
+            sendbleNotification("ERR", username,  uidCard, "Failed to register NFC card!");
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to save NFC UID %s to SD card for User: %s", uidCard, username);
         }
         return saveNFCtoSDCard; 
@@ -65,8 +69,12 @@ bool NFCService::deleteNFC(const char* username, const char* uidCard) {
         bool deleteNFCfromSDCard = _sdCardModule->deleteNFCFromSDCard(username, uidCard);
 
         if (deleteNFCfromSDCard) {
+            // Prepare the data payload
+            sendbleNotification("OK", username,  uidCard, "NFC Card deleted successfully!");
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card deleted successfully for User: %s, NFC UID: %s", username, uidCard);
         } else {
+            // Prepare the data payload
+            sendbleNotification("ERR", username,  uidCard, "Failed to delete NFC card!");
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for User: %s, NFC UID: %s", username, uidCard);
         }
         return deleteNFCfromSDCard;
@@ -94,4 +102,11 @@ bool NFCService::authenticateAccessNFC(){
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card ID %s is detected but not stored in our data system!", uidCard);
         return false;
     }
+}
+
+void NFCService::sendbleNotification(char* status, const char* username, const char* uidCard, char* message){
+    JsonDocument doc;
+    doc["data"]["name"] = username;
+    doc["data"]["key_access"] = uidCard;
+    _bleModule -> sendReport(status, doc.as<JsonObject>(), message);
 }

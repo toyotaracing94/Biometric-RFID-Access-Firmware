@@ -37,6 +37,7 @@ class DoorInfoService {
         DoorInfoService(BLEServer* pServer);
         ~DoorInfoService();
         void startService();
+        void sendNotification(JsonDocument& json);
 
     private:
         BLEServer* _pServer;

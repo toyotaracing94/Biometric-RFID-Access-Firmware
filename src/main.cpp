@@ -32,15 +32,15 @@ extern "C" void app_main(void)
     FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
 
-    // Initialize the Service
-    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay);
-    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay);
-    
     // Initializing the Communication Service
     BLEModule *bleModule = new BLEModule();
     bleModule -> initBLE();
     bleModule -> setupCharacteristic();
 
+    // Initialize the Service
+    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule);
+    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule);
+    
     // Initialize the Task
     TaskHandle_t nfcTaskHandle;
     NFCTask *nfcTask = new NFCTask("NFC Task", 1, &nfcTaskHandle, nfcService);

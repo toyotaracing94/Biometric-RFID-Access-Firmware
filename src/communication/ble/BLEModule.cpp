@@ -4,10 +4,7 @@
 
 #include "nvs_flash.h"
 
-#include "communication/ble/service/DeviceInfoService.h"
-#include "communication/ble/service/DoorInfoService.h"
-
-BLEModule::BLEModule(){}
+BLEModule::BLEModule() {}
 
 void BLEModule::initBLE(){
     ESP_LOGI(BLE_MODULE_LOG_TAG, "Initializing BLE Server and Service...");
@@ -21,19 +18,17 @@ void BLEModule::initBLE(){
     ESP_ERROR_CHECK( ret );
     
     BLEDevice::init(BLESERVERNAME);
-
     _bleServer = BLEDevice::createServer();
     _bleServer -> setCallbacks(new BLEServerCallbacks());
 }
 
 void BLEModule::setupCharacteristic(){
-
     // Register BLE Service
-    DeviceInfoService *deviceInfoService = new DeviceInfoService(_bleServer);
-    deviceInfoService->startService();
+    _deviceInfoService = new DeviceInfoService(_bleServer);
+    _deviceInfoService->startService();
 
-    DoorInfoService doorInfoService(_bleServer);
-    doorInfoService.startService();
+    _doorInfoService = new DoorInfoService(_bleServer);
+    _doorInfoService->startService();
 
     _bleAdvertise = BLEDevice::getAdvertising();
     _bleAdvertise -> setScanResponse(true);  
@@ -42,4 +37,14 @@ void BLEModule::setupCharacteristic(){
     BLEDevice::startAdvertising();  
     
     ESP_LOGI(BLE_MODULE_LOG_TAG, "BLE initialized. Waiting for client to connect...");  
+}
+
+void BLEModule::sendReport(const char* status, const JsonObject& payload, const char* message){
+    ESP_LOGI(BLE_MODULE_LOG_TAG, "Sending notification to door notification characteristic");
+
+    JsonDocument document;
+    document["status"]  = status;
+    document["data"]    = payload;
+    document["message"] = message;
+    _doorInfoService->sendNotification(document);
 }
