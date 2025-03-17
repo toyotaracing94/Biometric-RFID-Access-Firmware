@@ -46,5 +46,5 @@ void BLEModule::sendReport(const char* status, const JsonObject& payload, const 
     document["status"]  = status;
     document["data"]    = payload;
     document["message"] = message;
-    _doorInfoService->sendNotification(document);
+    _doorInfoService -> sendNotification(document);
 }

@@ -14,6 +14,7 @@
 
 #include "service/FingerprintService.h"
 #include "service/NFCService.h"
+#include "service/SyncService.h"
 
 #include "tasks/NFCTask/NFCTask.h"
 #include "tasks/FingerprintTask/FingerprintTask.h"
@@ -40,7 +41,8 @@ extern "C" void app_main(void)
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule);
     NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule);
-    
+    SyncService *syncService = new SyncService(sdCardModule, bleModule);
+
     // Initialize the Task
     TaskHandle_t nfcTaskHandle;
     NFCTask *nfcTask = new NFCTask("NFC Task", 1, &nfcTaskHandle, nfcService);
@@ -76,6 +78,11 @@ extern "C" void app_main(void)
                     }
                     if (strcmp(command, "delete_rfid") == 0) {
                         systemState = DELETE_RFID;
+                        nfcTask -> suspendTask();
+                    }
+                    if (strcmp(command, "update_visitor") == 0) {
+                        systemState = UPDATE_VISITOR;
+                        fingerprintTask -> suspendTask();
                         nfcTask -> suspendTask();
                     }
                 }
@@ -119,6 +126,17 @@ extern "C" void app_main(void)
                 systemState = RUNNING;
                 commandBleData.clear();
                 fingerprintTask -> resumeTask();
+                break;
+
+            case UPDATE_VISITOR:
+                ESP_LOGI(LOG_TAG, "Start Sync Data!");
+                syncService -> sync();
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask -> resumeTask();
+                nfcTask -> resumeTask();
                 break;
             
         }

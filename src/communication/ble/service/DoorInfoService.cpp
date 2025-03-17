@@ -114,12 +114,9 @@ void DoorInfoService::startService() {
 }
 
 void DoorInfoService::sendNotification(JsonDocument& json){
-    // Creating the std::string buffer for storing the json values
-    size_t jsonSize = measureJson(json);
-    std::string buffer(jsonSize + 1, '\0');
-
+    String buffer;
     serializeJson(json, buffer);
-    _pNotificationChar -> setValue(buffer);
+    _pNotificationChar -> setValue(buffer.c_str());
     _pNotificationChar -> notify();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
 }

@@ -2,7 +2,6 @@
 
 #include "esp_log.h"
 #include "SDCardModule.h"
-#include <ArduinoJson.h>
 
 SDCardModule::SDCardModule() {
     setup();
@@ -502,4 +501,50 @@ void SDCardModule::createEmptyJsonFileIfNotExists(const char* filePath) {
     }else{
         ESP_LOGI(SD_CARD_LOG_TAG, "There's already JSON file of %s available!", filePath);
     }
+}
+
+/**
+ * @brief Synchronizes RFID and Fingerprint data from SD card to a JsonObject.
+ * 
+ * @return JsonObject The synchronized data from the RFID and Fingerprint files.
+ */
+JsonDocument SDCardModule::syncData(){
+    ESP_LOGI(SD_CARD_LOG_TAG, "Start sync data from ESP32 SD Card to Titan");
+
+    JsonDocument document;
+    JsonObject data = document.to<JsonObject>();
+    const char* filePaths[] = {RFID_FILE_PATH, FINGERPRINT_FILE_PATH};
+
+    // For future dev!
+    // TODO : I'm lazy to do this in proper way, and I don't know when will it scale but for now this will do
+    for(int i = 0; i<2; i++){
+        const char* filePath = filePaths[i];
+        ESP_LOGI(SD_CARD_LOG_TAG, "Reading file: %s", filePath);
+
+        // Open the file from SD card
+        File file = SD.open(filePath, FILE_READ);
+        if (!file) {
+            ESP_LOGI(SD_CARD_LOG_TAG, "Failed to open file: %s", filePath);
+            continue;
+        }
+        
+        // Use a smaller JsonDocument for each file read
+        JsonDocument dataEachFile;
+        DeserializationError error = deserializeJson(dataEachFile, file);
+        if (error) {
+            ESP_LOGI(SD_CARD_LOG_TAG, "Failed to read file: %s", filePath);
+            file.close();
+            continue;
+        }
+
+        // Log the deserialized data to confirm it's not empty
+        String buffer;
+        serializeJson(dataEachFile, buffer);
+        ESP_LOGI(SD_CARD_LOG_TAG, "Deserialized Data: %s", buffer.c_str());
+
+        data[filePath] = dataEachFile;
+        file.close();
+    }
+
+    return document;
 }

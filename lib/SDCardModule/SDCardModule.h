@@ -3,6 +3,8 @@
 
 #include <SPI.h>
 #include <SD.h>
+#include <ArduinoJson.h>
+#include <Arduino.h>
 
 #define CS_PIN      5        // Chip Select pin
 #define SCK_PIN     18       // Clock pin
@@ -25,6 +27,8 @@ class SDCardModule {
         bool saveNFCToSDCard(const char* username, char* id);
         bool deleteNFCFromSDCard(const char* username, const char* id);
         void createEmptyJsonFileIfNotExists(const char* filepath);
+
+        JsonDocument syncData();
 };
 
 #endif
