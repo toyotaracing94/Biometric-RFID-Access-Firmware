@@ -10,9 +10,10 @@ class FingerprintService {
 public:
     FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay);
     bool setup();
-    bool addFingerprint(char* username, int fingerprintId);
-    bool deleteFingerprint(char* username, int fingerprintId);
+    bool addFingerprint(const char* username);
+    bool deleteFingerprint(const char* username, int fingerprintId);
     bool authenticateAccessFingerprint();
+    uint8_t generateFingerprintId();
 
 private:
     FingerprintSensor* _fingerprintSensor;

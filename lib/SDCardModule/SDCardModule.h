@@ -18,12 +18,12 @@ class SDCardModule {
         SDCardModule();
         bool setup();
         bool isFingerprintIdRegistered(int id);
-        bool saveFingerprintToSDCard(char* username, int id);
-        bool deleteFingerprintFromSDCard(char* username, int id);
+        bool saveFingerprintToSDCard(const char* username, int id);
+        bool deleteFingerprintFromSDCard(const char* username, int id);
 
         bool isNFCIdRegistered(char* id);
-        bool saveNFCToSDCard(char* username, char* id);
-        bool deleteNFCFromSDCard(char* username, char* id);
+        bool saveNFCToSDCard(const char* username, char* id);
+        bool deleteNFCFromSDCard(const char* username, const char* id);
         void createEmptyJsonFileIfNotExists(const char* filepath);
 };
 

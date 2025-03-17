@@ -1,5 +1,6 @@
 #include "DoorInfoService.h"
 #include <stdio.h>
+#include "entity/CommandBleData.h"
 
 void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
     const std::string& value = pCharacteristic -> getValue();
@@ -35,6 +36,11 @@ void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
             ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Data: Key Access = %s", key_access);
         }
     }
+
+    commandBleData.setCommand(command);
+    commandBleData.setName(name);
+    commandBleData.setKeyAccess(key_access);
+    
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Data Door Characteristic: Payload = %s", value.c_str());
 }
 

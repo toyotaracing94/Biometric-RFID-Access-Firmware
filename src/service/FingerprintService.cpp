@@ -23,7 +23,8 @@ bool FingerprintService::setup(){
  * @return 
  *      - true if the fingerprint model was successfully added and Fingerprint ID saved to the SD card; false otherwise.
  */
-bool FingerprintService::addFingerprint(char* username, int fingerprintId){
+bool FingerprintService::addFingerprint(const char* username){
+    uint8_t fingerprintId = generateFingerprintId();
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enroling new Fingerprint User! Username %s FingerprintID %d", username, fingerprintId);
     bool addFingerprintResultSensor = _fingerprintSensor -> addFingerprintModel(fingerprintId);
 
@@ -54,7 +55,7 @@ bool FingerprintService::addFingerprint(char* username, int fingerprintId){
  * @return true if the fingerprint was successfully deleted from both the sensor and the SD card;
  *         false otherwise.
  */
-bool FingerprintService::deleteFingerprint(char* username, int fingerprintId){
+bool FingerprintService::deleteFingerprint(const char* username, int fingerprintId){
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint User! Username = %s, FingerprintID = %d", username, fingerprintId);
     bool deleteFingerprintResultSensor = _fingerprintSensor -> deleteFingerprintModel(fingerprintId);
 
@@ -101,3 +102,20 @@ bool FingerprintService::authenticateAccessFingerprint(){
         return false;
     }
 }
+
+uint8_t FingerprintService::generateFingerprintId(){
+    uint8_t fingerprintId;
+    while (true) {
+      fingerprintId = random(1,20);
+      // Check if the generated fingerprint ID exists on the SD card
+      if (!_sdCardModule->isFingerprintIdRegistered(fingerprintId)) {
+        // If the ID doesn't exist on the SD card, it's valid
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Generated valid fingerprint ID: %d", fingerprintId);
+        break;
+      } else {
+        // If the ID exists on the SD card, try again
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint ID %d already exists, generating a new ID...", fingerprintId);
+      }
+    }
+    return fingerprintId;
+  }

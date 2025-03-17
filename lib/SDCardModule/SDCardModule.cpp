@@ -116,7 +116,7 @@ bool SDCardModule::isFingerprintIdRegistered(int id){
  * @param id The fingerprint ID to save.
  * @return true if the fingerprint data was successfully saved, false otherwise.
  */
-bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
+bool SDCardModule::saveFingerprintToSDCard(const char* username, int id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d", username, id);
     
     createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
@@ -194,7 +194,7 @@ bool SDCardModule::saveFingerprintToSDCard(char* username, int id){
  * @param id The fingerprint ID to delete.　or `0` to delete allfingerprints models of the user
  * @return true if the fingerprint ID was successfully deleted, false otherwise.
  */
-bool SDCardModule::deleteFingerprintFromSDCard(char* username, int id){
+bool SDCardModule::deleteFingerprintFromSDCard(const char* username, int id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Delete Fingerprint ID Data, Username %s, ID %d", username, id);
 
     // Open the file and then close it and create new Static in heap
@@ -319,7 +319,7 @@ bool SDCardModule::isNFCIdRegistered(char* id){
  * @param id The NFC ID to save.
  * @return true if the NFC data was successfully saved, false otherwise.
  */
-bool SDCardModule::saveNFCToSDCard(char* username, char* id){
+bool SDCardModule::saveNFCToSDCard(const char* username, char* id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Saving NFC Data, Username %s, ID %s", username, id);
 
     createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
@@ -397,7 +397,7 @@ bool SDCardModule::saveNFCToSDCard(char* username, char* id){
  * @param id The NFC ID to delete. or `0` to delete all NFC access of the user
  * @return true if the NFC ID was successfully deleted, false otherwise.
  */
-bool SDCardModule::deleteNFCFromSDCard(char* username, char* id){
+bool SDCardModule::deleteNFCFromSDCard(const char* username, const char* id){
     ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC ID Data, Username %s, ID %s", username, id);
 
     // Open the file and then close it and create new Static in heap

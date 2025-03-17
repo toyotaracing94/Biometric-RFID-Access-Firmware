@@ -21,9 +21,12 @@ bool NFCService::setup(){
  * @param username The username for NFC registration.
  * @return true if NFC UID is successfully saved to the SD card, false otherwise.
  */
-bool NFCService::addNFC(char* username) {
+bool NFCService::addNFC(const char* username) {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Enrolling new NFC Access User! Username: %s", username);
-    char* uidCard = _nfcSensor -> readNFCCard();
+
+    uint16_t timeout = 10000;
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Awaiting NFC Card Input! Timeout %d ms", timeout);
+    char* uidCard = _nfcSensor -> readNFCCard(timeout);
     
     if (uidCard == nullptr || uidCard[0] == '\0') {
         ESP_LOGW(NFC_SERVICE_LOG_TAG, "No NFC card detected for User: %s!", username);
@@ -51,7 +54,7 @@ bool NFCService::addNFC(char* username) {
  * @param uidCard The UID of the NFC card to be deleted.
  * @return true if the NFC UID was successfully deleted from the SD card, false otherwise.
  */
-bool NFCService::deleteNFC(char* username, char* uidCard) {
+bool NFCService::deleteNFC(const char* username, const char* uidCard) {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting NFC User! Username = %s, NFC UID = %s", username, uidCard);
 
     // Check if the UID card is empty or if it's "null"
@@ -80,10 +83,8 @@ bool NFCService::deleteNFC(char* username, char* uidCard) {
  */
 bool NFCService::authenticateAccessNFC(){
     char* uidCard = _nfcSensor -> readNFCCard();
-    if (uidCard == nullptr || uidCard[0] == '\0') {
-        ESP_LOGW(NFC_SERVICE_LOG_TAG, "No NFC card detected. Perhaps timeout possibly");
-        return false;
-    } else {
+    if (uidCard == nullptr || uidCard[0] == '\0') { return false; } 
+    else {
         if(_sdCardModule->isNFCIdRegistered(uidCard)){
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card Match with ID %s", uidCard);
             _doorRelay->toggleRelay();

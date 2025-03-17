@@ -79,6 +79,8 @@ char* AdafruitNFCSensor::readNFCCard(uint16_t timeout) {
             }
         }
         ESP_LOGI(NFC_SENSOR_LOG_TAG, "Found NFC tag with UID: %s", uid_card);
+    } else{
+        ESP_LOGD(NFC_SENSOR_LOG_TAG, "No NFC card detected. Perhaps timeout possibly");
     }
     return uid_card;
 }
