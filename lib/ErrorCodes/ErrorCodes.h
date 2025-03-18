@@ -19,6 +19,10 @@ enum ErrorCode {
     FAILED_TO_DELETE_FINGERPRINT_NO_NAME_AND_ID = -112,     /* Failed to delete fingerprint because both name and ID are missing                    */
 
     /// NFC Error Code (201-300)
+    FAILED_TO_REGISTER_NFC_NO_NAME              = -201,     /* Failed to register NFC fingerprint because no name was provided                      */
+    FAILED_TO_DELETE_NFC_NO_NAME                = -202,     /* Failed to delete NFC fingerprint because no name was provided                        */
+    FAILED_TO_DELETE_NFC_NO_ID                  = -203,     /* Failed to delete NFC fingerprint because no ID was provided                          */
+    FAILED_TO_DELETE_NFC_NO_NAME_AND_ID         = -204,     /* Failed to delete NFC fingerprint because both name and ID were not provided          */    
 
     /// SD Card Error
 };

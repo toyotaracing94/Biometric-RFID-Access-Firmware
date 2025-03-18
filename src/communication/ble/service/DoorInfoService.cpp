@@ -82,17 +82,52 @@ void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
         }
     }
     if (strcmp(command, "register_rfid") == 0) {
+        if (name == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_REGISTER_NFC_NO_NAME);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but 'name' is empty. Cannot proceed.");
+            return;
+        }
     }
     if (strcmp(command, "delete_rfid") == 0) {
-    }
-    if (strcmp(command, "update_visitor") == 0) {
-    }
+        if (name == nullptr && key_access == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_NAME_AND_ID);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
 
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid' command but 'name' and `key access` is empty. Cannot proceed.");
+            return;
+        }
+
+        if (name == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_NAME);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid' command but 'name' is empty. Cannot proceed.");
+            return;
+        }
+
+        if (key_access == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_ID);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid' command but `key access` is empty. Cannot proceed.");
+            return;
+        }
+    }
+    
     commandBleData.setCommand(command);
     commandBleData.setName(name);
     commandBleData.setKeyAccess(key_access);
-    
-    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Data Door Characteristic: Payload = %s", value.c_str());
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Valid Data Door Characteristic: Payload = %s", value.c_str());
 }
 
 void ACCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
