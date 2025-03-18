@@ -2,8 +2,8 @@
 #define FINGERPRINT_SERVICE_H
 
 #include "FingerprintSensor.h"
-#include "SDCardModule.h"
 #include "DoorRelay.h"
+#include "repository/SDCardModule/SDCardModule.h"
 #include "communication/ble/BLEModule.h"
 
 /// @brief Class that manages the Fingerprint Access Control system by wrapping the functionalitites of Fingerprint sensor, SD Card module, and the Door Relay

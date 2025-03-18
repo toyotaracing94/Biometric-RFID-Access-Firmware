@@ -9,7 +9,7 @@
 
 #include "AdafruitFingerprintSensor.h"
 #include "AdafruitNFCSensor.h"
-#include "SDCardModule.h"
+#include "repository/SDCardModule/SDCardModule.h"
 #include "DoorRelay.h"
 
 #include "service/FingerprintService.h"

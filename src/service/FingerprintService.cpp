@@ -34,11 +34,15 @@ bool FingerprintService::addFingerprint(const char* username){
         
         if (saveFingerprintSDCard) {
             // Prepare the data payload
-            sendbleNotification("OK", username,  fingerprintId, "Fingerprint registered successfully!");
+            char status[5] = "OK";
+            char message[50] = "Fingerprint registered successfully!";
+            sendbleNotification(status, username,  fingerprintId, message);
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, FingerprintID: %d", username, fingerprintId);
         } else {
             // Prepare the data payload
-            sendbleNotification("ERR", username,  fingerprintId, "Failed to register Fingerprint!");
+            char status[5] = "ERR";
+            char message[50] = "Failed to register Fingerprint!";
+            sendbleNotification(status, username,  fingerprintId, message);
             ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to save fingerprint to SD card for User: %s, FingerprintID: %d", username, fingerprintId);
         }
         return saveFingerprintSDCard;
@@ -69,11 +73,15 @@ bool FingerprintService::deleteFingerprint(const char* username, int fingerprint
 
         if (deleteFingerprintSDCard) {
             // Prepare the data payload
-            sendbleNotification("OK", username,  fingerprintId, "Fingerprint deleted successfully!");
+            char status[5] = "OK";
+            char message[50] = "Fingerprint deleted successfully!";
+            sendbleNotification(status, username,  fingerprintId, message);
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint deleted from SD card successfully for User: %s, FingerprintID: %d", username, fingerprintId);
         } else {
             // Prepare the data payload
-            sendbleNotification("ERR", username,  fingerprintId, "Failed to delete Fingerprint!");
+            char status[5] = "ERR";
+            char message[50] = "Failed to delete Fingerprint!";
+            sendbleNotification(status, username,  fingerprintId, message);
             ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete fingerprint from SD card for User: %s, FingerprintID: %d", username, fingerprintId);
         }
         return deleteFingerprintSDCard;
