@@ -10,6 +10,8 @@
 #include <esp_log.h>
 #include <ArduinoJson.h>
 
+#include "ErrorCodes.h"
+
 #define SERVICE_UUID                         "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define DOOR_CHARACTERISTIC_UUID             "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
 #define LED_REMOTE_CHARACTERISTIC_UUID       "beb5483e-36e1-4688-b7f5-ea07361b26a8"  
@@ -38,6 +40,7 @@ class DoorInfoService {
         ~DoorInfoService();
         void startService();
         void sendNotification(JsonDocument& json);
+        void sendNotification(char* status, char* message);
 
     private:
         BLEServer* _pServer;

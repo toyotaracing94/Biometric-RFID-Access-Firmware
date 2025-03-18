@@ -1,6 +1,7 @@
 #include "DoorInfoService.h"
 #include <stdio.h>
 #include "entity/CommandBleData.h"
+#include "ErrorCodes.h"
 
 void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
     const std::string& value = pCharacteristic -> getValue();
@@ -35,6 +36,56 @@ void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
             key_access = buffer;
             ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Data: Key Access = %s", key_access);
         }
+    }
+
+    // Error handling when BLE Door Characteristic Callback kicks in
+    if (strcmp(command, "register_fp") == 0) {
+        if (name == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_REGISTER_FINGERPRINT_NO_NAME);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but 'name' is empty. Cannot proceed.");
+            return;
+        }
+    }
+    if (strcmp(command, "delete_fp") == 0) {
+        if (name == nullptr && key_access == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_FINGERPRINT_NO_NAME_AND_ID);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_fp' command but 'name' and `key access` is empty. Cannot proceed.");
+            return;
+        }
+
+        if (name == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_FINGERPRINT_NO_NAME);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_fp' command but 'name' is empty. Cannot proceed.");
+            return;
+        }
+
+        if (key_access == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_FINGERPRINT_NO_ID);
+            pCharacteristic -> setValue(message);
+            pCharacteristic -> notify();
+
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_fp' command but `key access` is empty. Cannot proceed.");
+            return;
+        }
+    }
+    if (strcmp(command, "register_rfid") == 0) {
+    }
+    if (strcmp(command, "delete_rfid") == 0) {
+    }
+    if (strcmp(command, "update_visitor") == 0) {
     }
 
     commandBleData.setCommand(command);
@@ -81,7 +132,8 @@ void DoorInfoService::startService() {
     _pDoorChar = _pService -> createCharacteristic(
         DOOR_CHARACTERISTIC_UUID,
         BLECharacteristic::PROPERTY_WRITE |
-        BLECharacteristic::PROPERTY_READ 
+        BLECharacteristic::PROPERTY_READ  |
+        BLECharacteristic::PROPERTY_NOTIFY 
     );
     _pDoorChar -> setCallbacks(new DoorCharacteristicCallbacks());
   
@@ -116,6 +168,18 @@ void DoorInfoService::startService() {
 void DoorInfoService::sendNotification(JsonDocument& json){
     String buffer;
     serializeJson(json, buffer);
+    _pNotificationChar -> setValue(buffer.c_str());
+    _pNotificationChar -> notify();
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
+}
+
+void DoorInfoService::sendNotification(char* status, char* message){
+    JsonDocument document;
+    document["status"]  = status;
+    document["message"] = message;
+
+    String buffer;
+    serializeJson(document, buffer);
     _pNotificationChar -> setValue(buffer.c_str());
     _pNotificationChar -> notify();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
