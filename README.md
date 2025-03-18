@@ -43,6 +43,7 @@ Biometric-RFID-Access-Firmware/
 │   ├── ....
 │   ├── main.cpp
 ├── test/
+├── custom_partitions.csv
 ├── platformio.ini
 ```
 As for the explanation
@@ -52,6 +53,10 @@ This folder will hold the most of the sensor implementation and configurations o
 This folder will hold service and also the entry point of the firmware program, such as services to wrap the code of the sensor, or the task creation and management  
 - `test`:  
 This folder will hold the unit test of the program. Why I choose PlatformIO is that they have many support for many Unit Test Framework for C++ Software development
+- `custom_partitions.csv`:  
+This file contains the configurations for the partitions table to be load into the ESP32 flash
+- `platformio.ini`:  
+This file is a configuration to set up your development environment, such as the frameworks, platform we use, the 3rd party libraries, board builds configurations, etc.
 
 ## How to Build and Flash
 <p align="center">
@@ -60,9 +65,35 @@ This folder will hold the unit test of the program. Why I choose PlatformIO is t
 
 To build(compile/verify) and flash(upload) the code to our ESP32, there are two ways, by using the PlatformIO extensions that already provided to use when we installed them or in terminal. I will only show it using by what is already provided to use
 
-When want to compile the project first to build it's binaries, we can hit up the `tick` mark, but when want to flash the binaries of the code into the ESP32, click the `arrow` right sign
 
 If using the PlatformIO terminal/CLI, the list of them are [here](https://docs.platformio.org/en/latest/core/userguide/index.html#commands).
+
+### Build/Compile
+When want to compile the project first to build it's binaries, we can hit up the `tick` or (✓) mark, or if using PlatfromIO CLI, we can build or project by this command
+```sh
+pio run
+```
+
+### Flash
+When want to flash the binaries of the code into the ESP32, click the `arrow` right sign or (→) mark. After that, plug your device and select the port of the device, by default PlatformIO will automatically select the device port based on the current active one. But if you want to manually select the port device, you can click the `power cord` mark in the bottom right corner.  Or if you want to using PlatformIO terminal CLI to flash, you can use
+```sh
+pio run --target upload 
+```
+
+or 
+```sh
+pio run --upload-port SELECTED-COM-PORT --target upload
+```
+
+### Monitor
+We can also monitor the ESP32 MCU by read the program on the UART port (USB port). In Arduino IDE this named Serial Monitor. We can hit up the `power cord` mark, or if using PlatfromIO CLI, we can monitor the device by this command
+```sh
+pio device monitor
+```
+or 
+```sh
+pio device monitor --upload-port SELECTED-COM-PORT
+```
 
 ## Library Dependencies
 For this project, we use several 3rd Party libraries to make this code functional, we can install them by searching them in the PlatformIO libraries
@@ -76,6 +107,7 @@ For this project, we use several 3rd Party libraries to make this code functiona
 There are possible development to increase the usability and the security of this project  
 1. Is it possible to add a feature to Lock/Unlock the Car by using Smartphone but instead of pyshcially press the button to Lock/Unlock the Car, but what if using Proximity feature to have the abillity by allowing seamless access to the vehicle without the need for physical action
 2. Adding a way to safely hash the Key Access (wether its the Fingerprint or the NFC UID) in the SD Card, so if somehow someone have access to the physical SD Card, they cannot know the content of it
+3. Refactor the BLE Code to use the ESP-IDF BLE API rather using the BLE API that was provided by espressif-arduino or by Kolban, as the code is rather too big
 
 ## Author
 ### Firmware Development
