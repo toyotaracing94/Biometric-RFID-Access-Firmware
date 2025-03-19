@@ -10,7 +10,7 @@ void SyncService::sync(){
     JsonDocument object = _sdCardModule -> syncData();
     JsonObject payload = object.as<JsonObject>();
     
-    char* status = "OK";
-    char* message = "Success getting list of key Access!";
+    char status[3] = "OK";
+    char message[50] = "Success getting list of key Access!";
     _bleModule -> sendReport(status, payload, message);
 }

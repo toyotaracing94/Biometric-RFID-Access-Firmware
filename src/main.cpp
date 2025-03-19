@@ -9,7 +9,7 @@
 
 #include "AdafruitFingerprintSensor.h"
 #include "AdafruitNFCSensor.h"
-#include "SDCardModule.h"
+#include "repository/SDCardModule/SDCardModule.h"
 #include "DoorRelay.h"
 
 #include "service/FingerprintService.h"
@@ -66,15 +66,12 @@ extern "C" void app_main(void)
                 if (command != nullptr) {
                     if (strcmp(command, "register_fp") == 0) {
                         systemState = ENROLL_FP;
-                        fingerprintTask -> suspendTask();
                     }
                     if (strcmp(command, "delete_fp") == 0) {
                         systemState = DELETE_FP;
-                        fingerprintTask -> suspendTask();
                     }
                     if (strcmp(command, "register_rfid") == 0) {
                         systemState = ENROLL_RFID;
-                        nfcTask -> suspendTask();
                     }
                     if (strcmp(command, "delete_rfid") == 0) {
                         systemState = DELETE_RFID;
@@ -82,14 +79,14 @@ extern "C" void app_main(void)
                     }
                     if (strcmp(command, "update_visitor") == 0) {
                         systemState = UPDATE_VISITOR;
-                        fingerprintTask -> suspendTask();
-                        nfcTask -> suspendTask();
                     }
                 }
                 break;
             
             case ENROLL_RFID:
                 ESP_LOGI(LOG_TAG,"Start Registering RFID!");
+                nfcTask -> suspendTask();
+
                 nfcService -> addNFC(name);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
                 
@@ -100,6 +97,8 @@ extern "C" void app_main(void)
     
             case DELETE_RFID:
                 ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
+                nfcTask -> suspendTask();
+
                 nfcService -> deleteNFC(name, key_access);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
         
@@ -110,6 +109,8 @@ extern "C" void app_main(void)
     
             case ENROLL_FP:
                 ESP_LOGI(LOG_TAG,"Start Registering Fingerprint!");
+                fingerprintTask -> suspendTask();
+
                 fingerprintService -> addFingerprint(name);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -120,6 +121,8 @@ extern "C" void app_main(void)
     
             case DELETE_FP:
                 ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
+                fingerprintTask -> suspendTask();
+
                 fingerprintService -> deleteFingerprint(name, atoi(key_access));
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
         
@@ -130,6 +133,9 @@ extern "C" void app_main(void)
 
             case UPDATE_VISITOR:
                 ESP_LOGI(LOG_TAG, "Start Sync Data!");
+                fingerprintTask -> suspendTask();
+                nfcTask -> suspendTask();
+
                 syncService -> sync();
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 

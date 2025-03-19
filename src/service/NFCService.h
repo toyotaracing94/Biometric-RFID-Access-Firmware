@@ -2,8 +2,8 @@
 #define NFC_SERVICE_H
 
 #include "AdafruitNFCSensor.h"
-#include "SDCardModule.h"
 #include "DoorRelay.h"
+#include "repository/SDCardModule/SDCardModule.h"
 #include "communication/ble/BLEModule.h"
 
 /// @brief Class that manages the NFC Access Control system by wrapping the functionalitites of NFC sensor, SD Card module, and the Door Relay

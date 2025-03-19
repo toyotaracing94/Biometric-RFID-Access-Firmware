@@ -1,7 +1,7 @@
 #ifndef FINGERPRINT_SENSOR_H
 #define FINGERPRINT_SENSOR_H
 
-#include "FingerprintErrorCode.h"
+#include "ErrorCodes.h"
 
 /// @brief Base class for any Fingerprint sensor operation
 class FingerprintSensor {

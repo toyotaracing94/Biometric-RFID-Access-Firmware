@@ -37,11 +37,15 @@ bool NFCService::addNFC(const char* username) {
         
         if (saveNFCtoSDCard) {
             // Prepare the data payload
-            sendbleNotification("OK", username,  uidCard, "NFC Card registered successfully!");
+            char status[5] = "OK";
+            char message[50] = "NFC Card registered successfully!";
+            sendbleNotification(status, username,  uidCard, message);
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID %s successfully saved to SD card for User: %s", uidCard, username);
         } else {
             // Prepare the data payload
-            sendbleNotification("ERR", username,  uidCard, "Failed to register NFC card!");
+            char status[5] = "ERR";
+            char message[50] = "Failed to register NFC card!";
+            sendbleNotification(status, username,  uidCard, message);
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to save NFC UID %s to SD card for User: %s", uidCard, username);
         }
         return saveNFCtoSDCard; 
@@ -70,11 +74,15 @@ bool NFCService::deleteNFC(const char* username, const char* uidCard) {
 
         if (deleteNFCfromSDCard) {
             // Prepare the data payload
-            sendbleNotification("OK", username,  uidCard, "NFC Card deleted successfully!");
+            char status[5] = "OK";
+            char message[50] = "NFC Card deleted successfully!";
+            sendbleNotification(status, username,  uidCard, message);
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card deleted successfully for User: %s, NFC UID: %s", username, uidCard);
         } else {
             // Prepare the data payload
-            sendbleNotification("ERR", username,  uidCard, "Failed to delete NFC card!");
+            char status[5] = "ERR";
+            char message[50] = "Failed to delete NFC card!";
+            sendbleNotification(status, username,  uidCard, message);
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for User: %s, NFC UID: %s", username, uidCard);
         }
         return deleteNFCfromSDCard;
