@@ -30,8 +30,13 @@ echo "Commit hash: $commithash"
 buildtimestamp=$(date "+%Y-%b-%d-%H:%M:%S")
 echo "Build timestamp: $buildtimestamp"
 
-fulltag=$(git describe --tags --abbrev=0 2>/dev/null || echo "0.0.0")
-echo "Latest tag: $fulltag"
+git fetch --tags --force --quiet
+if git describe --tags --abbrev=0 2>/dev/null; then
+    fulltag=$(git describe --tags --abbrev=0)
+else
+    fulltag="0.0.0"
+fi
+echo "Latest tag on origin/main: $fulltag"
 
 versiontag=$(echo $fulltag | cut -d'-' -f1)
 major=$(echo $versiontag | cut -d'.' -f1)
@@ -54,8 +59,6 @@ echo "New version: $new_version"
 
 buildversion="$new_version"
 buildversionfilename=$(echo $buildversion | tr '.' '_')
-echo "Build version: $buildversion"
-echo "Build version filename: $buildversionfilename"
 
 echo "branchname=$branchname" >> $GITHUB_ENV
 echo "commithash=$commithash" >> $GITHUB_ENV
