@@ -77,9 +77,8 @@ jobs:
 
       - name: Create Git Tag
         run: |
-          git fetch --tags
-          git tag -a "v${{ env.buildversion }}" -m "Release version ${{ env.buildversion }}"
-          git push origin "v${{ env.buildversion }}"
+          git tag -a "${{ env.buildversion }}" -m "Release version v${{ env.buildversion }}"
+          git push origin tag "${{ env.buildversion }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
