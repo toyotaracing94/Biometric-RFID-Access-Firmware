@@ -23,6 +23,6 @@ void DeviceInfoService::startService() {
         FIRMWARE_REVISION_UUID,
         BLECharacteristic::PROPERTY_READ
     );
-    _pFirmwareRevisionChar -> setValue("0.2.0");
+    _pFirmwareRevisionChar -> setValue(CURRENT_FIRMWARE_VERSION);
     _pService -> start();
 }

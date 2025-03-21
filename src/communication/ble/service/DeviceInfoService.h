@@ -6,6 +6,7 @@
 #include <BLEService.h>
 #include <BLECharacteristic.h>
 #include <esp_log.h>
+#include "versionInfo.h"
 
 // UUIDs for Device Information Service and its Characteristics
 #define DEVICE_INFORMATION_SERVICE_UUID        "180A"
