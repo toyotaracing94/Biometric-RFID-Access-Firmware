@@ -1,0 +1,6 @@
+#ifndef VERSION_INFO_H
+#define VERSION_INFO_H
+
+#define CURRENT_FIRMWARE_VERSION GIT_REV
+
+#endif
