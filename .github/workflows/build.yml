@@ -104,4 +104,11 @@ on:
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-        
+        - name: Merge update main changes into develop
+          run: |
+            git fetch origin
+            git checkout develop
+            git merge origin/main
+            git push origin develop
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
