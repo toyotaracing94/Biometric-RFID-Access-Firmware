@@ -5,6 +5,8 @@
 #include <BLEDevice.h>
 #include <BLEAdvertising.h>
 
+#include "BLECallback.h"
+
 #include "communication/ble/service/DeviceInfoService.h"
 #include "communication/ble/service/DoorInfoService.h"
 
