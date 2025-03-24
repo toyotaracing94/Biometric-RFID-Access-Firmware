@@ -1,4 +1,4 @@
-# Biometric RFID Access Firmware CI/CD
+## Biometric RFID Access Firmware CI/CD
 
 So, in here we use Gitlab Actions as our runner to run the CI/CD Pipeline. The cycle for this CI/CD Pipeline is like this  
 1. We first going to merge our feature branch to the develop branch
