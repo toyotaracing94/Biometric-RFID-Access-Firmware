@@ -2,7 +2,7 @@
 #include <esp_log.h>
 #include "BLEModule.h"
 
-#include "nvs_flash.h"
+#include <nvs_flash.h>
 
 BLEModule::BLEModule() {}
 
@@ -19,7 +19,7 @@ void BLEModule::initBLE(){
     
     BLEDevice::init(BLESERVERNAME);
     _bleServer = BLEDevice::createServer();
-    _bleServer -> setCallbacks(new BLEServerCallbacks());
+    _bleServer -> setCallbacks(new BLECallback());
 }
 
 void BLEModule::setupCharacteristic(){
