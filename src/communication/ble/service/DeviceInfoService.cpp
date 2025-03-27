@@ -9,6 +9,11 @@ DeviceInfoService::DeviceInfoService(BLEServer* pServer) {
 
 DeviceInfoService::~DeviceInfoService() {}
 
+/**
+ * @brief Start the DeviceInfoService
+ * 
+ * 
+ */
 void DeviceInfoService::startService() {
     ESP_LOGI(DEVICE_INFO_SERVICE_LOG_TAG, "Initializing BLE Device Info Service");
     _pService = _pServer -> createService(DEVICE_INFORMATION_SERVICE_UUID);

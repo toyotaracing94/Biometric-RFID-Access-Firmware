@@ -3,6 +3,10 @@
 #include "entity/CommandBleData.h"
 #include "ErrorCodes.h"
 
+/**
+ * @brief BLE callback class for handling write operations on the Door characteristic.
+ * 
+ */
 void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
     const std::string& value = pCharacteristic -> getValue();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Incoming Door Characteristic UUID value of %s", value.c_str());
@@ -130,6 +134,10 @@ void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Valid Data Door Characteristic: Payload = %s", value.c_str());
 }
 
+/**
+ * @brief BLE callback class for handling write operations on the AC Remote characteristic.
+ * 
+ */
 void ACCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
     const std::string& value = pCharacteristic -> getValue();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Incoming AC Characteristic UUID value of %s", value.c_str()); 
@@ -139,6 +147,10 @@ void ACCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
     pCharacteristic -> notify(); 
 }
 
+/**
+ * @brief BLE callback class for handling write operations on the LED Remote characteristic.
+ * 
+ */
 void LEDRemoteCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
     const std::string& value = pCharacteristic -> getValue();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Incoming LED Remote Characteristic UUID value of %s", value.c_str());
@@ -148,6 +160,10 @@ void LEDRemoteCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic
     pCharacteristic -> notify(); 
 }
 
+/**
+ * @class DoorInfoService
+ * @brief BLE service for managing door, AC remote, LED remote, and notification characteristics.
+ */
 DoorInfoService::DoorInfoService(BLEServer* pServer) {
     this -> _pServer = pServer;
     this -> _pService = nullptr;
@@ -159,6 +175,11 @@ DoorInfoService::DoorInfoService(BLEServer* pServer) {
 
 DoorInfoService::~DoorInfoService() {}
 
+ /**
+ * @brief Starts the DoorInfoService by creating characteristics and adding them to the service.
+ * 
+ * This creates characteristics for door, AC remote, LED remote, and notification and starts the service.
+ */
 void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Info Service");
     _pService = _pServer -> createService(SERVICE_UUID);
@@ -170,6 +191,7 @@ void DoorInfoService::startService() {
         BLECharacteristic::PROPERTY_READ  |
         BLECharacteristic::PROPERTY_NOTIFY 
     );
+    _pDoorChar -> addDescriptor(new BLE2902());
     _pDoorChar -> setCallbacks(new DoorCharacteristicCallbacks());
   
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE AC Remote Characteristic");
@@ -178,6 +200,7 @@ void DoorInfoService::startService() {
         BLECharacteristic::PROPERTY_WRITE |
         BLECharacteristic::PROPERTY_READ 
     );
+    _pACChar -> addDescriptor(new BLE2902());
     _pACChar -> setCallbacks(new ACCharacteristicCallback());
 
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE LED Remote Characteristic");
@@ -186,6 +209,7 @@ void DoorInfoService::startService() {
         BLECharacteristic::PROPERTY_WRITE |
         BLECharacteristic::PROPERTY_READ 
     );
+    _pLedChar -> addDescriptor(new BLE2902());
     _pLedChar -> setCallbacks(new LEDRemoteCharacteristicCallback());
 
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Notification Characteristic");
@@ -200,6 +224,13 @@ void DoorInfoService::startService() {
     _pService -> start();
 }
 
+ /**
+ * @brief Sends a JSON notification to the connected client.
+ * 
+ * This function serializes the JSON document and sends it to the notification characteristic.
+ * 
+ * @param json The JSON document containing the notification data.
+ */
 void DoorInfoService::sendNotification(JsonDocument& json){
     String buffer;
     serializeJson(json, buffer);
@@ -208,6 +239,14 @@ void DoorInfoService::sendNotification(JsonDocument& json){
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
 }
 
+/**
+ * @brief Sends a status and message as a notification to the client.
+ * 
+ * This function creates a simple JSON document with the status and message and sends it to the notification characteristic.
+ * 
+ * @param status The status of the notification.
+ * @param message The message to send as a notification.
+ */
 void DoorInfoService::sendNotification(char* status, char* message){
     JsonDocument document;
     document["status"]  = status;
