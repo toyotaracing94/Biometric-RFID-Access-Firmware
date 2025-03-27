@@ -8,21 +8,21 @@
 #include "tasks/BaseTask.h"
 
 #include "service/NFCService.h"
-#define TASK_STACK_SIZE 4096
 
 /// @brief Class for managing the NFC Task Action
 class NFCTask : BaseTask {
     public:
-        NFCTask(const char* taskName, UBaseType_t priority, TaskHandle_t* taskHandle,  NFCService *nfcService);
+        NFCTask(const char* taskName, UBaseType_t priority, NFCService *nfcService);
         ~NFCTask();
-        void createTask() override;
-        void suspendTask() override;
-        void resumeTask() override;
+        void startTask() override;
+        bool suspendTask() override;
+        bool resumeTask() override;
         
     private:
         const char* _taskName;
         UBaseType_t _priority;
         TaskHandle_t _taskHandle; 
+        SemaphoreHandle_t _xNfcSemaphore;
         NFCService* _nfcService;
         static void taskFunction(void *parameter);
 };

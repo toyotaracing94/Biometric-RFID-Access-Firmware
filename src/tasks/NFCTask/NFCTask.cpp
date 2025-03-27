@@ -1,15 +1,26 @@
 #include "NFCTask.h"
 #define NFC_TASK_LOG_TAG "NFC_TASK"
 
-NFCTask::NFCTask(const char* taskName, UBaseType_t priority, TaskHandle_t* taskHandle, NFCService* nfcService)
-    : _taskName(taskName), _priority(priority),  _taskHandle(taskHandle), _nfcService(nfcService) {}
+NFCTask::NFCTask(const char* taskName, UBaseType_t priority, NFCService* nfcService)
+    : _taskName(taskName), _priority(priority), _nfcService(nfcService) {
+        
+        _xNfcSemaphore = xSemaphoreCreateBinary();
+        xSemaphoreGive(_xNfcSemaphore);
+    }
 
 /**
  * @brief Create the NFC Task.
  * 
  */
-void NFCTask::createTask() {
-    xTaskCreate(taskFunction, _taskName, TASK_STACK_SIZE, this, _priority, &_taskHandle);
+void NFCTask::startTask() {
+    xTaskCreate(
+        taskFunction,               // Function to run in the task
+        _taskName,                  // Name of the task
+        MIDSIZE_STACK_SIZE,         // Stack size (adjustable)
+        this,                       // Pass the `this` pointer to the task
+        _priority,                  // Task priority
+        &_taskHandle                // Store the task handle for later control
+    );
     ESP_LOGI(NFC_TASK_LOG_TAG, "NFC Task created successfully: Task Name = %s, Priority = %d", _taskName, _priority);
 }
 
@@ -17,12 +28,17 @@ void NFCTask::createTask() {
  * @brief Suspend the NFC Task operation.
  * 
  */
-void NFCTask::suspendTask(){
+bool NFCTask::suspendTask(){
     if (_taskHandle != nullptr) {
-        vTaskSuspend(_taskHandle);
-        ESP_LOGI(NFC_TASK_LOG_TAG, "NFC Task is suspended.");
+        if (xSemaphoreTake(_xNfcSemaphore, 0) == pdTRUE) {
+            ESP_LOGI(NFC_TASK_LOG_TAG, "NFC Task is suspended.");
+            return true;
+        }
+        ESP_LOGW(NFC_TASK_LOG_TAG, "NFC Task is unable to be suspended.");
+        return false;
     } else {
         ESP_LOGE(NFC_TASK_LOG_TAG, "NFC Task handle is null.");
+        return false;
     }
 }
 
@@ -30,12 +46,14 @@ void NFCTask::suspendTask(){
  * @brief Resume the NFC Task operation.
  * 
  */
-void NFCTask::resumeTask(){
+bool NFCTask::resumeTask(){
     if (_taskHandle != nullptr) {
-        vTaskResume(_taskHandle);
+        xSemaphoreGive(_xNfcSemaphore);
         ESP_LOGI(NFC_TASK_LOG_TAG, "NFC Task is resumed.");
+        return true;
     } else {
         ESP_LOGE(NFC_TASK_LOG_TAG, "NFC Task handle is null.");
+        return false;
     }
 }
 
@@ -49,10 +67,19 @@ void NFCTask::resumeTask(){
  * @return void
  */
 void NFCTask::taskFunction(void *params){
-    NFCTask* nfcTask = static_cast<NFCTask*>(params);
+    NFCTask* task = (NFCTask*)params;
+
     while(1){
-        ESP_LOGD(NFC_TASK_LOG_TAG, "Running Routine Task Thread");
-        nfcTask->_nfcService->authenticateAccessNFC();
+        ESP_LOGD(NFC_TASK_LOG_TAG, "Running Routine NFC Thread");
+
+        if (xSemaphoreTake( task-> _xNfcSemaphore, portMAX_DELAY) == pdTRUE) {
+            if (task-> _nfcService->authenticateAccessNFC()) 
+                ESP_LOGD(NFC_TASK_LOG_TAG, "NFC access granted.");
+            else 
+                ESP_LOGD(NFC_TASK_LOG_TAG, "NFC access denied.");
+            xSemaphoreGive(task-> _xNfcSemaphore);
+        }
+
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
