@@ -1,33 +1,37 @@
 #ifndef COMMAND_BLE_DATA_H
 #define COMMAND_BLE_DATA_H
-#include <cstring> 
+#include <cstring>
 
-// TODO : Find a better way perhaps to move this data to main thread loop rather using malloc 
-class CommandBleData {
+// TODO : Find a better way perhaps to move this data to main thread loop rather using malloc
+class CommandBleData
+{
 public:
     CommandBleData();
     ~CommandBleData();
 
     // Setters
-    void setCommand(const char* newCommand);
-    void setName(const char* newName);
-    void setKeyAccess(const char* newKeyAccess);
+    void setCommand(const char *newCommand);
+    void setName(const char *newName);
+    void setKeyAccess(const char *newKeyAccess);
+    void setVisitorId(const char *newVisitorId);
 
     // Getters
-    const char* getCommand() const;
-    const char* getName() const;
-    const char* getKeyAccess() const;
+    const char *getCommand() const;
+    const char *getName() const;
+    const char *getKeyAccess() const;
+    const char *getVisitorId() const;
 
     // Clear/reset values
     void clear();
 
 private:
-    char* _command;
-    char* _name;
-    char* _keyAccess;
+    char *_command;
+    char *_name;
+    char *_keyAccess;
+    char *_visitorId;
 
     // Helper function to duplicate a string (uses malloc)
-    char* strdup(const char* str);
+    char *strdup(const char *str);
 };
 
 extern CommandBleData commandBleData;

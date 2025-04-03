@@ -1,6 +1,8 @@
 {
     "idf.portWin": "COM12",
     "files.associations": {
+        "*.embeddedhtml": "html",
+        "*.py": "python",
         "string": "cpp",
         "array": "cpp",
         "atomic": "cpp",
@@ -58,6 +60,7 @@
         "streambuf": "cpp",
         "thread": "cpp",
         "cinttypes": "cpp",
-        "typeinfo": "cpp"
+        "typeinfo": "cpp",
+        "*.ipp": "cpp"
     }
 }
