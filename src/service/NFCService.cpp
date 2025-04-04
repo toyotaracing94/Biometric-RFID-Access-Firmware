@@ -28,10 +28,11 @@ bool NFCService::setup()
 bool NFCService::addNFC(const char *username)
 {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Enrolling new NFC Access User! Username: %s", username);
-    sendbleNotification("ENROLL", username, "0:0:0:0", "Please place your NFC Card", "RFID");
 
     uint16_t timeout = 10000;
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Awaiting NFC Card Input! Timeout %d ms", timeout);
+    sendbleNotification("ENROLL", username, "0:0:0:0", "Please place your NFC Card", "RFID");
+
     char *uidCard = _nfcSensor->readNFCCard(timeout);
 
     if (uidCard == nullptr || uidCard[0] == '\0')
@@ -43,32 +44,41 @@ bool NFCService::addNFC(const char *username)
     {
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card detected for User: %s with UID: %s", username, uidCard);
         std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor";
-        std::string payload = R"({
-    "key_access": ")" + std::string(uidCard) +
-                              R"(", 
-    "vin": ")" + VIN + R"(", 
-    "visitor_name": ")" + username +
-                              R"(", "type": "RFID"})";
+
+        StaticJsonDocument<256> payloadDoc;
+        payloadDoc["vin"] = VIN;
+        payloadDoc["visitor_name"] = username;
+        payloadDoc["type"] = "RFID";
+        std::string payload;
+        serializeJson(payloadDoc, payload);
+
         std::string response = _wifiModule->sendPostRequest(url, payload);
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", response.c_str());
-        JsonDocument doc; // Create a JSON document to parse the response
 
-        DeserializationError error = deserializeJson(doc, response.c_str()); // Deserialize the response
+        // Parse JSON response to extract visitor_id
+        StaticJsonDocument<512> doc;
+        DeserializationError error = deserializeJson(doc, response.c_str());
+
         if (error)
         {
-            ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to parse response: %s", error.c_str());
             return false;
         }
 
         int statusCode = doc["stat_code"].as<int>(); // Assuming stat_code is an integer field
-
         if (statusCode != 200)
         {
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "Request failed with status code: %d", statusCode);
+            sendbleNotification("ERR", username, "", "RFID", "Failed to send request to server!");
             return false;
         }
-
         std::string visitorId = doc["data"]["visitor_id"].as<std::string>();
+
+        if (visitorId.empty())
+        {
+            ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to extract visitor_id from response");
+            return false;
+        }
 
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "Visitor ID: %s", visitorId.c_str());
 
@@ -80,7 +90,7 @@ bool NFCService::addNFC(const char *username)
 
             char status[5] = "OK";
             char message[50] = "NFC Card registered successfully!";
-            sendbleNotification(status, username, uidCard, message, "RFID");
+            sendbleNotification(status, username, visitorId.c_str(), message, "RFID");
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID %s successfully saved to SD card for User: %s", uidCard, username);
         }
         else
@@ -88,7 +98,10 @@ bool NFCService::addNFC(const char *username)
             // Prepare the data payload
             char status[5] = "ERR";
             char message[50] = "Failed to register NFC card!";
-            sendbleNotification(status, username, uidCard, message, "RFID");
+            std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(visitorId);
+            std::string response = _wifiModule->sendDeleteRequest(url);
+            ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", response.c_str());
+            sendbleNotification(status, username, visitorId.c_str(), message, "RFID");
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to save NFC UID %s to SD card for User: %s", uidCard, username);
         }
         return saveNFCtoSDCard;
@@ -105,41 +118,32 @@ bool NFCService::addNFC(const char *username)
  * @param uidCard The UID of the NFC card to be deleted.
  * @return true if the NFC UID was successfully deleted from the SD card, false otherwise.
  */
-bool NFCService::deleteNFC(const char *username, const char *uidCard)
+bool NFCService::deleteNFC(const char *visitorId)
 {
-    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting NFC User! Username = %s, NFC UID = %s", username, uidCard);
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting NFC User! Visitor ID = %s", visitorId);
 
-    // Check if the UID card is empty or if it's "null"
-    if (uidCard == nullptr || uidCard[0] == '\0' || strcmp(uidCard, "null") == 0)
+    bool deleteNFCfromSDCard = _sdCardModule->deleteNFCFromSDCard(visitorId);
+
+    if (deleteNFCfromSDCard)
     {
-        ESP_LOGW(NFC_SERVICE_LOG_TAG, "There's no card detected or ID Card was passed as 'null'. Proceeding with not deleting anything.");
-        return false;
+        // Prepare the data payload
+        char status[5] = "OK";
+        char message[50] = "NFC Card deleted successfully!";
+        std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(visitorId);
+        std::string response = _wifiModule->sendDeleteRequest(url);
+        ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", response.c_str());
+        sendbleNotification(status, "", visitorId, message, "RFID");
+        ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card deleted successfully for Visitor ID: %s", visitorId);
     }
     else
     {
-        bool deleteNFCfromSDCard = _sdCardModule->deleteNFCFromSDCard(username, uidCard);
-
-        if (deleteNFCfromSDCard)
-        {
-            // Prepare the data payload
-            char status[5] = "OK";
-            char message[50] = "NFC Card deleted successfully!";
-            std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(uidCard);
-            std::string response = _wifiModule->sendDeleteRequest(url);
-            ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", response.c_str());
-            sendbleNotification(status, username, uidCard, message, "RFID");
-            ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card deleted successfully for User: %s, NFC UID: %s", username, uidCard);
-        }
-        else
-        {
-            // Prepare the data payload
-            char status[5] = "ERR";
-            char message[50] = "Failed to delete NFC card!";
-            sendbleNotification(status, username, uidCard, message, "RFID");
-            ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for User: %s, NFC UID: %s", username, uidCard);
-        }
-        return deleteNFCfromSDCard;
+        // Prepare the data payload
+        char status[5] = "ERR";
+        char message[50] = "Failed to delete NFC card!";
+        sendbleNotification(status, "", visitorId, message, "RFID");
+        ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for Visitor ID: %s", visitorId);
     }
+    return deleteNFCfromSDCard;
 }
 
 /**
@@ -159,28 +163,28 @@ bool NFCService::authenticateAccessNFC()
     }
     else
     {
-        if (_sdCardModule->isNFCIdRegistered(uidCard))
+        std::string *visitorId = _sdCardModule->getVisitorIdByNFC(uidCard);
+        if (visitorId != nullptr)
         {
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card Match with ID %s", uidCard);
             _doorRelay->toggleRelay();
             std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/activity";
-            std::string payload = R"({"key_access": ")" + std::string(uidCard) + R"("})";
+            std::string payload = R"({"visitor_id": ")" + *visitorId + R"("})";
 
             std::string response = _wifiModule->sendPostRequest(url, payload);
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", response.c_str());
             return true;
         }
-        // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card ID %s is detected but not stored in our data system!", uidCard);
         return false;
     }
 }
 
-void NFCService::sendbleNotification(const char *status, const char *username, const char *uidCard, const char *message, const char *type)
+void NFCService::sendbleNotification(const char *status, const char *username, const char *visitorId, const char *message, const char *type)
 {
     JsonDocument doc;
     doc["data"]["name"] = username;
-    doc["data"]["key_access"] = uidCard;
+    doc["data"]["visitor_id"] = visitorId;
     doc["data"]["type"] = type;
     _bleModule->sendReport(status, doc.as<JsonObject>(), message);
 }

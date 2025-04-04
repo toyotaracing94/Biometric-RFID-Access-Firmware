@@ -39,7 +39,7 @@ bool AdafruitFingerprintSensor::setup()
             ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint sensor has not been found! Retrying %d .....", retries);
 
             // Exponential backoff: double the wait time after each failure
-            vTaskDelay(backoffTime / portTICK_PERIOD_MS);
+            vTaskDelay(backoffTime);
             backoffTime *= 2;
             retries++;
         }
@@ -65,45 +65,26 @@ bool AdafruitFingerprintSensor::setup()
  */
 int AdafruitFingerprintSensor::getFingerprintIdModel()
 {
-    _fingerprintSensor.begin(
-        57600);  // Ensure sensor is initialized
-    delay(1000); // Give it time to fully initialize
-    int getImageResult = _fingerprintSensor.getImage();
-    if (getImageResult == FINGERPRINT_NOFINGER)
+    if (_fingerprintSensor.getImage() == FINGERPRINT_OK)
     {
-        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "No finger detected.");
-        return FAILED_TO_GET_FINGERPRINT_MODEL_ID;
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint image captured successfully.");
+        delay(200); // Wait before converting the image to a template
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Prepare the next stage for convert the image to feature model");
+        if (_fingerprintSensor.image2Tz() == FINGERPRINT_OK && _fingerprintSensor.fingerSearch() == FINGERPRINT_OK)
+        {
+            uint8_t fingerprintId = _fingerprintSensor.fingerID;
+            ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint matched! Detected ID: %d", fingerprintId);
+            activateSuccessLED(FINGERPRINT_LED_BREATHING, 255, 1);
+            return (int)fingerprintId;
+        }
+        else
+        {
+            ESP_LOGW(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint match failed or image conversion error.");
+            activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+            return FAILED_IMAGE_CONVERSION_ERROR;
+        }
     }
-    if (getImageResult != FINGERPRINT_OK)
-    {
-        ESP_LOGE(ADAFRUIT_SENSOR_LOG_TAG, "Failed to capture fingerprint image. Error code: %d", getImageResult);
-        return FAILED_TO_GET_FINGERPRINT_MODEL_ID;
-    }
-
-    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint image captured successfully.");
-
-    // Convert the image to feature model
-    int imageToTzResult = _fingerprintSensor.image2Tz();
-    if (imageToTzResult != FINGERPRINT_OK)
-    {
-        ESP_LOGE(ADAFRUIT_SENSOR_LOG_TAG, "Failed to convert image to feature model. Error code: %d", imageToTzResult);
-        return FAILED_IMAGE_CONVERSION_ERROR;
-    }
-
-    // Search the converted model against the stored fingerprints
-    int searchResult = _fingerprintSensor.fingerSearch();
-    if (searchResult != FINGERPRINT_OK)
-    {
-        ESP_LOGW(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint match failed or image conversion error. Error code: %d", searchResult);
-        activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
-        return FAILED_IMAGE_CONVERSION_ERROR;
-    }
-
-    uint8_t fingerprintId = _fingerprintSensor.fingerID;
-    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint matched! Detected ID: %d", fingerprintId);
-    activateSuccessLED(FINGERPRINT_LED_BREATHING, 255, 1);
-
-    return (int)fingerprintId;
+    return FAILED_TO_GET_FINGERPRINT_MODEL_ID;
 }
 
 /**

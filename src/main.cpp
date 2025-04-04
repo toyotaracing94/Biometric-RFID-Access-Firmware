@@ -67,7 +67,6 @@ extern "C" void app_main(void)
         const char *command = commandBleData.getCommand();
         const char *name = commandBleData.getName();
         const char *visitorId = commandBleData.getVisitorId();
-        const char *key_access = commandBleData.getKeyAccess();
 
         switch (systemState)
         {
@@ -114,7 +113,7 @@ extern "C" void app_main(void)
             ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
             nfcTask->suspendTask();
 
-            nfcService->deleteNFC(name, key_access);
+            nfcService->deleteNFC(visitorId);
             vTaskDelay(1000 / portTICK_PERIOD_MS);
 
             systemState = RUNNING;

@@ -31,29 +31,8 @@ bool FingerprintService::addFingerprint(const char *username)
 
     uint8_t fingerprintId = generateFingerprintId();
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enrolling new Fingerprint User! Username %s FingerprintID %d", username, fingerprintId);
-    sendbleNotification("ENROLL", username, "", "Fingerprint", "Please place your fingerprint to enroll!");
-    if (!_fingerprintSensor->addFingerprintModel(fingerprintId))
-    {
-        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to add fingerprint model for FingerprintID: %d", fingerprintId);
-        sendbleNotification("ERR", username, "", "Fingerprint", "Failed to add Fingerprint Model!");
-        return false;
-    }
-
-    sendbleNotification("VERIFY", username, "", "Fingerprint", "Please place your fingerprint to verify!");
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Please place your fingerprint to verify!");
-
-    if (!_fingerprintSensor->verifyFingerprint(fingerprintId))
-    {
-        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to verify fingerprint for FingerprintID: %d", fingerprintId);
-        sendbleNotification("ERR", username, "", "Fingerprint", "Fingerprint verification failed!");
-        return false;
-    }
-
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d. Saving to SD card...", fingerprintId);
     std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor";
-    // Option 1: Using string formatting
 
-    // Option 2: Using the JSON library directly (better approach)
     StaticJsonDocument<256> payloadDoc;
     payloadDoc["vin"] = VIN;
     payloadDoc["visitor_name"] = username;
@@ -62,6 +41,11 @@ bool FingerprintService::addFingerprint(const char *username)
     serializeJson(payloadDoc, payload);
 
     std::string response = _wifiModule->sendPostRequest(url, payload);
+    if (response.empty())
+    {
+        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to get response");
+        return false;
+    }
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", response.c_str());
 
     // Parse JSON response to extract visitor_id
@@ -79,11 +63,41 @@ bool FingerprintService::addFingerprint(const char *username)
     if (statusCode != 200)
     {
         ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Request failed with status code: %d", statusCode);
+        _fingerprintSensor->deleteFingerprintModel(fingerprintId);
+        sendbleNotification("ERR", username, "", "Fingerprint", "Failed to send request to server!");
+
         return false;
     }
 
     // Extract visitor_id from the response
     std::string visitorId = doc["data"]["visitor_id"].as<std::string>();
+    if (visitorId.empty())
+    {
+        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Visitor ID not found in response");
+        return false;
+    }
+    sendbleNotification("ENROLL", username, "", "Fingerprint", "Please place your fingerprint to enroll!");
+    if (!_fingerprintSensor->addFingerprintModel(fingerprintId))
+    {
+        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to add fingerprint model for FingerprintID: %d", fingerprintId);
+        sendbleNotification("ERR", username, "", "Fingerprint", "Failed to add Fingerprint Model!");
+        return false;
+    }
+
+    sendbleNotification("VERIFY", username, "", "Fingerprint", "Please place your fingerprint to verify!");
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Please place your fingerprint to verify!");
+
+    if (!_fingerprintSensor->verifyFingerprint(fingerprintId))
+    {
+        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to verify fingerprint for FingerprintID: %d", fingerprintId);
+        std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(visitorId);
+        std::string response = _wifiModule->sendDeleteRequest(url);
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", response.c_str());
+        sendbleNotification("ERR", username, "", "Fingerprint", "Fingerprint verification failed!");
+        return false;
+    }
+
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d. Saving to SD card...", fingerprintId);
 
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Visitor ID: %s", visitorId.c_str());
 
@@ -91,6 +105,10 @@ bool FingerprintService::addFingerprint(const char *username)
     if (!_sdCardModule->saveFingerprintToSDCard(username, fingerprintId, visitorId.c_str()))
     {
         ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to save fingerprint to SD card for User: %s, FingerprintID: %d", username, fingerprintId);
+        _fingerprintSensor->deleteFingerprintModel(fingerprintId);
+        std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(visitorId);
+        std::string response = _wifiModule->sendDeleteRequest(url);
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", response.c_str());
         sendbleNotification("ERR", username, visitorId.c_str(), "Fingerprint", "Failed to save fingerprint to SD card!");
         return false;
     }
@@ -122,7 +140,18 @@ bool FingerprintService::deleteFingerprint(const char *visitorId)
         return false;
     }
 
-    const char *username = userData["username"];
+    const char *username = nullptr; // Initialize username to nullptr
+    if (userData.containsKey("username") && userData["username"].is<const char *>())
+    {
+        username = userData["username"].as<const char *>();
+    }
+    else
+    {
+        ESP_LOGW(FINGERPRINT_SERVICE_LOG_TAG, "Username not found or is not a string for Visitor ID: %s", visitorId);
+        // You might want to handle this case differently, such as using a default username.
+        // For now, we'll proceed with username being null.
+    }
+
     JsonArray fingerprintIds = userData["key_access"].as<JsonArray>();
 
     for (int i = 0; i < fingerprintIds.size(); i++)
@@ -179,39 +208,23 @@ bool FingerprintService::authenticateAccessFingerprint()
     int isRegsiteredModel = _fingerprintSensor->getFingerprintIdModel();
     if (isRegsiteredModel > 0)
     {
+        std::string *visitorId = _sdCardModule->getFingerprintModelById(isRegsiteredModel);
 
-        if (_sdCardModule->isFingerprintIdRegistered(isRegsiteredModel))
+        if (visitorId != nullptr)
         {
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Match with ID %d", isRegsiteredModel);
             _doorRelay->toggleRelay();
-            JsonObject userData = _sdCardModule->getFingerprintModelById(isRegsiteredModel);
-            if (userData.isNull())
-            {
-                ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to retrieve user data for Fingerprint ID: %d", isRegsiteredModel);
-                return false;
-            }
 
-            const char *visitorId = userData["visitor_id"];
-            if (visitorId == nullptr || strlen(visitorId) == 0)
-            {
-                ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Visitor ID is NULL or empty");
-                return true; // Allow access even if visitor ID is not found
-            }
-
-            if (visitorId == NULL || strlen(visitorId) == 0)
-            {
-                ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Visitor ID is NULL");
-                return true;
-            }
-
-            ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "VISITOR ID : %s", visitorId);
+            ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "VISITOR ID : %s", visitorId->c_str());
             std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/activity";
-            std::string payload = R"({"visitor_id": )" + std::string(visitorId) + "}";
+            std::string payload = R"({"visitor_id": ")" + *visitorId + R"("})";
+            ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "PAYLOAD : %s", payload.c_str());
 
             std::string response = _wifiModule->sendPostRequest(url, payload);
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", response.c_str());
             return true;
         }
+
         // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock", isRegsiteredModel);
         return false;
@@ -224,38 +237,24 @@ bool FingerprintService::authenticateAccessFingerprint()
 }
 uint8_t FingerprintService::generateFingerprintId()
 {
-    const int ID_MIN = 3000;
-    const int ID_MAX = 9999;       // Increased range to reduce collision probability
-    const int MAX_ATTEMPTS = 1000; // Maximum attempts to avoid infinite loops
-
-    std::unordered_set<int> existingIds;
-
-    // Load existing IDs from the SD card into a set for fast lookup
-    if (!_sdCardModule->loadAllFingerprintIds(existingIds))
-    {
-        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to load existing IDs from SD card.");
-        return 0;
-    }
-
     uint8_t fingerprintId;
-    int attempts = 0;
-
-    while (attempts < MAX_ATTEMPTS)
+    while (true)
     {
-        fingerprintId = random(ID_MIN, ID_MAX);
-
-        if (existingIds.find(fingerprintId) == existingIds.end()) // If ID is not in the set
+        fingerprintId = random(1, 100);
+        // Check if the generated fingerprint ID exists on the SD card
+        if (!_sdCardModule->isFingerprintIdRegistered(fingerprintId))
         {
+            // If the ID doesn't exist on the SD card, it's valid
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Generated valid fingerprint ID: %d", fingerprintId);
-            return fingerprintId;
+            break;
         }
-
-        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint ID %d already exists, generating a new ID...", fingerprintId);
-        attempts++;
+        else
+        {
+            // If the ID exists on the SD card, try again
+            ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint ID %d already exists, generating a new ID...", fingerprintId);
+        }
     }
-
-    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to generate a unique ID after %d attempts.", MAX_ATTEMPTS);
-    return 0; // Return 0 if unable to generate a valid ID
+    return fingerprintId;
 }
 
 void FingerprintService::sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message)

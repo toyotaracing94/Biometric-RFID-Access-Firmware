@@ -14,7 +14,7 @@ public:
     NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule, WiFiModule *wifiModule);
     bool setup();
     bool addNFC(const char *username);
-    bool deleteNFC(const char *username, const char *NFCuid);
+    bool deleteNFC(const char *visitorId);
     bool authenticateAccessNFC();
     void sendbleNotification(const char *status, const char *username, const char *uidCard, const char *message, const char *type);
 

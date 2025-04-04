@@ -25,12 +25,13 @@ public:
     bool saveFingerprintToSDCard(const char *username, int id, const char *visitorId);
     bool deleteFingerprintFromSDCard(const char *visitorId);
     bool getFingerprintModelByVisitorId(const char *visitorId, JsonObject &result);
-    JsonObject getFingerprintModelById(int id);
+    std::string *getFingerprintModelById(int id);
     bool isNFCIdRegistered(char *id);
     bool saveNFCToSDCard(const char *username, char *id, const char *visitorId);
-    bool deleteNFCFromSDCard(const char *username, const char *id);
+    bool deleteNFCFromSDCard(const char *visitorId);
+    bool deleteNFCFromSDCardById(const char *id);
     void createEmptyJsonFileIfNotExists(const char *filepath);
-
+    std::string *getVisitorIdByNFC(char *id);
     bool loadAllFingerprintIds(std::unordered_set<int> &idSet);
     JsonDocument syncData();
 };
