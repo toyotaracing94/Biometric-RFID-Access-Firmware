@@ -212,7 +212,9 @@ bool SDCardModule::getFingerprintModelByVisitorId(const char *visitorId, JsonObj
 {
     ESP_LOGI(SD_CARD_LOG_TAG, "Searching for Fingerprint Model with Visitor ID: %s", visitorId);
 
-    static StaticJsonDocument<4096> document; // Keeping the document in static memory
+    // Use a static JsonDocument to ensure its memory stays valid
+    static JsonDocument staticDocument;
+    staticDocument.clear(); // Clear previous data
 
     // Open the file containing fingerprint data
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -224,7 +226,7 @@ bool SDCardModule::getFingerprintModelByVisitorId(const char *visitorId, JsonObj
     }
 
     // Deserialize the JSON data
-    DeserializationError error = deserializeJson(document, file);
+    DeserializationError error = deserializeJson(staticDocument, file);
     file.close();
 
     if (error)
@@ -234,16 +236,16 @@ bool SDCardModule::getFingerprintModelByVisitorId(const char *visitorId, JsonObj
     }
 
     // Check if the document is a valid array
-    if (!document.is<JsonArray>())
+    if (!staticDocument.is<JsonArray>())
     {
         ESP_LOGE(SD_CARD_LOG_TAG, "JSON file does not contain an array.");
         return false; // Return false if not an array
     }
 
     // Search for the user by visitorId
-    for (JsonObject user : document.as<JsonArray>())
+    for (JsonObject user : staticDocument.as<JsonArray>())
     {
-        if (!user.containsKey("visitor_id"))
+        if (!user["visitor_id"].is<const char *>())
         {
             continue; // Skip if the user object does not have "visitor_id"
         }
@@ -265,7 +267,7 @@ std::string *SDCardModule::getFingerprintModelById(int fingerprintId)
 {
     ESP_LOGI(SD_CARD_LOG_TAG, "Searching for Fingerprint Model with Fingerprint ID: %d", fingerprintId);
 
-    StaticJsonDocument<4096> document; // Adjust size according to your file size
+    JsonDocument document; // Adjust size according to your file size
 
     // Open the file containing fingerprint data
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -296,7 +298,7 @@ std::string *SDCardModule::getFingerprintModelById(int fingerprintId)
     // Search for the fingerprintId in the "key_access" array of each user
     for (JsonObject user : document.as<JsonArray>())
     {
-        if (!user.containsKey("key_access"))
+        if (!user["key_access"].is<JsonArray>())
         {
             continue; // Skip if the user object does not have "key_access"
         }
@@ -353,7 +355,7 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char *visitorId)
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
-    DynamicJsonDocument document(8192); // Use DynamicJsonDocument for larger files
+    JsonDocument document; // Use DynamicJsonDocument for larger files
 
     if (file)
     {
@@ -378,8 +380,15 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char *visitorId)
     JsonArray users = document.as<JsonArray>();
     for (int i = 0; i < users.size(); i++)
     {
+
         JsonObject user = users[i].as<JsonObject>();
-        if (user.containsKey("visitor_id") && user["visitor_id"].is<String>() && strcmp(user["visitor_id"].as<const char *>(), visitorId) == 0)
+        if (user["visitor_id"] == nullptr)
+        {
+            ESP_LOGI(SD_CARD_LOG_TAG, "SKIP BECAUSE DONT HAVE VISITOR ID %s", visitorId);
+
+            continue;
+        }
+        if (user["visitor_id"].is<String>() && strcmp(user["visitor_id"].as<String>().c_str(), visitorId) == 0)
         {
             userFound = true;
             users.remove(i); // Remove the user object from the array
@@ -472,7 +481,7 @@ std::string *SDCardModule::getVisitorIdByNFC(char *id)
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
-    StaticJsonDocument<256> document;
+    JsonDocument document;
 
     if (file)
     {
@@ -631,7 +640,7 @@ bool SDCardModule::deleteNFCFromSDCard(const char *visitorId)
     }
     // Open the file and then close it and create new Static in heap
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
-    DynamicJsonDocument document(8192); // Use DynamicJsonDocument for larger files
+    JsonDocument document; // Use DynamicJsonDocument for larger files
 
     if (file)
     {
@@ -655,6 +664,13 @@ bool SDCardModule::deleteNFCFromSDCard(const char *visitorId)
 
     for (JsonObject user : document.as<JsonArray>())
     {
+        if (user["visitor_id"] == nullptr)
+        {
+            ESP_LOGI(SD_CARD_LOG_TAG, "SKIP BECAUSE DONT HAVE VISITOR ID %s", visitorId);
+
+            continue;
+        }
+
         const char *currentVisitorId = user["visitor_id"];
         const char *currentUsername = user["name"];
         ESP_LOGI(SD_CARD_LOG_TAG, "CURRENT VISITOR ID %s", currentVisitorId);
@@ -798,7 +814,7 @@ bool SDCardModule::loadAllFingerprintIds(std::unordered_set<int> &idSet)
         return false;
     }
 
-    StaticJsonDocument<4096> document; // Adjust size as needed
+    JsonDocument document; // Adjust size as needed
     DeserializationError error = deserializeJson(document, file);
     file.close();
 

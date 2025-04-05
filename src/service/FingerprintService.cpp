@@ -63,7 +63,6 @@ bool FingerprintService::addFingerprint(const char *username)
     if (statusCode != 200)
     {
         ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Request failed with status code: %d", statusCode);
-        _fingerprintSensor->deleteFingerprintModel(fingerprintId);
         sendbleNotification("ERR", username, "", "Fingerprint", "Failed to send request to server!");
 
         return false;
@@ -137,6 +136,12 @@ bool FingerprintService::deleteFingerprint(const char *visitorId)
     if (!_sdCardModule->getFingerprintModelByVisitorId(visitorId, userData))
     {
         ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to retrieve user data for Visitor ID: %s", visitorId);
+        return false;
+    }
+
+    if (!userData.containsKey("key_access"))
+    {
+        ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Key Access not found for Visitor ID: %s", visitorId);
         return false;
     }
 

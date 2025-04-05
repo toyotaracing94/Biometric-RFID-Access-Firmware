@@ -175,6 +175,7 @@ bool NFCService::authenticateAccessNFC()
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", response.c_str());
             return true;
         }
+
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card ID %s is detected but not stored in our data system!", uidCard);
         return false;
     }
