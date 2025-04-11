@@ -21,7 +21,6 @@
 #include "tasks/FingerprintTask/FingerprintTask.h"
 
 #include "communication/ble/BLEModule.h"
-#include "communication/wifi/Wifi.h"
 #include "entity/CommandBleData.h"
 
 // Initialize public state

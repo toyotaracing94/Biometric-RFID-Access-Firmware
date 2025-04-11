@@ -236,7 +236,7 @@ void DoorInfoService::sendNotification(JsonDocument& json){
     serializeJson(json, buffer);
     _pNotificationChar -> setValue(buffer.c_str());
     _pNotificationChar -> notify();
-    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent to Notification Characteristic!");
 }
 
 /**
@@ -256,5 +256,5 @@ void DoorInfoService::sendNotification(char* status, char* message){
     serializeJson(document, buffer);
     _pNotificationChar -> setValue(buffer.c_str());
     _pNotificationChar -> notify();
-    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent: %s", buffer.c_str());
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent to Notification Characteristic!");
 }
