@@ -2,8 +2,8 @@
 #include "NFCService.h"
 #include <esp_log.h>
 
-NFCService::NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule* bleModule) 
-    : _nfcSensor(nfcSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule){
+NFCService::NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule* bleModule, QueueHandle_t nfcToWiFiQueue) 
+    : _nfcSensor(nfcSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule), _nfcToWiFiQueue(nfcToWiFiQueue){
     setup();
 }
 
@@ -103,7 +103,16 @@ bool NFCService::authenticateAccessNFC(){
     else {
         if(_sdCardModule->isNFCIdRegistered(uidCard)){
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card Match with ID %s", uidCard);
-            _doorRelay->toggleRelay();
+            _doorRelay -> toggleRelay();
+
+            // Send history access to server
+            nfcQueueMessage nfcMessage;
+            nfcMessage.username = "Unknown";
+            nfcMessage.uidCard = uidCard;
+
+            if (xQueueSend(_nfcToWiFiQueue, &nfcMessage, 0) != pdTRUE) ESP_LOGW(NFC_SERVICE_LOG_TAG, "Queue full or failed to send message to WiFi task");
+            else ESP_LOGI(NFC_SERVICE_LOG_TAG, "Message successfully sent to WiFi task");
+
             return true;
         }
         // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System

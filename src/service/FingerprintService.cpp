@@ -2,8 +2,8 @@
 #include "FingerprintService.h"
 #include <esp_log.h>
 
-FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule) 
-    : _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule){
+FingerprintService::FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule, QueueHandle_t fingerprintToWiFiQueue) 
+    : _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule), _fingerprintToWiFiQueue(fingerprintToWiFiQueue){
     setup();
 }
 
@@ -103,7 +103,7 @@ bool FingerprintService::deleteFingerprint(const char* username, int fingerprint
  *         false if the fingerprint is not recognized or registered.
  */
 bool FingerprintService::authenticateAccessFingerprint(){
-    int isRegsiteredModel = _fingerprintSensor-> getFingerprintIdModel();
+    int isRegsiteredModel = _fingerprintSensor -> getFingerprintIdModel();
     if(isRegsiteredModel > 0){
         if(_sdCardModule->isFingerprintIdRegistered(isRegsiteredModel)){
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Match with ID %d", isRegsiteredModel);

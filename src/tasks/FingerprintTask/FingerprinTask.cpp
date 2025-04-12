@@ -76,7 +76,7 @@ void FingerprintTask::taskFunction(void *params){
         ESP_LOGD(FINGERPRINT_TASK_LOG_TAG, "Running Routine Fingerprint Thread");
 
         if (xSemaphoreTake( task-> _xFingerprintSemaphore, portMAX_DELAY) == pdTRUE) {
-            if (task->_fingerprintService->authenticateAccessFingerprint()) 
+            if (task-> _fingerprintService -> authenticateAccessFingerprint()) 
                 ESP_LOGD(FINGERPRINT_TASK_LOG_TAG, "Fingerprint access granted.");
             else 
                 ESP_LOGD(FINGERPRINT_TASK_LOG_TAG, "Fingerprint access denied.");

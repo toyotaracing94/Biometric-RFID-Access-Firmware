@@ -19,12 +19,18 @@
 
 #include "tasks/NFCTask/NFCTask.h"
 #include "tasks/FingerprintTask/FingerprintTask.h"
+#include "tasks/WifiTask/WifiTask.h"
 
 #include "communication/ble/BLEModule.h"
 #include "entity/CommandBleData.h"
+#include "entity/QueueMessage.h"
 
 // Initialize public state
 static SystemState systemState = RUNNING;
+
+// Initialize queues
+QueueHandle_t fingerprintToWiFiQueue;
+QueueHandle_t nfcToWiFiQueue;
 
 extern "C" void app_main(void)
 {
@@ -37,6 +43,10 @@ extern "C" void app_main(void)
     }
     ESP_ERROR_CHECK( ret );
     
+    // Create a queue for handling WiFi States
+    nfcToWiFiQueue = xQueueCreate(10, sizeof(nfcQueueMessage));
+    fingerprintToWiFiQueue = xQueueCreate(10, sizeof(fingerprintQueueMessage));
+
     // Initialize the Sensor and Electrical Components
     DoorRelay *doorRelay = new DoorRelay();
     SDCardModule *sdCardModule = new SDCardModule();
@@ -47,13 +57,14 @@ extern "C" void app_main(void)
     BLEModule *bleModule = new BLEModule();
 
     // Initialize the Service
-    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule);
-    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule);
+    FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule, fingerprintToWiFiQueue);
+    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule, nfcToWiFiQueue);
     SyncService *syncService = new SyncService(sdCardModule, bleModule);
 
     // Initialize the Task
     NFCTask *nfcTask = new NFCTask("NFC Task", 1, nfcService);
     FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, fingerprintService);
+    WifiTask *wifiTask = new WifiTask("Wifi Task", 1, nfcToWiFiQueue, fingerprintToWiFiQueue);
 
     // Setup BLE
     bleModule -> initBLE();
@@ -62,6 +73,7 @@ extern "C" void app_main(void)
     // Start Task
     nfcTask -> startTask();
     fingerprintTask -> startTask();
+    wifiTask -> startTask();     // Setup Wifi Task
      
     // Loop Main Mechanism
     while(1){
