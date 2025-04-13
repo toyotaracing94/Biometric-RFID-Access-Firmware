@@ -4,7 +4,8 @@
 NFCTask::NFCTask(const char* taskName, UBaseType_t priority, NFCService* nfcService)
     : _taskName(taskName), _priority(priority), _nfcService(nfcService) {
         
-        _xNfcSemaphore = xSemaphoreCreateBinary();
+        _xNfcSemaphore = xSemaphoreCreateBinary();\
+        if (_xNfcSemaphore == NULL) ESP_LOGE(NFC_TASK_LOG_TAG, "Failed to create NFC semaphore.");
         xSemaphoreGive(_xNfcSemaphore);
     }
 
@@ -30,7 +31,7 @@ void NFCTask::startTask() {
  */
 bool NFCTask::suspendTask(){
     if (_taskHandle != nullptr) {
-        if (xSemaphoreTake(_xNfcSemaphore, 0) == pdTRUE) {
+        if (xSemaphoreTake(_xNfcSemaphore, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(NFC_TASK_LOG_TAG, "NFC Task is suspended.");
             return true;
         }

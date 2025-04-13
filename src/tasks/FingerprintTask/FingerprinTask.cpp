@@ -5,6 +5,7 @@ FingerprintTask::FingerprintTask(const char* taskName, UBaseType_t priority, Fin
     : _taskName(taskName), _priority(priority), _fingerprintService(fingerprintService) {
         
         _xFingerprintSemaphore = xSemaphoreCreateBinary();
+        if (_xFingerprintSemaphore == NULL) ESP_LOGE(FINGERPRINT_TASK_LOG_TAG, "Failed to create Fingerprint semaphore.");
         xSemaphoreGive(_xFingerprintSemaphore);
     }
 
@@ -30,7 +31,7 @@ void FingerprintTask::startTask() {
  */
 bool FingerprintTask::suspendTask(){
     if (_taskHandle != nullptr){
-        if (xSemaphoreTake(_xFingerprintSemaphore, 0) == pdTRUE) {
+        if (xSemaphoreTake(_xFingerprintSemaphore, portMAX_DELAY) == pdTRUE) {
             ESP_LOGI(FINGERPRINT_TASK_LOG_TAG, "Fingerprint Task is suspended.");
             return true;
         }
