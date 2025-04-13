@@ -19,9 +19,9 @@ class Wifi{
         const char* getIpAddress(void);
         void updateStatus(bool status);
         wl_status_t get_state(void);
-        std::string Wifi::sendPostRequest(const std::string &url, const std::string &payload);
-        std::string Wifi::sendGetRequest(const std::string &url);
-        std::string Wifi::sendDeleteRequest(const std::string &url);
+        std::string sendPostRequest(const std::string &url, const std::string &payload);
+        std::string sendGetRequest(const std::string &url);
+        std::string sendDeleteRequest(const std::string &url);
 
     private:
         const char* _apName;

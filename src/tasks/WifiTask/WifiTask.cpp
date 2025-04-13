@@ -116,10 +116,12 @@ void WifiTask::handleFingerprintTask(fingerprintQueueMessage message) {
 
 void WifiTask::sendToServer(String route, nfcQueueMessage message){
     // TODO: LOGIC FOR SENDING TO SERVER
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Processing NFC Task to WiFi");
 }
 
 void WifiTask::sendToServer(String route, fingerprintQueueMessage message){
     // TODO: LOGIF FOR SENDING TO SERVER
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Processing Fingerprint Task to WiFi");
 }
 
 
