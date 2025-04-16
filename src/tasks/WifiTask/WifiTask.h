@@ -6,33 +6,37 @@
 #include <freertos/task.h>
 #include <esp_log.h>
 
+#include "service/WifiService.h"
+
 #include "tasks/BaseTask.h"
 #include "communication/wifi/Wifi.h"
 
-#include "enum/SystemState.h"
+#include "enum/OperationState.h"
 #include "entity/QueueMessage.h"
 
 /// @brief Class for managing the WiFi Task Action
 class WifiTask : BaseTask {
     public:
-        WifiTask(const char* taskName, UBaseType_t priority, QueueHandle_t nfcToWiFiQueue, QueueHandle_t fingerprintToWiFiQueue);
+        WifiTask(const char* taskName, UBaseType_t priority, WifiService *wifiService, 
+                 QueueHandle_t nfcQueueRequest, QueueHandle_t nfcQueueResponse, 
+                 QueueHandle_t fingerprintQueueRequest, QueueHandle_t fingerprintQueueResponse);
         ~WifiTask();
         void startTask() override;
         bool suspendTask() override;
         bool resumeTask() override;
-        void handleNFCTask(nfcQueueMessage message);
-        void handleFingerprintTask(fingerprintQueueMessage message);
-        void sendToServer(String route, nfcQueueMessage message);
-        void sendToServer(String route, fingerprintQueueMessage message);
+        void handleNFCTask(NFCQueueRequest message);
+        void handleFingerprintTask(FingerprintQueueRequest message);
         
     private:
         const char* _taskName;
         UBaseType_t _priority;
         TaskHandle_t _taskHandle;
         SemaphoreHandle_t _xWifiSemaphore;
-        QueueHandle_t _nfcToWiFiQueue;
-        QueueHandle_t _fingerprintToWiFiQueue;
-        Wifi* _wifi;
+        WifiService* _wifiService;
+        QueueHandle_t _nfcQueueRequest;
+        QueueHandle_t _nfcQueueResponse;
+        QueueHandle_t _fingerprintQueueRequest;
+        QueueHandle_t _fingerprintQueueResponse;
         static void loop(void *parameter);
 };
 

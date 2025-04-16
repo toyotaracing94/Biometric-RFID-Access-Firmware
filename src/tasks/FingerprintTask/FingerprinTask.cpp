@@ -11,7 +11,7 @@ FingerprintTask::FingerprintTask(const char* taskName, UBaseType_t priority, Fin
 
 /**
  * @brief Create the Fingerprint Task.
- * 
+ *
  */
 void FingerprintTask::startTask() {
     xTaskCreate(
@@ -27,7 +27,7 @@ void FingerprintTask::startTask() {
 
 /**
  * @brief Suspend the Fingerprint Task operation.
- * 
+ *
  */
 bool FingerprintTask::suspendTask(){
     if (_taskHandle != nullptr){
@@ -45,7 +45,7 @@ bool FingerprintTask::suspendTask(){
 
 /**
  * @brief Resume the Fingerprint Task operation.
- * 
+ *
  */
 bool FingerprintTask::resumeTask(){
     if (_taskHandle != nullptr) {
@@ -60,13 +60,14 @@ bool FingerprintTask::resumeTask(){
 
 /**
  * @brief Function to be run by the Fingerprint Task.
- * 
- * This function is the main task routine that continuously authenticates access 
+ *
+ * This function is the main task routine that continuously authenticates access
  * using the fingerprint sensor.
- * 
+ *
  * @param params Pointer to the task parameters (in this case, the FingerprintTask instance).
  */
-void FingerprintTask::taskFunction(void *params){
+void FingerprintTask::taskFunction(void *params)
+{
     // TODO: Search like what the hell is this
     // Embarasing to say, this is what I envision for separating the Task Service
     // But this came from chatGPT and without filtering this first

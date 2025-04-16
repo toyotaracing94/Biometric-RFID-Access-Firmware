@@ -7,6 +7,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 
+/// @brief Class wrapper for WiFo operation. For now it include api service in here
 class Wifi{
     public:
         Wifi(const char* ssid = "ESP32-AP", QueueHandle_t statusQueue = NULL);

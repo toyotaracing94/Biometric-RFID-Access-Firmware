@@ -26,5 +26,4 @@ class FingerprintTask : BaseTask {
         static void taskFunction(void *parameter);
 };
 
-
 #endif

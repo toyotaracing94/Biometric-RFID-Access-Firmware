@@ -4,25 +4,34 @@
 #include "FingerprintSensor.h"
 #include "DoorRelay.h"
 #include "repository/SDCardModule/SDCardModule.h"
+#include "config/Config.h"
+#include "enum/LockType.h"
+#include "entity/QueueMessage.h"
 #include "communication/ble/BLEModule.h"
 
 /// @brief Class that manages the Fingerprint Access Control system by wrapping the functionalitites of Fingerprint sensor, SD Card module, and the Door Relay
-class FingerprintService {
+class FingerprintService
+{
 public:
-    FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay, BLEModule* bleModule, QueueHandle_t fingerprintToWiFiQueue);
+    FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay, BLEModule* bleModule, QueueHandle_t fingerprintQueueRequest, QueueHandle_t fingerprintQueueResponse);
     bool setup();
-    bool addFingerprint(const char* username);
-    bool deleteFingerprint(const char* username, int fingerprintId);
+    bool addFingerprint(const char *username);
+    bool deleteFingerprint(const char *visitorId);
     bool authenticateAccessFingerprint();
     uint8_t generateFingerprintId();
-    void sendbleNotification(char* status, const char* username, int fingerprintId, char* message);
+
+    // Helper functions
+    void sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message);
+    bool handleError(const char* username, const char* visitorId, const char* message, bool cleanup);
+    bool handleDeleteError(const char* visitorId, const char* message);
 
 private:
     FingerprintSensor* _fingerprintSensor;
     SDCardModule* _sdCardModule;
     DoorRelay* _doorRelay;
     BLEModule* _bleModule;
-    QueueHandle_t _fingerprintToWiFiQueue;
+    QueueHandle_t _fingerprintQueueRequest;
+    QueueHandle_t _fingerprintQueueResponse;
 };
 
 #endif

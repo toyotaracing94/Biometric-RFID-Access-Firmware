@@ -6,6 +6,7 @@
  * @enum WifiState
  * @brief Enum representing the state of WiFi connection
  * 
+ * For now this is still not being used properly, will try to hold this to better make use of it
  */
 enum WifiState {
     NOT_INITIALIZED,
