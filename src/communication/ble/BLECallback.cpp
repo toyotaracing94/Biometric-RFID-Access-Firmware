@@ -15,7 +15,7 @@ void BLECallback::onConnect(BLEServer *pServer){
 }
 
 /**
- * @brief	Handles the BLE client disconnected event.
+ * @brief Handles when the BLE client disconnected event.
  * 
  * @param pServer Pointer to the BLEServer object.
  * 
@@ -23,4 +23,5 @@ void BLECallback::onConnect(BLEServer *pServer){
  */
 void BLECallback::onDisconnect(BLEServer *pServer){
     ESP_LOGI(BLE_CALLBACK_LOG_TAG, "A Device just disconnected! Device %s", BLEDevice::toString().c_str());
+    pServer -> startAdvertising();
 }

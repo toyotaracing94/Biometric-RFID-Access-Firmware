@@ -7,7 +7,7 @@ SyncService::SyncService(SDCardModule *sdCardModule, BLEModule* bleModule)
 
 void SyncService::sync(){
     ESP_LOGI(SYNC_SERVICE_LOG_TAG, "Start Sync to Titan by Sending Data in ESP32");
-    JsonDocument object = _sdCardModule -> syncData();
+    JsonDocument object = _sdCardModule -> syncData();  
     JsonObject payload = object.as<JsonObject>();
     
     char status[3] = "OK";

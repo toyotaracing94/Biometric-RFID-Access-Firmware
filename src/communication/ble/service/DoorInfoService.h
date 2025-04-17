@@ -10,7 +10,7 @@
 #include <esp_log.h>
 #include <ArduinoJson.h>
 
-#include "ErrorCodes.h"
+#include "StatusCodes.h"
 
 #define SERVICE_UUID                         "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define DOOR_CHARACTERISTIC_UUID             "ce51316c-d0e1-4ddf-b453-bda6477ee9b9"
