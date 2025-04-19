@@ -82,7 +82,20 @@ void WifiTask::loop(void *params){
     
     // Initialize the Wifi operation inside the task
     vTaskDelay(1000 / portTICK_PERIOD_MS); // Give time for system to catch up
-    task -> _wifiService -> setup(); 
+    task -> _wifiService -> setup();
+
+    // Spawning job schedule to periodically check wether WiFi is connected or not
+    // If yes, then that means there something wrong with the source
+    // Lets just create new connection
+    xTaskCreate(
+        reconnect,                  // Function to run in the task
+        "reconnect",                // Name of the task
+        MINIMUM_STACK_SIZE,         // Stack size (adjustable), I'll set this to maximum personal config just in case
+        task,                       // Pass the `this` pointer to the task
+        5,                          // Task priority
+        NULL                        // Store the task handle for later control
+    );
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for checking WiFi Connectivity created successfully: Task Name = %s, Priority = %d", "reconnect", 5);
 
     // Hold the queues message
     NFCQueueRequest nfcMessage;
@@ -103,6 +116,30 @@ void WifiTask::loop(void *params){
             task->handleFingerprintTask(fingerprintMessage);
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
+}
+
+/**
+ * @brief Sheculer Job FreeRTOS loop for the WifiTask.
+ *
+ * Check the WiFi does the WiFi is connected to any, if not then spawn new Config portal to change the
+ * connection to others WiFi
+ *
+ * @param params Pointer to the WifiTask instance (cast from void*).
+ */
+void WifiTask::reconnect(void *params){
+    WifiTask* task = (WifiTask*)params;
+
+    while (1){
+        // Start reconnecting thread job
+        bool reconnected = task-> _wifiService->reconnect();
+
+        if(reconnected) ESP_LOGI(WIFI_TASK_LOG_TAG, "Success reconnected!");
+        else ESP_LOGE(WIFI_TASK_LOG_TAG, "Failed to reconnect. Possibly not needed or a timeout");
+        
+        // Will start this job in every 3 minutes to check, it's because the timeout set to 3 minutes for the portal
+        // So adjusting that
+        vTaskDelay(3 * 60 * 1000 / portTICK_PERIOD_MS);
     }
 }
 

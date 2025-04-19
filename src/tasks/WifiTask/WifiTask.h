@@ -38,6 +38,7 @@ class WifiTask : BaseTask {
         QueueHandle_t _fingerprintQueueRequest;
         QueueHandle_t _fingerprintQueueResponse;
         static void loop(void *parameter);
+        static void reconnect(void *parameter);
 };
 
 #endif

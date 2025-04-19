@@ -54,9 +54,15 @@ bool Wifi::isConnected() {
 bool Wifi::reconnect() {
     if (!isConnected()){
         ESP_LOGW(WIFI_LOG_TAG, "WiFi not connected. Attempting to reconnect...");
+
+        // Reset settings as there's no use for trying to reconnect to last credentials
+        ESP_LOGI(WIFI_LOG_TAG, "Clearing saved credentials to force new configuration.");
+        _wifiManager.resetSettings();
+    
+        ESP_LOGI(WIFI_LOG_TAG, "Launching WiFiManager configuration portal...");
         _wifiManager.autoConnect(_apName);
+
         bool connected = isConnected();
-        updateStatus(connected);
         ESP_LOGI(WIFI_LOG_TAG, "Reconnection result: %s", connected ? "SUCCESS" : "FAILED");
         return true;
     }
