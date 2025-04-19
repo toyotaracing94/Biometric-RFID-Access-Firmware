@@ -68,6 +68,7 @@ void WifiTask::loop(void *params){
     WifiTask* task = (WifiTask*)params;
     
     // Initialize the Wifi operation inside the task
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // Give time for system to catch up
     task -> _wifiService -> setup(); 
 
     // Hold the queues message
