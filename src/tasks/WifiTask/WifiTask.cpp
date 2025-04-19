@@ -19,9 +19,6 @@ WifiTask::WifiTask(const char* taskName, UBaseType_t priority, WifiService* wifi
  * 
  */
 void WifiTask::startTask() {
-    // Start the WiFi operation
-    _wifiService->setup();
-
     xTaskCreatePinnedToCore(
         loop,                       // Function to run in the task
         _taskName,                  // Name of the task
@@ -70,7 +67,7 @@ bool WifiTask::resumeTask(){
 void WifiTask::loop(void *params){
     WifiTask* task = (WifiTask*)params;
     
-    // Initialize the Wifi
+    // Initialize the Wifi operation inside the task
     task -> _wifiService -> setup(); 
 
     // Hold the queues message

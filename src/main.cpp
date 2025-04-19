@@ -80,6 +80,11 @@ extern "C" void app_main(void)
     nfcTask -> startTask();
     fingerprintTask -> startTask();
     wifiTask -> startTask();     // Setup Wifi Task
+
+    // Checking the heap size after task creation
+    ESP_LOGI(LOG_TAG, "Heap Size Information!");
+    ESP_LOGI(LOG_TAG, "Free heap: %u bytes", ESP.getFreeHeap());
+    ESP_LOGI(LOG_TAG, "Minimum free heap ever: %u bytes", ESP.getMinFreeHeap());
      
     // Loop Main Mechanism
     while (1) {
