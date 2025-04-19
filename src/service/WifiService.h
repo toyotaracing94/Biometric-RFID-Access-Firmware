@@ -15,6 +15,7 @@ class WifiService {
         WifiService(BLEModule *bleModule, SDCardModule *sdCardModule);
         bool setup();
         bool isConnected();
+        bool reconnect();
 
         NFCQueueResponse addNFCToServer(NFCQueueRequest nfcRequest);
         NFCQueueResponse deleteNFCFromServer(NFCQueueRequest nfcRequest);

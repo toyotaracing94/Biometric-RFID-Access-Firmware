@@ -70,7 +70,7 @@ extern "C" void app_main(void)
     // Initialize the Task
     NFCTask *nfcTask = new NFCTask("NFC Task", 1, nfcService);
     FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, fingerprintService);
-    WifiTask *wifiTask = new WifiTask("Wifi Task", 1, wifiService, nfcQueueRequest, nfcQueueResponse, fingerprintQueueRequest, fingerprintQueueResponse);
+    WifiTask *wifiTask = new WifiTask("Wifi Task", 10, wifiService, nfcQueueRequest, nfcQueueResponse, fingerprintQueueRequest, fingerprintQueueResponse);
 
     // Setup BLE
     bleModule -> initBLE();
@@ -80,6 +80,11 @@ extern "C" void app_main(void)
     nfcTask -> startTask();
     fingerprintTask -> startTask();
     wifiTask -> startTask();     // Setup Wifi Task
+
+    // Checking the heap size after task creation
+    ESP_LOGI(LOG_TAG, "Heap Size Information!");
+    ESP_LOGI(LOG_TAG, "Free heap: %u bytes", ESP.getFreeHeap());
+    ESP_LOGI(LOG_TAG, "Minimum free heap ever: %u bytes", ESP.getMinFreeHeap());
      
     // Loop Main Mechanism
     while (1) {

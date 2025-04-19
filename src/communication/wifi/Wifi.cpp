@@ -14,10 +14,22 @@ Wifi::Wifi(const char* ssid, QueueHandle_t statusQueue)
 void Wifi::init() {
     ESP_LOGI(WIFI_LOG_TAG, "Initializing WiFi Manager Server and Service...");
     WiFi.mode(WIFI_STA);
+    
+    // Configurations for the WiFi Manager
+    _wifiManager.setConnectTimeout(20);
+    _wifiManager.setConfigPortalTimeout(60);
+
     _wifiManager.autoConnect(_apName);
 
-    ESP_LOGI(WIFI_LOG_TAG, "ESP has been successfully connected to Wifi/Internet");
-    WiFi.begin(); // Save the credential so automatically will connect to last credential that has been connected
+    bool connected = isConnected();
+    if (connected) {
+        ESP_LOGI(WIFI_LOG_TAG, "ESP has been successfully connected to Wifi/Internet: %s", WiFi.SSID().c_str());
+        // WiFi.begin();  // Save the credential so automatically will connect to last credential that has been connected
+    } else {
+        // Failed to connect or user didn't provide credentials
+        ESP_LOGE(WIFI_LOG_TAG, "Failed to connect to WiFi or config portal timed out.");
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS); // Give enough time so task watchdog can process this 
 }
 
 /**
@@ -42,9 +54,15 @@ bool Wifi::isConnected() {
 bool Wifi::reconnect() {
     if (!isConnected()){
         ESP_LOGW(WIFI_LOG_TAG, "WiFi not connected. Attempting to reconnect...");
+
+        // Reset settings as there's no use for trying to reconnect to last credentials
+        ESP_LOGI(WIFI_LOG_TAG, "Clearing saved credentials to force new configuration.");
+        _wifiManager.resetSettings();
+    
+        ESP_LOGI(WIFI_LOG_TAG, "Launching WiFiManager configuration portal...");
         _wifiManager.autoConnect(_apName);
+
         bool connected = isConnected();
-        updateStatus(connected);
         ESP_LOGI(WIFI_LOG_TAG, "Reconnection result: %s", connected ? "SUCCESS" : "FAILED");
         return true;
     }

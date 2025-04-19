@@ -26,6 +26,11 @@ bool WifiService::isConnected() {
     return _wifi->isConnected();
 }
 
+bool WifiService::reconnect(){
+    ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Attempting to reconnect to WiFi...");
+    return _wifi->reconnect();
+}
+
 /**
  * @brief Sends request for adding new NFC access data to the backend server via HTTP POST.
  *

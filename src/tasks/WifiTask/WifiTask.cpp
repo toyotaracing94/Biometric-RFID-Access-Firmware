@@ -17,19 +17,21 @@ WifiTask::WifiTask(const char* taskName, UBaseType_t priority, WifiService* wifi
 /**
  * @brief Create the Wifi Task.
  * 
+ * @note Previously I always got error of
+ * [E][WiFiClient.cpp:395] write(): fail on fd 54, errno: 11, "No more processes"
+ * when wrapping this WiFi manager to this WiFi Task. I concure it's from the memory consumption as when I start the service
+ * from main thread, there no wrong what's so ever. I fix this by reducing the stack size for the WiFi task from MAXIMUM_STACK_SIZE to MIDSIZE_STACK_SIZE
+ * 
+ * Here's the link for the some answer possibly https://github.com/espressif/arduino-esp32/issues/6129#issuecomment-2490883110
  */
 void WifiTask::startTask() {
-    // Start the WiFi operation
-    _wifiService->setup();
-
-    xTaskCreatePinnedToCore(
+    xTaskCreate(
         loop,                       // Function to run in the task
         _taskName,                  // Name of the task
-        MAX_STACK_SIZE,             // Stack size (adjustable), I'll set this to maximum personal config just in case
+        MIDSIZE_STACK_SIZE,         // Stack size (adjustable), I'll set this to maximum personal config just in case
         this,                       // Pass the `this` pointer to the task
         _priority,                  // Task priority
-        &_taskHandle,               // Store the task handle for later control,
-        1
+        &_taskHandle                // Store the task handle for later control
     );
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task created successfully: Task Name = %s, Priority = %d", _taskName, _priority);
 }
@@ -67,11 +69,33 @@ bool WifiTask::resumeTask(){
     }
 }
 
+/**
+ * @brief Main FreeRTOS loop for the WifiTask.
+ *
+ * Initializes the WiFi service and continuously listens for NFC and fingerprint
+ * requests from their respective queues.
+ *
+ * @param params Pointer to the WifiTask instance (cast from void*).
+ */
 void WifiTask::loop(void *params){
     WifiTask* task = (WifiTask*)params;
     
-    // Initialize the Wifi
-    task -> _wifiService -> setup(); 
+    // Initialize the Wifi operation inside the task
+    vTaskDelay(1000 / portTICK_PERIOD_MS); // Give time for system to catch up
+    task -> _wifiService -> setup();
+
+    // Spawning job schedule to periodically check wether WiFi is connected or not
+    // If yes, then that means there something wrong with the source
+    // Lets just create new connection
+    xTaskCreate(
+        reconnect,                  // Function to run in the task
+        "reconnect",                // Name of the task
+        MINIMUM_STACK_SIZE,         // Stack size (adjustable), I'll set this to maximum personal config just in case
+        task,                       // Pass the `this` pointer to the task
+        5,                          // Task priority
+        NULL                        // Store the task handle for later control
+    );
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for checking WiFi Connectivity created successfully: Task Name = %s, Priority = %d", "reconnect", 5);
 
     // Hold the queues message
     NFCQueueRequest nfcMessage;
@@ -95,6 +119,38 @@ void WifiTask::loop(void *params){
     }
 }
 
+/**
+ * @brief Sheculer Job FreeRTOS loop for the WifiTask.
+ *
+ * Check the WiFi does the WiFi is connected to any, if not then spawn new Config portal to change the
+ * connection to others WiFi
+ *
+ * @param params Pointer to the WifiTask instance (cast from void*).
+ */
+void WifiTask::reconnect(void *params){
+    WifiTask* task = (WifiTask*)params;
+
+    while (1){
+        // Start reconnecting thread job
+        bool reconnected = task-> _wifiService->reconnect();
+
+        if(reconnected) ESP_LOGI(WIFI_TASK_LOG_TAG, "Success reconnected!");
+        else ESP_LOGE(WIFI_TASK_LOG_TAG, "Failed to reconnect. Possibly not needed or a timeout");
+        
+        // Will start this job in every 3 minutes to check, it's because the timeout set to 3 minutes for the portal
+        // So adjusting that
+        vTaskDelay(3 * 60 * 1000 / portTICK_PERIOD_MS);
+    }
+}
+
+/**
+ * @brief The handler function when receviving queue from `_nfcQueueRequest` to be send from WiFi Service into back NFC Service
+ * 
+ * Processes NFC operations based on the request state, such as adding,
+ * removing, or authenticating NFC (RFID) tags by communicating with the server.
+ * 
+ * @param message NFCQueueRequest message format from the queue
+ */
 void WifiTask::handleNFCTask(NFCQueueRequest message) {
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Handling NFC task, state: %d", message.state);
 
@@ -151,6 +207,14 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
     }
 }
 
+/**
+ * @brief The handler function when receviving queue from `_fingerprintQueueRequest` to be send from WiFi Service into back Fingerprint Service
+ * 
+ * Processes Fingerprint operations based on the request state, such as adding,
+ * removing, or authenticating Fingerprint by communicating with the server.
+ * 
+ * @param message FingerprintQueueRequest message format from the queue
+ */
 void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Handling Fingerprint task, state: %d", message.state);
     
