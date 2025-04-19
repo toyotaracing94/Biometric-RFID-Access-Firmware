@@ -70,7 +70,7 @@ extern "C" void app_main(void)
     // Initialize the Task
     NFCTask *nfcTask = new NFCTask("NFC Task", 1, nfcService);
     FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, fingerprintService);
-    WifiTask *wifiTask = new WifiTask("Wifi Task", 1, wifiService, nfcQueueRequest, nfcQueueResponse, fingerprintQueueRequest, fingerprintQueueResponse);
+    WifiTask *wifiTask = new WifiTask("Wifi Task", 10, wifiService, nfcQueueRequest, nfcQueueResponse, fingerprintQueueRequest, fingerprintQueueResponse);
 
     // Setup BLE
     bleModule -> initBLE();
