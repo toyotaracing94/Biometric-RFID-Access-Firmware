@@ -195,7 +195,7 @@ void WifiTask::listenOTA(void *params){
 void WifiTask::handleNFCTask(NFCQueueRequest message) {
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Handling NFC task, state: %d", message.state);
 
-    if (message.state == ADD_RFID) {
+    if (message.state == ENROLL_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Adding NFC (RFID) data to server.");
 
         if(_wifiService->isConnected()){
@@ -215,7 +215,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
         
     }
     
-    if (message.state == REMOVE_RFID) {
+    if (message.state == DELETE_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Removing NFC (RFID) data from server.");
         
         if(_wifiService->isConnected()){
@@ -235,7 +235,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
         }
     }
     
-    if (message.state == AUTH_RFID) {
+    if (message.state == AUTEHNTICATE_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Authenticating NFC (RFID) access.");
         
         if(_wifiService->isConnected()){
@@ -259,7 +259,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
 void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Handling Fingerprint task, state: %d", message.state);
     
-    if (message.state == ADD_FP) {
+    if (message.state == ENROLL_FP) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Adding Fingerprint data to server.");
         
         
@@ -279,7 +279,7 @@ void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
         }
     }
     
-    if (message.state == REMOVE_FP) { 
+    if (message.state == DELETE_FP) { 
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Removing Fingerprint data from server.");
         
         if(_wifiService->isConnected()){
@@ -299,7 +299,7 @@ void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
         }
     }
     
-    if (message.state == AUTH_FP) {
+    if (message.state == AUTHENTICATE_FP) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Authenticating Fingerprint access.");
         
         if(_wifiService->isConnected()){

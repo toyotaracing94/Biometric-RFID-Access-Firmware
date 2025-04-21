@@ -11,7 +11,7 @@
 #include "tasks/BaseTask.h"
 #include "communication/wifi/Wifi.h"
 
-#include "enum/OperationState.h"
+#include "enum/SystemState.h"
 #include "entity/QueueMessage.h"
 
 /// @brief Class for managing the WiFi Task Action

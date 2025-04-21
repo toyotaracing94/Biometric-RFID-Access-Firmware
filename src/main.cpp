@@ -131,56 +131,60 @@ extern "C" void app_main(void)
             nfcTask->resumeTask();
             break;
 
-        case DELETE_RFID:
-            ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
-            nfcTask->suspendTask();
+            case DELETE_RFID:
+                ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
+                nfcTask->suspendTask();
 
-            nfcService->deleteNFC(visitorId);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                nfcService->deleteNFC(visitorId);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            nfcTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                nfcTask->resumeTask();
+                break;
 
-        case ENROLL_FP:
-            ESP_LOGI(LOG_TAG, "Start Registering Fingerprint!");
-            fingerprintTask->suspendTask();
+            case ENROLL_FP:
+                ESP_LOGI(LOG_TAG, "Start Registering Fingerprint!");
+                fingerprintTask->suspendTask();
 
-            fingerprintService->addFingerprint(name);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                fingerprintService->addFingerprint(name);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            fingerprintTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                break;
 
-        case DELETE_FP:
-            ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
-            fingerprintTask->suspendTask();
+            case DELETE_FP:
+                ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
+                fingerprintTask->suspendTask();
 
-            fingerprintService->deleteFingerprint(visitorId);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                fingerprintService->deleteFingerprint(visitorId);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            fingerprintTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                break;
 
-        case UPDATE_VISITOR:
-            ESP_LOGI(LOG_TAG, "Start Sync Data!");
-            fingerprintTask->suspendTask();
-            nfcTask->suspendTask();
+            case UPDATE_VISITOR:
+                ESP_LOGI(LOG_TAG, "Start Sync Data!");
+                fingerprintTask->suspendTask();
+                nfcTask->suspendTask();
 
-            syncService->sync();
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                syncService->sync();
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            fingerprintTask->resumeTask();
-            nfcTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                nfcTask->resumeTask();
+                break;
+            
+            default:
+                break;
         }
+
         vTaskDelay(50 / portTICK_PERIOD_MS);
     }
 }

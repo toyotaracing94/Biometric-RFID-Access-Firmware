@@ -30,7 +30,7 @@ bool FingerprintService::addFingerprint(const char *username) {
     // Getting the visitorId first from the server
     // Pass the message into the queue message format
     FingerprintQueueRequest msg;
-    msg.state = ADD_FP;
+    msg.state = ENROLL_FP;
     msg.fingerprintId = fingerprintId;
     snprintf(msg.username, sizeof(msg.username), "%s", username);
     snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);
@@ -108,7 +108,7 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
     // Pass the message into the queue message format
     FingerprintQueueRequest msg;
     snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId);
-    msg.state = REMOVE_FP;
+    msg.state = DELETE_FP;
 
     // Send back the information to the server first to get the visitor id pass first from server
     if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
@@ -175,7 +175,7 @@ bool FingerprintService::authenticateAccessFingerprint(){
 
             // Send the access history without waiting the response
             FingerprintQueueRequest msg;
-            msg.state = AUTH_FP;
+            msg.state = AUTHENTICATE_FP;
             msg.fingerprintId = isRegsiteredModel;
             snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
 
@@ -258,7 +258,7 @@ bool FingerprintService::handleError(const char* username, const char* visitorId
 
     if (cleanup && visitorId) {
         FingerprintQueueRequest msg;
-        msg.state = REMOVE_FP;
+        msg.state = DELETE_FP;
         snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId);
         snprintf(msg.username, sizeof(msg.username), "%s", username);
         snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);
