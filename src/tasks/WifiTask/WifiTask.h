@@ -33,12 +33,15 @@ class WifiTask : BaseTask {
         TaskHandle_t _taskHandle;
         SemaphoreHandle_t _xWifiSemaphore;
         WifiService* _wifiService;
+
         QueueHandle_t _nfcQueueRequest;
         QueueHandle_t _nfcQueueResponse;
         QueueHandle_t _fingerprintQueueRequest;
         QueueHandle_t _fingerprintQueueResponse;
+
         static void loop(void *parameter);
         static void reconnect(void *parameter);
+        static void listenOTA(void *parameter);
 };
 
 #endif

@@ -4,6 +4,8 @@
 #include "communication/wifi/Wifi.h"
 #include "communication/ble/BLEModule.h"
 
+#include "ota/ota.h"
+
 #include "entity/QueueMessage.h"
 #include "enum/LockType.h"
 
@@ -12,7 +14,7 @@
 /// @brief Class that manages WiFi Service to send api requests
 class WifiService {
     public:
-        WifiService(BLEModule *bleModule, SDCardModule *sdCardModule);
+        WifiService(BLEModule *bleModule, OTA *otaModule, SDCardModule *sdCardModule);
         bool setup();
         bool isConnected();
         bool reconnect();
@@ -24,9 +26,13 @@ class WifiService {
         FingerprintQueueResponse addFingerprintToServer(FingerprintQueueRequest fingerprintRequest);
         FingerprintQueueResponse deleteFingerprintFromServer(FingerprintQueueRequest fingerprintRequest);
         FingerprintQueueResponse authenticateAccessFingerprintToServer(FingerprintQueueRequest fingerprintRequest);
-    
+
+        void beginOTA();
+        void handleOTA();
+
     private:
         BLEModule* _bleModule;
+        OTA* _otaModule;
         SDCardModule* _sdCardModule;
         Wifi* _wifi;
 };

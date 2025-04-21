@@ -2,8 +2,8 @@
 #include "WifiService.h"
 #include <esp_log.h>
 
-WifiService::WifiService(BLEModule* bleModule, SDCardModule *sdCardModule)
-    :_bleModule(bleModule), _sdCardModule(sdCardModule) {
+WifiService::WifiService(BLEModule* bleModule, OTA *otaModule, SDCardModule *sdCardModule)
+    :_bleModule(bleModule), _otaModule(otaModule), _sdCardModule(sdCardModule) {
     // Create new object of Wifi for the Wifi Tasks
     _wifi = new Wifi();
 }
@@ -33,8 +33,7 @@ bool WifiService::reconnect(){
 
 /**
  * @brief Sends request for adding new NFC access data to the backend server via HTTP POST.
- *
- * 
+ *   
  * @param nfcrequest The NFC request data, including VIN and username.
  * @return NFCQueueResponse The NFC response
  */
@@ -68,8 +67,7 @@ NFCQueueResponse WifiService::addNFCToServer(NFCQueueRequest nfcrequest){
 
 /**
  * @brief Sends request for delete  NFC access data to the backend server via HTTP DELETE.
- *
- * 
+ *  
  * @param nfcrequest The NFC request data, including VIN and username.
  * @return NFCQueueResponse The NFC response
  */
@@ -92,8 +90,7 @@ NFCQueueResponse WifiService::deleteNFCFromServer(NFCQueueRequest nfcrequest){
 
 /**
  * @brief Sends request for updating/adding new NFC access history the backend server via HTTP POST.
- *
- * 
+ *  
  * @param nfcrequest The NFC request data, including VIN and username.
  * @return NFCQueueResponse The NFC response
  */
@@ -124,8 +121,7 @@ NFCQueueResponse WifiService::authenticateAccessNFCToServer(NFCQueueRequest nfcr
 
 /**
  * @brief Sends request for adding new Fingerprint access data to the backend server via HTTP POST.
- *
- * 
+ *  
  * @param nfcrequest The Fingerprint request data, including VIN and username.
  * @return FingerprintQueueResponse The Fingerprint response
  */
@@ -156,6 +152,12 @@ FingerprintQueueResponse WifiService::addFingerprintToServer(FingerprintQueueReq
     return fingerprintResponse;
 }
 
+/**
+ * @brief Sends request for delete Fingerprint access data to the backend server via HTTP DELETE.
+ *  
+ * @param fingerprintRequest The Fingerprint request data, including VIN and username.
+ * @return FingerprintQueueRequest The Fingerprint response
+ */
 FingerprintQueueResponse WifiService::deleteFingerprintFromServer(FingerprintQueueRequest fingerprintRequest){
     ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for deleting Fingerprint data to the server");
 
@@ -173,6 +175,12 @@ FingerprintQueueResponse WifiService::deleteFingerprintFromServer(FingerprintQue
     return fingerprintResponse;
 }
 
+/**
+ * @brief Sends request for updating/adding new Fingerprint access history the backend server via HTTP POST.  
+ *
+ * @param fingerprintRequest The Fingerprint request data, including VIN and username.
+ * @return FingerprintQueueRequest The Fingerprint response
+ */
 FingerprintQueueResponse WifiService::authenticateAccessFingerprintToServer(FingerprintQueueRequest fingerprintRequest){
     ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for addding history Fingerprint data access to the server");
 
@@ -196,6 +204,34 @@ FingerprintQueueResponse WifiService::authenticateAccessFingerprintToServer(Fing
     snprintf(fingerprintResponse.response, sizeof(fingerprintResponse.response), "%s", response.c_str());
 
     return fingerprintResponse;
+}
+
+/**
+ * @brief Start the configuration of the OTA Service such as the callback for each OTA progress
+ * and starts the ArduinoOTA service
+ *   
+ */
+void WifiService::beginOTA(){
+    ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Start initializing the OTA Service!");
+
+    // Ensure first that devices is already connected to some WiFi
+    // that came from the WiFi Manager settings
+    while (WiFi.status() != WL_CONNECTED){
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+    }
+    _otaModule->init();
+}
+
+/**
+ * @brief Start the configuration of the OTA Service such as the callback for each OTA progress
+ * and starts the ArduinoOTA service
+ *   
+ */
+void WifiService::handleOTA(){
+    ESP_LOGD(WIFI_SERVICE_LOG_TAG, "Running the OTA Service!");
+
+    // Run this on the loop
+    _otaModule->handleOTA();
 }
 
 

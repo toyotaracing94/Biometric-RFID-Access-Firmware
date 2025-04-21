@@ -97,6 +97,18 @@ void WifiTask::loop(void *params){
     );
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for checking WiFi Connectivity created successfully: Task Name = %s, Priority = %d", "reconnect", 5);
 
+    // Spawning job schedule to periodically check/listen for any OTA updates request from external
+    xTaskCreate(
+        listenOTA,                  // Function to run in the task
+        "listenOTA",                // Name of the task
+        MINIMUM_STACK_SIZE,         // Stack size (adjustable), I'll set this to maximum personal config just in case
+        task,                       // Pass the `this` pointer to the task
+        5,                          // Task priority
+        NULL                        // Store the task handle for later control
+    );
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for listening OTA updates created successfully: Task Name = %s, Priority = %d", "listenOTA", 5);
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "New Updates Here");
+
     // Hold the queues message
     NFCQueueRequest nfcMessage;
     FingerprintQueueRequest fingerprintMessage;
@@ -120,7 +132,7 @@ void WifiTask::loop(void *params){
 }
 
 /**
- * @brief Sheculer Job FreeRTOS loop for the WifiTask.
+ * @brief Scheduler Job FreeRTOS loop for the WifiTask.
  *
  * Check the WiFi does the WiFi is connected to any, if not then spawn new Config portal to change the
  * connection to others WiFi
@@ -140,6 +152,28 @@ void WifiTask::reconnect(void *params){
         // Will start this job in every 3 minutes to check, it's because the timeout set to 3 minutes for the portal
         // So adjusting that
         vTaskDelay(3 * 60 * 1000 / portTICK_PERIOD_MS);
+    }
+}
+
+/**
+ * @brief Scheduler Job FreeRTOS loop for the WifiTask OTA Service.
+ * Run in loop for listening for any OTA request from external
+ *  
+ * @param params Pointer to the WifiTask instance (cast from void*).
+ */
+void WifiTask::listenOTA(void *params){
+    WifiTask* task = (WifiTask*)params;
+
+    // Start beginning the OTA Service
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Start OTA Service");
+    task->_wifiService->beginOTA();
+
+    vTaskDelay(50 / portTICK_PERIOD_MS); // Just caution to give enough time for the watchdog to process this OTA beginning
+
+    while (1){
+        ESP_LOGD(WIFI_TASK_LOG_TAG, "Start OTA Listening Service");
+        task->_wifiService->handleOTA();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
