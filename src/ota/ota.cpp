@@ -16,7 +16,7 @@ void OTA::init(){
     });
 
     ArduinoOTA.onEnd([]() {
-        ESP_LOGI(OTA_LOG_TAG, "OTA update finished.");
+        ESP_LOGI(OTA_LOG_TAG, "OTA update finished. Will Restart now...");
     });
 
     ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {

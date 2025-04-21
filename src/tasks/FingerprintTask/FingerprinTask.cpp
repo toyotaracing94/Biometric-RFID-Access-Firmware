@@ -17,7 +17,7 @@ void FingerprintTask::startTask() {
     xTaskCreate(
         taskFunction,               // Function to run in the task
         _taskName,                  // Name of the task
-        MIDSIZE_STACK_SIZE,         // Stack size (adjustable)
+        MINIMUM_STACK_SIZE,         // Stack size (adjustable)
         this,                       // Pass the `this` pointer to the task
         _priority,                  // Task priority
         &_taskHandle                // Store the task handle for later control

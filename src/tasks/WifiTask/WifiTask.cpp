@@ -107,7 +107,6 @@ void WifiTask::loop(void *params){
         NULL                        // Store the task handle for later control
     );
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for listening OTA updates created successfully: Task Name = %s, Priority = %d", "listenOTA", 5);
-    ESP_LOGI(WIFI_TASK_LOG_TAG, "New Updates Here");
 
     // Hold the queues message
     NFCQueueRequest nfcMessage;
@@ -144,6 +143,7 @@ void WifiTask::reconnect(void *params){
 
     while (1){
         // Start reconnecting thread job
+        ESP_LOGI(WIFI_TASK_LOG_TAG, "Start Reconnect Job Schedule!!");
         bool reconnected = task-> _wifiService->reconnect();
 
         if(reconnected) ESP_LOGI(WIFI_TASK_LOG_TAG, "Success reconnected!");
@@ -163,10 +163,17 @@ void WifiTask::reconnect(void *params){
  */
 void WifiTask::listenOTA(void *params){
     WifiTask* task = (WifiTask*)params;
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Start OTA Job Schedule!!");
 
     // Start beginning the OTA Service
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Start OTA Service");
     task->_wifiService->beginOTA();
+
+    // Checking the heap size after task creation
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Heap Size Information After OTA Service Begin!");
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Heap size: %u bytes", ESP.getHeapSize());
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Free heap: %u bytes", ESP.getFreeHeap());
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Minimum free heap ever: %u bytes", ESP.getMinFreeHeap());
 
     vTaskDelay(50 / portTICK_PERIOD_MS); // Just caution to give enough time for the watchdog to process this OTA beginning
 
