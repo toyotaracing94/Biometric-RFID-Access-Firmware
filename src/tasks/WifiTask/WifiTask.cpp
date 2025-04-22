@@ -97,6 +97,17 @@ void WifiTask::loop(void *params){
     );
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for checking WiFi Connectivity created successfully: Task Name = %s, Priority = %d", "reconnect", 5);
 
+    // Spawning job schedule to periodically check/listen for any OTA updates request from external
+    xTaskCreate(
+        listenOTA,                  // Function to run in the task
+        "listenOTA",                // Name of the task
+        MINIMUM_STACK_SIZE,         // Stack size (adjustable), I'll set this to maximum personal config just in case
+        task,                       // Pass the `this` pointer to the task
+        5,                          // Task priority
+        NULL                        // Store the task handle for later control
+    );
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Wifi Task Job Schedule for listening OTA updates created successfully: Task Name = %s, Priority = %d", "listenOTA", 5);
+
     // Hold the queues message
     NFCQueueRequest nfcMessage;
     FingerprintQueueRequest fingerprintMessage;
@@ -120,7 +131,7 @@ void WifiTask::loop(void *params){
 }
 
 /**
- * @brief Sheculer Job FreeRTOS loop for the WifiTask.
+ * @brief Scheduler Job FreeRTOS loop for the WifiTask.
  *
  * Check the WiFi does the WiFi is connected to any, if not then spawn new Config portal to change the
  * connection to others WiFi
@@ -132,6 +143,7 @@ void WifiTask::reconnect(void *params){
 
     while (1){
         // Start reconnecting thread job
+        ESP_LOGI(WIFI_TASK_LOG_TAG, "Start Reconnect Job Schedule!!");
         bool reconnected = task-> _wifiService->reconnect();
 
         if(reconnected) ESP_LOGI(WIFI_TASK_LOG_TAG, "Success reconnected!");
@@ -140,6 +152,35 @@ void WifiTask::reconnect(void *params){
         // Will start this job in every 3 minutes to check, it's because the timeout set to 3 minutes for the portal
         // So adjusting that
         vTaskDelay(3 * 60 * 1000 / portTICK_PERIOD_MS);
+    }
+}
+
+/**
+ * @brief Scheduler Job FreeRTOS loop for the WifiTask OTA Service.
+ * Run in loop for listening for any OTA request from external
+ *  
+ * @param params Pointer to the WifiTask instance (cast from void*).
+ */
+void WifiTask::listenOTA(void *params){
+    WifiTask* task = (WifiTask*)params;
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Start OTA Job Schedule!!");
+
+    // Start beginning the OTA Service
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Start OTA Service");
+    task->_wifiService->beginOTA();
+
+    // Checking the heap size after task creation
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Heap Size Information After OTA Service Begin!");
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Heap size: %u bytes", ESP.getHeapSize());
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Free heap: %u bytes", ESP.getFreeHeap());
+    ESP_LOGI(WIFI_TASK_LOG_TAG, "Minimum free heap ever: %u bytes", ESP.getMinFreeHeap());
+
+    vTaskDelay(50 / portTICK_PERIOD_MS); // Just caution to give enough time for the watchdog to process this OTA beginning
+
+    while (1){
+        ESP_LOGD(WIFI_TASK_LOG_TAG, "Start OTA Listening Service");
+        task->_wifiService->handleOTA();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
@@ -154,7 +195,7 @@ void WifiTask::reconnect(void *params){
 void WifiTask::handleNFCTask(NFCQueueRequest message) {
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Handling NFC task, state: %d", message.state);
 
-    if (message.state == ADD_RFID) {
+    if (message.state == ENROLL_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Adding NFC (RFID) data to server.");
 
         if(_wifiService->isConnected()){
@@ -174,7 +215,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
         
     }
     
-    if (message.state == REMOVE_RFID) {
+    if (message.state == DELETE_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Removing NFC (RFID) data from server.");
         
         if(_wifiService->isConnected()){
@@ -194,7 +235,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
         }
     }
     
-    if (message.state == AUTH_RFID) {
+    if (message.state == AUTEHNTICATE_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Authenticating NFC (RFID) access.");
         
         if(_wifiService->isConnected()){
@@ -218,7 +259,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
 void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
     ESP_LOGI(WIFI_TASK_LOG_TAG, "Handling Fingerprint task, state: %d", message.state);
     
-    if (message.state == ADD_FP) {
+    if (message.state == ENROLL_FP) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Adding Fingerprint data to server.");
         
         
@@ -238,7 +279,7 @@ void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
         }
     }
     
-    if (message.state == REMOVE_FP) { 
+    if (message.state == DELETE_FP) { 
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Removing Fingerprint data from server.");
         
         if(_wifiService->isConnected()){
@@ -258,7 +299,7 @@ void WifiTask::handleFingerprintTask(FingerprintQueueRequest message) {
         }
     }
     
-    if (message.state == AUTH_FP) {
+    if (message.state == AUTHENTICATE_FP) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Authenticating Fingerprint access.");
         
         if(_wifiService->isConnected()){

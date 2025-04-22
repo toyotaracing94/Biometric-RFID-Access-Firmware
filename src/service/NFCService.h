@@ -8,7 +8,7 @@
 #include "communication/ble/BLEModule.h"
 #include "entity/QueueMessage.h"
 #include "enum/LockType.h"
-#include "enum/OperationState.h"
+#include "enum/SystemState.h"
 #include "config/Config.h"
 
 /// @brief Class that manages the NFC Access Control system by wrapping the functionalitites of NFC sensor, SD Card module, and the Door Relay

@@ -42,7 +42,7 @@ bool NFCService::addNFC(const char *username) {
     snprintf(msg.username, sizeof(msg.username), "%s", username);
     snprintf(msg.uidCard, sizeof(msg.uidCard), "%s", uidCard);
     snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);
-    msg.state = ADD_RFID;
+    msg.state = ENROLL_RFID;
     msg.statusCode = REGISTERING_NFC_CARD_ACCESS;
     
     // Send back the information to the server first to get the visitor id pass first from server
@@ -113,7 +113,7 @@ bool NFCService::deleteNFC(const char *visitorId) {
     // Pass the message into the queue message format
     NFCQueueRequest msg;
     snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId);
-    msg.state = REMOVE_RFID;
+    msg.state = DELETE_RFID;
 
     // Send back the information to the server first to delete them from server then in the esp
     if (xQueueSend(_nfcQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
@@ -165,7 +165,7 @@ bool NFCService::authenticateAccessNFC(){
 
             // Send the access history without waiting the response
             NFCQueueRequest msg;
-            msg.state = AUTH_RFID;
+            msg.state = AUTEHNTICATE_RFID;
             snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
             snprintf(msg.uidCard, sizeof(msg.uidCard), "%s", uidCard);
 
@@ -218,7 +218,7 @@ bool NFCService::handleError(const char* username, const char* visitorId, const 
 
     if (cleanup && visitorId) {
         NFCQueueRequest msg;
-        msg.state = REMOVE_RFID;
+        msg.state = DELETE_RFID;
         snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId);
         snprintf(msg.username, sizeof(msg.username), "%s", username);
         snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);

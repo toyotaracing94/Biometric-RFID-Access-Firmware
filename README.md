@@ -108,6 +108,12 @@ or
 pio device monitor --upload-port SELECTED-COM-PORT
 ```
 
+### OTA Update
+For now, this devices accept basic OTA updates mechanism by manually flashing them through pio terminal. To do manual OTA updates, first the ESP32 and the computer that has the binary firmware files must be in the same WiFi network. Then search the IP Address of the ESP and then from the terminal, do this command
+```sh
+pio run -t upload --upload-port ESP-IP-ADDRESS
+```   
+
 ## Library Dependencies
 For this project, we use several 3rd Party libraries to make this code functional, we can install them by searching them in the PlatformIO libraries
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)

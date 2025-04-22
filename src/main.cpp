@@ -10,8 +10,9 @@
 
 #include "AdafruitFingerprintSensor.h"
 #include "AdafruitNFCSensor.h"
-#include "repository/SDCardModule/SDCardModule.h"
 #include "DoorRelay.h"
+#include "repository/SDCardModule/SDCardModule.h"
+#include "ota/ota.h"
 
 #include "service/FingerprintService.h"
 #include "service/NFCService.h"
@@ -58,18 +59,19 @@ extern "C" void app_main(void)
     FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
 
-    // Initializing the Communication Service
+    // Initializing the Communication Service and Protocols
     BLEModule *bleModule = new BLEModule();
+    OTA *otaModule = new OTA();
 
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule, fingerprintQueueRequest, fingerprintQueueResponse);
     NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule, nfcQueueRequest, nfcQueueResponse);
     SyncService *syncService = new SyncService(sdCardModule, bleModule);
-    WifiService *wifiService = new WifiService(bleModule, sdCardModule);
+    WifiService *wifiService = new WifiService(bleModule, otaModule, sdCardModule);
 
     // Initialize the Task
-    NFCTask *nfcTask = new NFCTask("NFC Task", 1, nfcService);
-    FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 1, fingerprintService);
+    NFCTask *nfcTask = new NFCTask("NFC Task", 3, nfcService);
+    FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 3, fingerprintService);
     WifiTask *wifiTask = new WifiTask("Wifi Task", 10, wifiService, nfcQueueRequest, nfcQueueResponse, fingerprintQueueRequest, fingerprintQueueResponse);
 
     // Setup BLE
@@ -81,8 +83,9 @@ extern "C" void app_main(void)
     fingerprintTask -> startTask();
     wifiTask -> startTask();     // Setup Wifi Task
 
-    // Checking the heap size after task creation
+    // Checking the heap size after task init start task creation
     ESP_LOGI(LOG_TAG, "Heap Size Information!");
+    ESP_LOGI(LOG_TAG, "Heap size: %u bytes", ESP.getHeapSize());
     ESP_LOGI(LOG_TAG, "Free heap: %u bytes", ESP.getFreeHeap());
     ESP_LOGI(LOG_TAG, "Minimum free heap ever: %u bytes", ESP.getMinFreeHeap());
      
@@ -128,56 +131,60 @@ extern "C" void app_main(void)
             nfcTask->resumeTask();
             break;
 
-        case DELETE_RFID:
-            ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
-            nfcTask->suspendTask();
+            case DELETE_RFID:
+                ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
+                nfcTask->suspendTask();
 
-            nfcService->deleteNFC(visitorId);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                nfcService->deleteNFC(visitorId);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            nfcTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                nfcTask->resumeTask();
+                break;
 
-        case ENROLL_FP:
-            ESP_LOGI(LOG_TAG, "Start Registering Fingerprint!");
-            fingerprintTask->suspendTask();
+            case ENROLL_FP:
+                ESP_LOGI(LOG_TAG, "Start Registering Fingerprint!");
+                fingerprintTask->suspendTask();
 
-            fingerprintService->addFingerprint(name);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                fingerprintService->addFingerprint(name);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            fingerprintTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                break;
 
-        case DELETE_FP:
-            ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
-            fingerprintTask->suspendTask();
+            case DELETE_FP:
+                ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
+                fingerprintTask->suspendTask();
 
-            fingerprintService->deleteFingerprint(visitorId);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                fingerprintService->deleteFingerprint(visitorId);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            fingerprintTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                break;
 
-        case UPDATE_VISITOR:
-            ESP_LOGI(LOG_TAG, "Start Sync Data!");
-            fingerprintTask->suspendTask();
-            nfcTask->suspendTask();
+            case UPDATE_VISITOR:
+                ESP_LOGI(LOG_TAG, "Start Sync Data!");
+                fingerprintTask->suspendTask();
+                nfcTask->suspendTask();
 
-            syncService->sync();
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                syncService->sync();
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            fingerprintTask->resumeTask();
-            nfcTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                nfcTask->resumeTask();
+                break;
+            
+            default:
+                break;
         }
+
         vTaskDelay(50 / portTICK_PERIOD_MS);
     }
 }

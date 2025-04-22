@@ -2,7 +2,7 @@
 #define QUEUE_MESSAGE_H
 
 #include "Arduino.h"
-#include "enum/OperationState.h"
+#include "enum/SystemState.h"
 
 struct NFCQueueRequest {
     int request_id;
@@ -10,7 +10,7 @@ struct NFCQueueRequest {
     char visitorId[40];
     char uidCard[32]; 
     char vehicleInformationNumber[24];
-    OperationState state;
+    SystemState state;
     int statusCode;
 };
 
@@ -25,7 +25,7 @@ struct FingerprintQueueRequest {
     char username[25];
     char visitorId[40];
     char vehicleInformationNumber[24];
-    OperationState state;
+    SystemState state;
     int statusCode;
 };
 
