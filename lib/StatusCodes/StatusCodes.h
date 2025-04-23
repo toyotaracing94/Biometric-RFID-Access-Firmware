@@ -16,6 +16,7 @@ enum ErrorCode {
     FAILED_TO_DELETE_FINGERPRINT_NO_NAME = -110,        /* Failed to delete fingerprint because no name was provided or the name is invalid     */
     FAILED_TO_DELETE_FINGERPRINT_NO_ID = -111,          /* Failed to delete fingerprint because no valid ID was provided                        */
     FAILED_TO_DELETE_FINGERPRINT_NO_NAME_AND_ID = -112, /* Failed to delete fingerprint because both name and ID are missing                    */
+    FAILED_TO_ADD_FINGERPRINT_MODEL = -113,
 
     /// NFC Error Code (201-300)
     FAILED_TO_REGISTER_NFC_NO_NAME = -201,              /* Failed to register NFC fingerprint because no name was provided                      */
@@ -27,14 +28,30 @@ enum ErrorCode {
     FAILED_TO_GET_VISITOR_ID_TO_NFC = -207,
     FAILED_TO_PARSE_RESPONSE_SERVER = -208,
 
+    /// SD Card Error (301-400)
+    FAILED_TO_RETRIEVE_VISITORID_FROM_SDCARD = -301,
+    FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD = -302,
+    FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD = -303,
 
-    /// SD Card Error
+    /// Queue Related Error (401-500)
+    FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE = -401,
+    FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE = -402,
+
+    /// Document Parsing Error (501-600)
+    FAILED_TO_PARSE_RESPONSE = -501,
+
+    /// Server Error (601-700)
+    FAILED_REQUEST_TO_SERVER =  -601,
+    FAILED_GET_VISITORID_FROM_SERVER = -602,
+
 };
 
 
 enum SuccessCode {
     /// Fingerprint Success Code (100-200)
-    REGISTERING_FINGERPRINT_ACCESS = 100,
+    START_REGISTERING_FINGERPRINT_ACCESS = 100,
+    SUCCESS_REGISTERING_FINGERPRINT_ACCESS = 101,
+    SUCCESS_DELETING_FINGERPRINT_ACCESS = 102,
 
     /// NFC Success Code (201-300)
     REGISTERING_NFC_CARD_ACCESS = 200,

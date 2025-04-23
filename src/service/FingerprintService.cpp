@@ -34,11 +34,11 @@ bool FingerprintService::addFingerprint(const char *username) {
     msg.fingerprintId = fingerprintId;
     snprintf(msg.username, sizeof(msg.username), "%s", username);
     snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);
-    msg.statusCode = REGISTERING_FINGERPRINT_ACCESS;
+    msg.statusCode = START_REGISTERING_FINGERPRINT_ACCESS;
 
     // Send back the information to the server first to get the visitor id pass first from server
     if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-        return handleError(username, "", "Failed to send Fingerprint message to WiFi queue!", false);
+        return handleError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, username, "", "Failed to send Fingerprint message to WiFi queue!", false);
     }
 
     // Catch back the response from the queue with timeout of 10s
@@ -46,7 +46,7 @@ bool FingerprintService::addFingerprint(const char *username) {
     // and I'll immediately return false
     FingerprintQueueResponse resp;
     if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
-        return handleError(username, "", "Failed to receive Fingerprint message response from WiFi queue!", false);
+        return handleError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, username, "", "Failed to receive Fingerprint message response from WiFi queue!", false);
     }
 
     // TODO: Make the request id to match with the response
@@ -56,36 +56,36 @@ bool FingerprintService::addFingerprint(const char *username) {
     DeserializationError error = deserializeJson(document, resp.response);
 
     if (error) {
-        return handleError(username, "", "Failed to parse the response!", false);
+        return handleError(FAILED_TO_PARSE_RESPONSE, username, "", "Failed to parse the response!", false);
     }
 
     int statusCode = document["stat_code"].as<int>();
     if (statusCode != 200) {
-        return handleError(username, "", "Failed request to server!", false);
+        return handleError(FAILED_REQUEST_TO_SERVER, username, "", "Failed request to server!", false);
     }
-
+    
     const char* visitorId = document["data"]["visitor_id"];
     if (visitorId == nullptr || strlen(visitorId) == 0) {
-        return handleError(username, "", "Failed to get Visitor ID from server!", false);
+        return handleError(FAILED_GET_VISITORID_FROM_SERVER, username, "", "Failed to get Visitor ID from server!", false);
     }
 
     // Start registering the fingerprint / turn on the protocol for registering fingerprint on sensor side
     // as the data already been confirmed has been saved into the server
-    sendbleNotification("ENROLL", username, "", "Fingerprint", "Please place your fingerprint to enroll!");
+    sendbleNotification(START_REGISTERING_FINGERPRINT_ACCESS);
+
     if (!_fingerprintSensor->addFingerprintModel(fingerprintId)) {
-        return handleError(username, "", "Failed to add Fingerprint Model!", true);
+        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, "", "Failed to add Fingerprint Model!", true);
     }
 
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d Under Visitor ID %s. Saving to SD card...", fingerprintId, visitorId);
-
     // Save the fingerprint data to SD card
     if (!_sdCardModule->saveFingerprintToSDCard(username, fingerprintId, visitorId)){
         // If the save fingerprint to SD Card failed
         // Delete back the visitorId that has been saved to the server
-        return handleError(username, visitorId, "Failed to register Fingerprint to SD Card!", true);
+        return handleError(FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD, username, visitorId, "Failed to register Fingerprint to SD Card!", true);
     }
 
-    sendbleNotification("OK", username, visitorId, "Fingerprint", "Fingerprint registered successfully!");
+    sendbleNotification(SUCCESS_REGISTERING_FINGERPRINT_ACCESS);
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, VisitorID: %s, FingerprintID: %d", username, visitorId, fingerprintId);
     return true;
 }
@@ -112,19 +112,19 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
 
     // Send back the information to the server first to get the visitor id pass first from server
     if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-        return handleDeleteError(visitorId, "Failed to send Fingerprint message to WiFi queue!");
+        return handleDeleteError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, visitorId, "Failed to send Fingerprint message to WiFi queue!");
     }
 
     FingerprintQueueResponse resp;
     if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
-        return handleDeleteError(visitorId, "Failed to receive Fingerprint message response from WiFi queue!");
+        return handleDeleteError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, visitorId, "Failed to receive Fingerprint message response from WiFi queue!");
     }
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", resp.response);
 
     // Get the fingerprintId from the SD Card
     int fingerprintId = _sdCardModule->getFingerprintIdByVisitorId(visitorId);
     if (fingerprintId <= 0) {
-        return handleDeleteError(visitorId, "Failed to retrieve user data for Visitor ID!");
+        return handleDeleteError(FAILED_TO_RETRIEVE_VISITORID_FROM_SDCARD, visitorId, "Failed to retrieve user data for Visitor ID!");
     }
 
     // If success there is visitorId associated with fingerprint, then delete them from the sensor and from the SD Card
@@ -136,18 +136,16 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
         bool deleteFingerprintSDCard = _sdCardModule->deleteFingerprintFromSDCard(visitorId);
 
         if (!deleteFingerprintSDCard) {
-            return handleDeleteError(visitorId, "Failed to delete Fingerprint from SD card!");
+            return handleDeleteError(FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD, visitorId, "Failed to delete Fingerprint from SD card!");
         }
 
         // Prepare the data payload
-        char status[5] = "OK";
-        char message[50] = "Fingerprint deleted successfully!";
-        sendbleNotification(status, "", visitorId, "Fingerprint", message);
+        sendbleNotification(SUCCESS_DELETING_FINGERPRINT_ACCESS);
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint deleted from SD card successfully for FingerprintID: %d", fingerprintId);
         return true;
 
     } else {
-        return handleDeleteError(visitorId, "Failed to delete fingerprint model from sensor for FingerprintID: %d");
+        return handleDeleteError(FAILED_TO_DELETE_FINGERPRINT_MODEL, visitorId, "Failed to delete fingerprint model from sensor for FingerprintID: %d");
     }
 }
 
@@ -232,12 +230,27 @@ uint8_t FingerprintService::generateFingerprintId(){
  * @param type Type of the operation or context (usually "Fingerprint").
  * @param message Descriptive message to include in the notification.
  */
+[[deprecated("This function is will soon deprecated and remove. Use the new 'sendbleNotification' with int parameter instead.")]]
 void FingerprintService::sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message){
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Sending Fingerprint Service Action Result to BLE Notification");
     JsonDocument doc;
     doc["data"]["name"] = username;
     doc["data"]["visitor_id"] = visitorId;
     doc["data"]["type"] = type;
     _bleModule->sendReport(status, doc.as<JsonObject>(), message);
+}
+
+/**
+ * @brief Sends a BLE notification with fingerprint-related status and message.
+ *
+ * This function constructs a JSON object containing status code of the result action,
+ * then sends it using the BLE module with the specified status.
+ *
+ * @param status int Status code
+ */
+void FingerprintService::sendbleNotification(int statusCode){
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Sending Fingerprint Service Action Result to BLE Notification");
+    _bleModule->sendReport(statusCode);
 }
 
 /**
@@ -252,8 +265,8 @@ void FingerprintService::sendbleNotification(const char *status, const char *use
  * @param cleanup If true and visitorId is provided, will send a REMOVE_FP request to the server.
  * @return Always returns false
  */
-bool FingerprintService::handleError(const char* username, const char* visitorId, const char* message, bool cleanup) {
-    sendbleNotification("ERR", username, visitorId ? visitorId : "", "Fingerprint", message);
+bool FingerprintService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
+    sendbleNotification(statusCode);
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "%s", message);
 
     if (cleanup && visitorId) {
@@ -274,7 +287,6 @@ bool FingerprintService::handleError(const char* username, const char* visitorId
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Cleanup response: %s", resp.response);
         }
     }
-
     return false;
 }
 
@@ -288,8 +300,8 @@ bool FingerprintService::handleError(const char* username, const char* visitorId
  * @param message Error message to log and send in the notification.
  * @return Always returns false
  */
-bool FingerprintService::handleDeleteError(const char* visitorId, const char* message) {
-    sendbleNotification("ERR", "", visitorId, "Fingerprint", message);
-    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "%s", message);
+bool FingerprintService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
+    sendbleNotification(statusCode);
+    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     return false;
 }

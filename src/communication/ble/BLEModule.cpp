@@ -57,6 +57,7 @@ void BLEModule::setupCharacteristic(){
  *
  * @see DoorInfoService::sendNotification()
  */
+[[deprecated("This function is will soon deprecated and remove. Use the new 'sendReport' with int parameter instead.")]]
 void BLEModule::sendReport(const char* status, const JsonObject& payload, const char* message){
     ESP_LOGI(BLE_MODULE_LOG_TAG, "Sending notification to door notification characteristic");
 
@@ -64,5 +65,22 @@ void BLEModule::sendReport(const char* status, const JsonObject& payload, const 
     document["status"]  = status;
     document["data"]    = payload;
     document["message"] = message;
+    _doorInfoService -> sendNotification(document);
+}
+
+/**
+ * @brief Sends a notification with the given status code
+ * 
+ * This method constructs a JSON document containing the status code only and sends it as
+ * a notification to the door information service.
+ *
+ * @param statusCode the Status Code int
+ *
+ */
+void BLEModule::sendReport(int statusCode){
+    ESP_LOGI(BLE_MODULE_LOG_TAG, "Sending notification to door notification characteristic");
+
+    JsonDocument document;
+    document["status"]  = statusCode;
     _doorInfoService -> sendNotification(document);
 }
