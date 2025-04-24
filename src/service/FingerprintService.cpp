@@ -72,7 +72,7 @@ bool FingerprintService::addFingerprint(const char *username) {
     // as the data already been confirmed has been saved into the server
     sendbleNotification(START_REGISTERING_FINGERPRINT_ACCESS);
 
-    if (!_fingerprintSensor->addFingerprintModel(fingerprintId)) {
+    if (!_fingerprintSensor->addFingerprintModel(fingerprintId, std::bind(&FingerprintService::addFingerprintCallback, this, std::placeholders::_1))) {
         return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, "", "Failed to add Fingerprint Model!", true);
     }
 
@@ -309,4 +309,15 @@ bool FingerprintService::handleDeleteError(int statusCode, const char* visitorId
     sendbleNotification(statusCode);
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     return false;
+}
+
+/**
+ * @brief A Callback function to handle the notification of the current fingerprint status when registering new fingerprint model
+ * that where will send the status code to external device over BLE network
+ * 
+ * @param statusCode The status code related to the state of the fingerprint, Success or failed operation  
+ */
+void FingerprintService::addFingerprintCallback(int statusCode){
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Start sending callback Status Code! Status Code %d", statusCode);
+    sendbleNotification(statusCode);
 }
