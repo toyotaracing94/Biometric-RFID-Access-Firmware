@@ -24,7 +24,7 @@ bool NFCService::setup() {
 bool NFCService::addNFC(const char *username) {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Enrolling new NFC Access User! Username: %s", username);
 
-    uint16_t timeout = 10000;
+    uint16_t timeout = 5000;
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Awaiting NFC Card Input! Timeout %d ms", timeout);
     sendbleNotification(READY_FOR_NFC_CARD_INPUT);
     
@@ -50,11 +50,11 @@ bool NFCService::addNFC(const char *username) {
         return handleError(FAILED_TO_SEND_NFC_TO_WIFI_QUEUE, username, "", "Failed to send NFC message to WiFi queue", false);
     }
     
-    // Catch back the response from the queue with timeout of 10s
+    // Catch back the response from the queue with timeout of 5s
     // Will just mark for now that if there's no response from the wifi task, it probably failed
     // and I'll immediately return false
     NFCQueueResponse resp;
-    if (xQueueReceive(_nfcQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
+    if (xQueueReceive(_nfcQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
         return handleError(FAILED_TO_RECV_NFC_FROM_WIFI_QUEUE, username, "", "Failed to receive NFC message response from WiFi queue!", false);
     }
 
@@ -100,9 +100,8 @@ bool NFCService::addNFC(const char *username) {
  * This function attempts to delete the NFC card UID associated with a user from the SD card.
  * If the NFC card UID is empty or passed as "null", no deletion will occur.
  *
- * @param username The username whose NFC card is to be deleted.
- * @param uidCard The UID of the NFC card to be deleted.
- * @return true if the NFC UID was successfully deleted from the SD card, false otherwise.
+ * @param visitorId The Visitor ID that was associated with the NFC UID from the server to be deleted at SD Card
+ * @return true if the NFC UID was successfully deleted from the SD card, false otherwise.  
  */
 bool NFCService::deleteNFC(const char *visitorId) {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting NFC User! Visitor ID = %s", visitorId);
@@ -118,10 +117,10 @@ bool NFCService::deleteNFC(const char *visitorId) {
         return handleDeleteError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, visitorId, "Failed to send NFC message to WiFi queue!");
     }
 
-    // Catch back the response from the queue with timeout of 10s
+    // Catch back the response from the queue with timeout of 5s
     // Will just mark for now that if there's now response from the wifi task, it probably failed 
     NFCQueueResponse resp;
-    if (xQueueReceive(_nfcQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
+    if (xQueueReceive(_nfcQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
         return handleDeleteError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, visitorId, "Failed to receive NFC message response from WiFi queue");
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Response: %s", resp.response);
@@ -187,6 +186,7 @@ bool NFCService::authenticateAccessNFC(){
  * @param message    A descriptive message to include in the BLE notification.
  * @param type       The type of authentication used (e.g., "RFID", "FINGERPRINT").
  *
+ * @deprecated This function is will soon deprecated and remove. Use the new 'sendbleNotification' with int parameter instead.  
  */
 [[deprecated("This function is will soon deprecated and remove. Use the new 'sendbleNotification' with int parameter instead.")]]
 void NFCService::sendbleNotification(const char *status, const char *username, const char *visitorId, const char *message, const char *type) {
@@ -217,6 +217,7 @@ void NFCService::sendbleNotification(int statusCode){
  * Logs an error, sends a BLE error notification, and optionally attempts to clean up
  * the server-side data (e.g., removing the registered NFC Card from server if the local save fails).
  *
+ * @param statusCode The status code related to the error from the `ErrorCode` enum
  * @param username Name of the user associated with the operation.
  * @param visitorId Visitor ID to be used for cleanup (can be nullptr if not applicable).
  * @param message Error message to log and send in the notification.
@@ -239,7 +240,7 @@ bool NFCService::handleError(int statusCode, const char* username, const char* v
         }
 
         NFCQueueResponse resp;
-        if (xQueueReceive(_nfcQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
+        if (xQueueReceive(_nfcQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
             ESP_LOGE(NFC_SERVICE_LOG_TAG, "No response received for cleanup request.");
         } else {
             ESP_LOGI(NFC_SERVICE_LOG_TAG, "Cleanup response: %s", resp.response);
@@ -255,6 +256,7 @@ bool NFCService::handleError(int statusCode, const char* username, const char* v
  * Logs an error and sends a BLE error notification. No need for cleanup as you know
  * This is for handle of deletion error, what are we going to cleanup? We already are!
  *
+ * @param statusCode The status code related to the error from the `ErrorCode` enum
  * @param visitorId Visitor ID
  * @param message Error message to log and send in the notification.
  * @return Always returns false
