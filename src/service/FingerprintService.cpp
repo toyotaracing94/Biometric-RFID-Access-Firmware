@@ -19,9 +19,8 @@ bool FingerprintService::setup(){
  * the given fingerprint ID and add the associate ID of that model to save it to SD Card
  *
  * @param username The username to associate with the fingerprint ID.
- * @param fingerprintId The unique ID of the fingerprint being enrolled to match with Fingerprint Model on the Sensor.
  * @return
- *      - true if the fingerprint model was successfully added and Fingerprint ID saved to the SD card; false otherwise.
+ *      - true if the fingerprint model was successfully added and Fingerprint ID saved to the SD card; false otherwise.  
  */
 bool FingerprintService::addFingerprint(const char *username) {
     uint8_t fingerprintId = generateFingerprintId();
@@ -41,11 +40,11 @@ bool FingerprintService::addFingerprint(const char *username) {
         return handleError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, username, "", "Failed to send Fingerprint message to WiFi queue!", false);
     }
 
-    // Catch back the response from the queue with timeout of 10s
+    // Catch back the response from the queue with timeout of 5s
     // Will just mark for now that if there's no response from the wifi task, it probably failed
     // and I'll immediately return false
     FingerprintQueueResponse resp;
-    if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
+    if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
         return handleError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, username, "", "Failed to receive Fingerprint message response from WiFi queue!", false);
     }
 
@@ -96,8 +95,7 @@ bool FingerprintService::addFingerprint(const char *username) {
  * This function attempts to delete a fingerprint model from the fingerprint sensor and
  * also removes the associated fingerprint data from the SD card.
  *
- * @param username The username associated with the fingerprint ID to be deleted.
- * @param fingerprintId The unique ID of the fingerprint to be deleted from the sensor and SD card.
+ * @param visitorId The Visitor ID that was associated with the fingerprint ID from the server to be deleted at SD Card
  * @return true if the fingerprint was successfully deleted from both the sensor and the SD card;
  *         false otherwise.
  */
@@ -115,8 +113,11 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
         return handleDeleteError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, visitorId, "Failed to send Fingerprint message to WiFi queue!");
     }
 
+    // Also Catch back the response from the queue with timeout of 5s
+    // Will just mark for now that if there's no response from the wifi task, it probably failed
+    // and I'll immediately return false
     FingerprintQueueResponse resp;
-    if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
+    if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
         return handleDeleteError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, visitorId, "Failed to receive Fingerprint message response from WiFi queue!");
     }
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", resp.response);
@@ -229,6 +230,8 @@ uint8_t FingerprintService::generateFingerprintId(){
  * @param visitorId Unique visitor ID obtained from the server.
  * @param type Type of the operation or context (usually "Fingerprint").
  * @param message Descriptive message to include in the notification.
+ * 
+ * @deprecated This function is will soon deprecated and remove. Use the new 'sendbleNotification' with int parameter instead.
  */
 [[deprecated("This function is will soon deprecated and remove. Use the new 'sendbleNotification' with int parameter instead.")]]
 void FingerprintService::sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message){
@@ -259,6 +262,7 @@ void FingerprintService::sendbleNotification(int statusCode){
  * Logs an error, sends a BLE error notification, and optionally attempts to clean up
  * the server-side data (e.g., removing the registered fingerprint if the local save fails).
  *
+ * @param statusCode The status code related to the error from the `ErrorCode` enum
  * @param username Name of the user associated with the operation.
  * @param visitorId Visitor ID to be used for cleanup (can be nullptr if not applicable).
  * @param message Error message to log and send in the notification.
@@ -281,7 +285,7 @@ bool FingerprintService::handleError(int statusCode, const char* username, const
         }
 
         FingerprintQueueResponse resp;
-        if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(10000)) != pdPASS) {
+        if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
             ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "No response received for cleanup request.");
         } else {
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Cleanup response: %s", resp.response);
@@ -296,9 +300,10 @@ bool FingerprintService::handleError(int statusCode, const char* username, const
  * Logs an error and sends a BLE error notification. No need for cleanup as you know
  * This is for handle of deletion error, what are we going to cleanup? We already are!
  *
+ * @param statusCode The status code related to the error from the `ErrorCode` enum
  * @param visitorId Visitor ID
  * @param message Error message to log and send in the notification.
- * @return Always returns false
+ * @return Always returns false  
  */
 bool FingerprintService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
     sendbleNotification(statusCode);

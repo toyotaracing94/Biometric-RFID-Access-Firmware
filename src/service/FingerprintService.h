@@ -21,8 +21,8 @@ public:
     uint8_t generateFingerprintId();
 
     // Helper functions
-    void sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message);
     void sendbleNotification(int statusCode);
+    void sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message);
     bool handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup);
     bool handleDeleteError(int statusCode, const char* visitorId, const char* message);
 
