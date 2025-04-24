@@ -84,6 +84,7 @@ enum SuccessCode {
     READY_FOR_NFC_CARD_INPUT = 202,                         /* System is ready and waiting for NFC card input                                       */
     SUCCESS_REGISTERING_NFC_ACCESS = 203,                   /* Successfully registered NFC access                                                   */
     SUCCESS_DELETING_NFC_ACCESS = 204,                      /* Successfully deleted NFC access                                                      */
+    STATUS_NFC_CARD_SUCCESS_READ = 205,                     /* Successfully getting the NFC Card UID From the sensor                                */
 };
 
 #endif // ERROR_CODE_H

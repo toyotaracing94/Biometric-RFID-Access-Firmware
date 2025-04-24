@@ -34,8 +34,9 @@ bool NFCService::addNFC(const char *username) {
         sendbleNotification(NFC_CARD_TIMEOUT);
         return false;
     }
-
+    
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card detected for User: %s with UID: %s", username, uidCard);
+    sendbleNotification(STATUS_NFC_CARD_SUCCESS_READ);
     
     // Pass the message into the queue message format
     NFCQueueRequest msg;
@@ -89,8 +90,8 @@ bool NFCService::addNFC(const char *username) {
         return handleError(FAILED_SAVE_NFC_ACCESS_TO_SD_CARD, username, visitorId, "Failed to save NFC UID to SD Card", true);
     }
 
-    sendbleNotification(SUCCESS_REGISTERING_NFC_ACCESS);
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID %s successfully saved to SD card for User: %s", uidCard, username);
+    sendbleNotification(SUCCESS_REGISTERING_NFC_ACCESS);
     return true;
 }
 
@@ -134,7 +135,7 @@ bool NFCService::deleteNFC(const char *visitorId) {
         return handleDeleteError(FAILED_DELETE_NFC_ACCESS_TO_SD_CARD, visitorId, "Failed to delete NFC Card from SD Card");
         
     }
-    // Prepare the data payload
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID successfully deleted to SD card for Visitor ID: %s", visitorId);
     sendbleNotification(SUCCESS_DELETING_NFC_ACCESS);
     return true;
 }
@@ -225,8 +226,8 @@ void NFCService::sendbleNotification(int statusCode){
  * @return Always returns false
  */
 bool NFCService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
-    sendbleNotification(statusCode);
     ESP_LOGE(NFC_SERVICE_LOG_TAG, "%s", message);
+    sendbleNotification(statusCode);
 
     if (cleanup && visitorId) {
         NFCQueueRequest msg;
@@ -262,7 +263,7 @@ bool NFCService::handleError(int statusCode, const char* username, const char* v
  * @return Always returns false
  */
 bool NFCService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
-    sendbleNotification(statusCode);
     ESP_LOGE(NFC_SERVICE_LOG_TAG, "%s", message);
+    sendbleNotification(statusCode);
     return false;
 }
