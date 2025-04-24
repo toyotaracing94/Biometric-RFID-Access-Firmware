@@ -125,6 +125,7 @@ void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
     commandBleData.setKeyAccess(key_access);
     commandBleData.setVisitorId(visitor_id);
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Valid Data Door Characteristic: Payload = %s", value.c_str());
+    vTaskDelay( 50/ portTICK_PERIOD_MS);
 }
 
 /**

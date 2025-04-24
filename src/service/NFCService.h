@@ -21,9 +21,10 @@ class NFCService {
         bool authenticateAccessNFC();
 
         // Helper functions
+        void sendbleNotification(int statusCode);
         void sendbleNotification(const char* status, const char* username, const char* visitorId, const char* message, const char *type);
-        bool handleError(const char* username, const char* visitorId, const char* message, bool cleanup);
-        bool handleDeleteError(const char* visitorId, const char* message);
+        bool handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup);
+        bool handleDeleteError(int statusCode, const char* visitorId, const char* message);
 
     private:
         AdafruitNFCSensor* _nfcSensor;

@@ -19,6 +19,7 @@ public:
     void initBLE();
     void setupCharacteristic();
     void sendReport(const char* status, const JsonObject& payload, const char* message);
+    void sendReport(int statusCode);
 
 private:
     BLEServer* _bleServer;
