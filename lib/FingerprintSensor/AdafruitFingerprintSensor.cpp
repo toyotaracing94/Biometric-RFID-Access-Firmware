@@ -98,12 +98,17 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(i
 
     activateSuccessLED(FINGERPRINT_LED_BREATHING, 128, 1);
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-
+    
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Please hold fingerprint to Sensor. First Capture of the Fingerprint Image....");
-    activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
     if (callback) callback(STATUS_FINGERPRINT_PLACE_FIRST_CAPTURE);
-    while (_fingerprintSensor.getImage() != FINGERPRINT_OK)
-        ;
+    activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    
+    if (!waitOnFingerprintForTimeout()) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Timeout waiting for first fingerprint image.");
+        if (callback) callback(FINGERPRINT_CAPTURE_TIMEOUT);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        return false;
+    }
 
     if (callback) callback(STATUS_FINGERPRINT_PLACE_FIRST_HAS_CAPTURED);
     if (_fingerprintSensor.image2Tz(1) != FINGERPRINT_OK) {
@@ -114,18 +119,22 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(i
     }
 
     if (callback) callback(STATUS_FINGERPRINT_FIRST_FEATURE_SUCCESS);
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
 
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Remove fingerprint from Sensor. Prepare Second Capture of the Fingerprint Image....");    
     activateCustomPresetLED(FINGERPRINT_LED_FLASHING, 25, 10);
     if (callback) callback(STATUS_FINGERPRINT_LIFT_FINGER_FROM_SENSOR);
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    
     while (_fingerprintSensor.getImage() != FINGERPRINT_NOFINGER);
-    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Please hold the same Fingerprint back to sensor. Second Capture of the Fingerprint Image...");
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
+    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Please again hold the same Fingerprint back to sensor. Beginning to second Capture of the Fingerprint Image...");
     activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
-    if (callback) callback(STATUS_FINGERPRINT_PLACE_SECOND_CAPTURE);
-    while (_fingerprintSensor.getImage() != FINGERPRINT_OK);
+    if (!waitOnFingerprintForTimeout()) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Timeout waiting for second fingerprint image.");
+        if (callback) callback(FINGERPRINT_CAPTURE_TIMEOUT);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        return false;
+    }
     if (_fingerprintSensor.image2Tz(2) != FINGERPRINT_OK) {
         ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to convert second Fingerprint image scan! Error Code %d", FAILED_TO_CREATE_VERIFICATION_MODEL);
         activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
@@ -235,4 +244,18 @@ void AdafruitFingerprintSensor::activateFailedLED(uint8_t control, uint8_t speed
 void AdafruitFingerprintSensor::activateCustomPresetLED(uint8_t control, uint8_t speed, uint8_t cycles){
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Activating Fingerprint LED for custom preset operation!");
     _fingerprintSensor.LEDcontrol(control, speed, FINGERPRINT_LED_PURPLE, cycles);
+}
+
+/**
+ * @brief  Helper function to manage the necessary time to waiting input for getting the fingerprint image input from the user  
+ *
+ * @param timeoutMs the timeout before operation will be canceled as user take too long. Default is 10000 ms
+ */
+bool AdafruitFingerprintSensor::waitOnFingerprintForTimeout(int timeoutMs = 10000){
+    unsigned long start = millis();
+    while (_fingerprintSensor.getImage() != FINGERPRINT_OK) {
+        if (millis() - start > timeoutMs) return false;
+        vTaskDelay( 100 / portTICK_PERIOD_MS);
+    }
+    return true;
 }

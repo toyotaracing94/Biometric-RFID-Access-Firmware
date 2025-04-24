@@ -21,6 +21,7 @@ public:
   void activateSuccessLED(uint8_t control, uint8_t speed, uint8_t cycles);
   void activateFailedLED(uint8_t control, uint8_t speed, uint8_t cycles);
   void activateCustomPresetLED(uint8_t control, uint8_t speed, uint8_t cycles);
+  bool waitOnFingerprintForTimeout(int timeout);
 
 private:
   HardwareSerial _serial;

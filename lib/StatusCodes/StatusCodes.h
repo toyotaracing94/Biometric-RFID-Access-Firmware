@@ -13,7 +13,7 @@ enum ErrorCode {
     FAILED_TO_CONVERT_IMAGE_TO_FEATURE = -100,              /* Failed to convert the image to Fingerprint feature                                   */
     FAILED_IMAGE_CONVERSION_ERROR = -101,                   /* Failed when conversion image                                                         */
     FAILED_TO_MAKE_FINGERPRINT_MODEL = -102,                /* Failed to create the final Fingerprint model                                         */
-    FAILED_TO_STORED_FINGERPRINT_MODEL = -103,              /* Failed to store the final Fingerprint model                                         */
+    FAILED_TO_STORED_FINGERPRINT_MODEL = -103,              /* Failed to store the final Fingerprint model                                          */
     FAILED_TO_CREATE_VERIFICATION_MODEL = -104,             /* Failed to create the verification before model creation                              */
     FAILED_TO_DELETE_FINGERPRINT_MODEL = -105,              /* Failed to delete a Fingerprint model from sensor                                     */
     FAILED_TO_DELETE_ALL_FINGERPRINT_MODEL = -106,          /* Failed to delete all the fingerprints model from sensor                              */
@@ -27,6 +27,7 @@ enum ErrorCode {
     FAILED_TO_ADD_FINGERPRINT_MODEL = -114,                 /* Failed to store the fingerprint model to the sensor                                  */
     FAILED_TO_GET_FINGERPRINT_FIRST_CONVERT = -115,         /* Failed to convert the first fingerprint image into template features                 */
     FAILED_TO_GET_FINGERPRINT_SECOND_CONVERT = -116,        /* Failed to convert the second fingerprint image into template features                */
+    FINGERPRINT_CAPTURE_TIMEOUT = -117,                     /* Timeout occured while waiting for the FIngerprint Image Input                        */
 
     /// NFC Error Code (201-300)
     FAILED_TO_REGISTER_NFC_NO_NAME = -201,                  /* Failed to register NFC access because no name was provided                           */
@@ -41,7 +42,7 @@ enum ErrorCode {
     /// SD Card Error (301-400)
     FAILED_TO_RETRIEVE_VISITORID_FROM_SDCARD = -301,        /* Failed to retrieve visitor ID from the SD card                                       */
     FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD = -302,       /* Failed to save fingerprint access info to SD card                                    */
-    FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD = -303,   /* Failed to delete fingerprint access info from SD card                              */
+    FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD = -303,   /* Failed to delete fingerprint access info from SD card                                */
     FAILED_SAVE_NFC_ACCESS_TO_SD_CARD = -304,               /* Failed to save NFC access info to SD card                                            */
     FAILED_DELETE_NFC_ACCESS_TO_SD_CARD = -305,             /* Failed to delete NFC access info from SD card                                        */
 
