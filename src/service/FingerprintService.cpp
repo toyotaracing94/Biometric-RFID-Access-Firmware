@@ -84,8 +84,8 @@ bool FingerprintService::addFingerprint(const char *username) {
         return handleError(FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD, username, visitorId, "Failed to register Fingerprint to SD Card!", true);
     }
 
-    sendbleNotification(SUCCESS_REGISTERING_FINGERPRINT_ACCESS);
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, VisitorID: %s, FingerprintID: %d", username, visitorId, fingerprintId);
+    sendbleNotification(SUCCESS_REGISTERING_FINGERPRINT_ACCESS);
     return true;
 }
 
@@ -141,8 +141,8 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
         }
 
         // Prepare the data payload
-        sendbleNotification(SUCCESS_DELETING_FINGERPRINT_ACCESS);
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint deleted from SD card successfully for FingerprintID: %d", fingerprintId);
+        sendbleNotification(SUCCESS_DELETING_FINGERPRINT_ACCESS);
         return true;
 
     } else {
@@ -270,8 +270,8 @@ void FingerprintService::sendbleNotification(int statusCode){
  * @return Always returns false
  */
 bool FingerprintService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
-    sendbleNotification(statusCode);
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "%s", message);
+    sendbleNotification(statusCode);
 
     if (cleanup && visitorId) {
         FingerprintQueueRequest msg;
@@ -306,8 +306,8 @@ bool FingerprintService::handleError(int statusCode, const char* username, const
  * @return Always returns false  
  */
 bool FingerprintService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
-    sendbleNotification(statusCode);
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
+    sendbleNotification(statusCode);
     return false;
 }
 
