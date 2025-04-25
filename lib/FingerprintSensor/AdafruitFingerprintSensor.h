@@ -15,13 +15,13 @@ public:
   AdafruitFingerprintSensor();
   bool setup() override;
   int getFingerprintIdModel() override;
-  bool addFingerprintModel(int id, std::function<void(int)> callback) override;
+  bool addFingerprintModel(int id, std::function<void(int)> callback = nullptr) override;
   bool deleteFingerprintModel(int id) override;
 
   void activateSuccessLED(uint8_t control, uint8_t speed, uint8_t cycles);
   void activateFailedLED(uint8_t control, uint8_t speed, uint8_t cycles);
   void activateCustomPresetLED(uint8_t control, uint8_t speed, uint8_t cycles);
-  bool waitOnFingerprintForTimeout(int timeout);
+  bool waitOnFingerprintForTimeout(int timeout = 10000);
 
 private:
   HardwareSerial _serial;

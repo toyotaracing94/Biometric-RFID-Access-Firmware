@@ -92,7 +92,7 @@ int AdafruitFingerprintSensor::getFingerprintIdModel(){
  *      - true  If the fingerprint model was successfully created and stored.
  *      - false If an error occurred during the process.  
  */
-bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(int)> callback = nullptr) {
+bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(int)> callback) {
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint registration with Fingerprint ID %d", id);
     if (callback) callback(STATUS_FINGERPRINT_STARTED_REGISTERING);
 
@@ -251,7 +251,7 @@ void AdafruitFingerprintSensor::activateCustomPresetLED(uint8_t control, uint8_t
  *
  * @param timeoutMs the timeout before operation will be canceled as user take too long. Default is 10000 ms
  */
-bool AdafruitFingerprintSensor::waitOnFingerprintForTimeout(int timeoutMs = 10000){
+bool AdafruitFingerprintSensor::waitOnFingerprintForTimeout(int timeoutMs){
     unsigned long start = millis();
     while (_fingerprintSensor.getImage() != FINGERPRINT_OK) {
         if (millis() - start > timeoutMs) return false;

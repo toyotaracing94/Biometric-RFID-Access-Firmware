@@ -73,7 +73,7 @@ bool FingerprintService::addFingerprint(const char *username) {
     sendbleNotification(START_REGISTERING_FINGERPRINT_ACCESS);
 
     if (!_fingerprintSensor->addFingerprintModel(fingerprintId, std::bind(&FingerprintService::addFingerprintCallback, this, std::placeholders::_1))) {
-        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, "", "Failed to add Fingerprint Model!", true);
+        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, visitorId, "Failed to add Fingerprint Model!", true);
     }
 
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d Under Visitor ID %s. Saving to SD card...", fingerprintId, visitorId);
