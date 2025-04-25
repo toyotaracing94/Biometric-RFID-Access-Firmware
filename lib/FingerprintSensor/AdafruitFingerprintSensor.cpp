@@ -119,7 +119,7 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(i
     }
 
     if (callback) callback(STATUS_FINGERPRINT_FIRST_FEATURE_SUCCESS);
-    vTaskDelay(500 / portTICK_PERIOD_MS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Remove fingerprint from Sensor. Prepare Second Capture of the Fingerprint Image....");    
     activateCustomPresetLED(FINGERPRINT_LED_FLASHING, 25, 10);
@@ -129,6 +129,7 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(i
     
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Please again hold the same Fingerprint back to sensor. Beginning to second Capture of the Fingerprint Image...");
     activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    if (callback) callback(STATUS_FINGERPRINT_PLACE_SECOND_CAPTURE);
     if (!waitOnFingerprintForTimeout()) {
         ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Timeout waiting for second fingerprint image.");
         if (callback) callback(FINGERPRINT_CAPTURE_TIMEOUT);
