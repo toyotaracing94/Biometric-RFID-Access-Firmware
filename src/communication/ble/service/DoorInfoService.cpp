@@ -142,7 +142,8 @@ void ACCharacteristicCallback::onWrite(NimBLECharacteristic* pCharacteristic, Ni
     pCharacteristic -> setValue(value);
     
     // Maximum for Notify is 20 Bytes Packages Length 
-    pCharacteristic -> notify(); 
+    pCharacteristic -> notify();
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notified AC Remote characteristic with updated value (Length: %d bytes)", value.length());
 }
 
 /**
@@ -158,6 +159,7 @@ void LEDRemoteCharacteristicCallback::onWrite(NimBLECharacteristic* pCharacteris
 
     // Maximum for Notify is 20 Bytes Packages Length
     pCharacteristic->notify();
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notified LED Remote characteristic with updated value (Length: %d bytes)", value.length());
 }
 
 /**
