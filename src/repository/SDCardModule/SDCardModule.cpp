@@ -343,9 +343,7 @@ int SDCardModule::getFingerprintIdByVisitorId(const char* keyAccessId) {
  * @return The Fingerprint ID if found, or -1 if not found.
  */
 std::string* SDCardModule::getVisitorIdByFingerprintId(int fingerprintId) {
-    ESP_LOGI(SD_CARD_LOG_TAG, "Get Visitor ID by Fingerprint ID %d in SD Card", fingerprintId);
-
-    // Open the file and then close it and create new Static in heap
+    ESP_LOGI(SD_CARD_LOG_TAG, "Get KeyAccessId by Fingerprint ID %d in SD Card", fingerprintId);
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
     JsonDocument document;
 
@@ -358,33 +356,27 @@ std::string* SDCardModule::getVisitorIdByFingerprintId(int fingerprintId) {
         }
         file.close();
     } else {
-        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", FINGERPRINT_FILE_PATH);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the file: %s", FINGERPRINT_FILE_PATH);
         return nullptr;
     }
 
-    // Loop through all users in the document
+    // Loop through each user in the JSON array
     for (JsonObject user : document.as<JsonArray>()) {
-        const char *currentVisitorId = user["visitor_id"];
+        JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
+        if (!fingerprints.isNull()) {
+            for (JsonObject fingerprint : fingerprints) {
+                int storedId = fingerprint["fingerprintId"];
+                const char* keyAccessId = fingerprint["keyAccessId"];
 
-        // Check if the user has a visitor ID
-        if (currentVisitorId == nullptr) {
-            continue;
-        }
-
-        // Get the key_access array (which holds the fingerprintIds)
-        JsonArray fingerprintIds = user["key_access"].as<JsonArray>();
-
-        // Loop through the fingerprintIds array to find the matching fingerprintId
-        for (int id : fingerprintIds) {
-            if (id == fingerprintId) {
-                ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint ID %d found for Visitor ID %s", fingerprintId, currentVisitorId);
-                return new std::string(currentVisitorId);
+                if (storedId == fingerprintId && keyAccessId != nullptr) {
+                    ESP_LOGI(SD_CARD_LOG_TAG, "Found keyAccessId %s for Fingerprint ID %d", keyAccessId, fingerprintId);
+                    return new std::string(keyAccessId);
+                }
             }
         }
     }
 
-    // If no matching fingerprintId is found, log and return nullptr
-    ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint ID %d not found in any user", fingerprintId);
+    ESP_LOGW(SD_CARD_LOG_TAG, "keyAccessId for Fingerprint ID %d not found", fingerprintId);
     return nullptr;
 }
 

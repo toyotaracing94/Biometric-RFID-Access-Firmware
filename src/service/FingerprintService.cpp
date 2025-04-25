@@ -172,20 +172,22 @@ bool FingerprintService::authenticateAccessFingerprint(){
             // Get the visitor Id of that Fingerprint ID
             std::string *visitorId = _sdCardModule->getVisitorIdByFingerprintId(isRegsiteredModel);
 
-            // Send the access history without waiting the response
-            FingerprintQueueRequest msg;
-            msg.state = AUTHENTICATE_FP;
-            msg.fingerprintId = isRegsiteredModel;
-            snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
+            if(visitorId != nullptr){
+                // Send the access history without waiting the response
+                FingerprintQueueRequest msg;
+                msg.state = AUTHENTICATE_FP;
+                msg.fingerprintId = isRegsiteredModel;
+                snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
 
-            if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-                ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send NFC message to WiFi queue!");
+                if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
+                    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send NFC message to WiFi queue!");
+                }
+
+                return true;
             }
-
-            return true;
         }
         // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System
-        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock", isRegsiteredModel);
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock!", isRegsiteredModel);
         return false;
     }
     else{
