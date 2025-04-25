@@ -72,8 +72,8 @@ bool FingerprintService::addFingerprint(const char *username) {
     // as the data already been confirmed has been saved into the server
     sendbleNotification(START_REGISTERING_FINGERPRINT_ACCESS);
 
-    if (!_fingerprintSensor->addFingerprintModel(fingerprintId)) {
-        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, "", "Failed to add Fingerprint Model!", true);
+    if (!_fingerprintSensor->addFingerprintModel(fingerprintId, std::bind(&FingerprintService::addFingerprintCallback, this, std::placeholders::_1))) {
+        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, visitorId, "Failed to add Fingerprint Model!", true);
     }
 
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d Under Visitor ID %s. Saving to SD card...", fingerprintId, visitorId);
@@ -84,8 +84,8 @@ bool FingerprintService::addFingerprint(const char *username) {
         return handleError(FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD, username, visitorId, "Failed to register Fingerprint to SD Card!", true);
     }
 
-    sendbleNotification(SUCCESS_REGISTERING_FINGERPRINT_ACCESS);
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, VisitorID: %s, FingerprintID: %d", username, visitorId, fingerprintId);
+    sendbleNotification(SUCCESS_REGISTERING_FINGERPRINT_ACCESS);
     return true;
 }
 
@@ -141,8 +141,8 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
         }
 
         // Prepare the data payload
-        sendbleNotification(SUCCESS_DELETING_FINGERPRINT_ACCESS);
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint deleted from SD card successfully for FingerprintID: %d", fingerprintId);
+        sendbleNotification(SUCCESS_DELETING_FINGERPRINT_ACCESS);
         return true;
 
     } else {
@@ -172,20 +172,22 @@ bool FingerprintService::authenticateAccessFingerprint(){
             // Get the visitor Id of that Fingerprint ID
             std::string *visitorId = _sdCardModule->getVisitorIdByFingerprintId(isRegsiteredModel);
 
-            // Send the access history without waiting the response
-            FingerprintQueueRequest msg;
-            msg.state = AUTHENTICATE_FP;
-            msg.fingerprintId = isRegsiteredModel;
-            snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
+            if(visitorId != nullptr){
+                // Send the access history without waiting the response
+                FingerprintQueueRequest msg;
+                msg.state = AUTHENTICATE_FP;
+                msg.fingerprintId = isRegsiteredModel;
+                snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
 
-            if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-                ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send NFC message to WiFi queue!");
+                if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
+                    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send NFC message to WiFi queue!");
+                }
+
+                return true;
             }
-
-            return true;
         }
         // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System
-        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock", isRegsiteredModel);
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock!", isRegsiteredModel);
         return false;
     }
     else{
@@ -270,8 +272,8 @@ void FingerprintService::sendbleNotification(int statusCode){
  * @return Always returns false
  */
 bool FingerprintService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
-    sendbleNotification(statusCode);
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "%s", message);
+    sendbleNotification(statusCode);
 
     if (cleanup && visitorId) {
         FingerprintQueueRequest msg;
@@ -306,7 +308,18 @@ bool FingerprintService::handleError(int statusCode, const char* username, const
  * @return Always returns false  
  */
 bool FingerprintService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
-    sendbleNotification(statusCode);
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
+    sendbleNotification(statusCode);
     return false;
+}
+
+/**
+ * @brief A Callback function to handle the notification of the current fingerprint status when registering new fingerprint model
+ * that where will send the status code to external device over BLE network
+ * 
+ * @param statusCode The status code related to the state of the fingerprint, Success or failed operation  
+ */
+void FingerprintService::addFingerprintCallback(int statusCode){
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Start sending callback Status Code! Status Code %d", statusCode);
+    sendbleNotification(statusCode);
 }

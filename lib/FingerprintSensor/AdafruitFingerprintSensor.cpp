@@ -85,35 +85,85 @@ int AdafruitFingerprintSensor::getFingerprintIdModel(){
  * creates a fingerprint model, and stores it in the sensor's memory with the given ID.
  *
  * @param id  The unique ID to associate with the new fingerprint model.
+ * @param callback  Function callback to was supposed to show the progress of the fingerprint registration
+ * returning the int of code status of the fingerprint state
  *
  * @return
  *      - true  If the fingerprint model was successfully created and stored.
- *      - false If an error occurred during the process.
+ *      - false If an error occurred during the process.  
  */
-bool AdafruitFingerprintSensor::addFingerprintModel(int id){
+bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(int)> callback) {
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint registration with Fingerprint ID %d", id);
+    if (callback) callback(STATUS_FINGERPRINT_STARTED_REGISTERING);
+
     activateSuccessLED(FINGERPRINT_LED_BREATHING, 128, 1);
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-
+    
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Please hold fingerprint to Sensor. First Capture of the Fingerprint Image....");
+    if (callback) callback(STATUS_FINGERPRINT_PLACE_FIRST_CAPTURE);
     activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
-    while (_fingerprintSensor.getImage() != FINGERPRINT_OK)
-        ;
-    if (_fingerprintSensor.image2Tz(1) != FINGERPRINT_OK){
-        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to convert first Fingerprint image scan! Error Code %d", FAILED_TO_CONVERT_IMAGE_TO_FEATURE);
+    
+    if (!waitOnFingerprintForTimeout()) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Timeout waiting for first fingerprint image.");
+        if (callback) callback(FINGERPRINT_CAPTURE_TIMEOUT);
         activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
         return false;
     }
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Remove fingerprint from Sensor. Prepare Second Capture of the Fingerprint Image....");
+    if (callback) callback(STATUS_FINGERPRINT_PLACE_FIRST_HAS_CAPTURED);
+    if (_fingerprintSensor.image2Tz(1) != FINGERPRINT_OK) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to convert first Fingerprint image scan! Error Code %d", FAILED_TO_CONVERT_IMAGE_TO_FEATURE);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        if (callback) callback(FAILED_TO_GET_FINGERPRINT_FIRST_CONVERT);
+        return false;
+    }
+
+    if (callback) callback(STATUS_FINGERPRINT_FIRST_FEATURE_SUCCESS);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Remove fingerprint from Sensor. Prepare Second Capture of the Fingerprint Image....");    
     activateCustomPresetLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    if (callback) callback(STATUS_FINGERPRINT_LIFT_FINGER_FROM_SENSOR);
+    while (_fingerprintSensor.getImage() != FINGERPRINT_NOFINGER);
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
+    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Please again hold the same Fingerprint back to sensor. Beginning to second Capture of the Fingerprint Image...");
+    activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    if (callback) callback(STATUS_FINGERPRINT_PLACE_SECOND_CAPTURE);
+    if (!waitOnFingerprintForTimeout()) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Timeout waiting for second fingerprint image.");
+        if (callback) callback(FINGERPRINT_CAPTURE_TIMEOUT);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        return false;
+    }
+    if (_fingerprintSensor.image2Tz(2) != FINGERPRINT_OK) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to convert second Fingerprint image scan! Error Code %d", FAILED_TO_CREATE_VERIFICATION_MODEL);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
+        if (callback) callback(FAILED_TO_GET_FINGERPRINT_SECOND_CONVERT);
+        return false;
+    }
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    while (_fingerprintSensor.getImage() != FINGERPRINT_NOFINGER)
-        ;
-
+    
+    if (_fingerprintSensor.createModel() != FINGERPRINT_OK) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to make the Fingerprint model! Error Code %d", FAILED_TO_MAKE_FINGERPRINT_MODEL);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
+        if (callback) callback(FAILED_TO_MAKE_FINGERPRINT_MODEL);
+        return false;
+    }
+    
+    if (_fingerprintSensor.storeModel(id) != FINGERPRINT_OK) {
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to store the Fingerprint model! Error Code %d", FAILED_TO_STORED_FINGERPRINT_MODEL);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
+        if (callback) callback(FAILED_TO_STORED_FINGERPRINT_MODEL);
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint successfully captured with ID %d", id);
+    }
+    
+    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Successfully created the Fingerprint Model and Stored them for Future Calculation Use!");
+    activateSuccessLED(FINGERPRINT_LED_BREATHING, 255, 1);
+    if (callback) callback(STATUS_FINGERPRINT_REGISTERING_FINGER_MODEL);
     return true;
 }
+
 
 /**
  * @brief  Deletes a fingerprint model from the sensor.
@@ -195,4 +245,18 @@ void AdafruitFingerprintSensor::activateFailedLED(uint8_t control, uint8_t speed
 void AdafruitFingerprintSensor::activateCustomPresetLED(uint8_t control, uint8_t speed, uint8_t cycles){
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Activating Fingerprint LED for custom preset operation!");
     _fingerprintSensor.LEDcontrol(control, speed, FINGERPRINT_LED_PURPLE, cycles);
+}
+
+/**
+ * @brief  Helper function to manage the necessary time to waiting input for getting the fingerprint image input from the user  
+ *
+ * @param timeoutMs the timeout before operation will be canceled as user take too long. Default is 10000 ms
+ */
+bool AdafruitFingerprintSensor::waitOnFingerprintForTimeout(int timeoutMs){
+    unsigned long start = millis();
+    while (_fingerprintSensor.getImage() != FINGERPRINT_OK) {
+        if (millis() - start > timeoutMs) return false;
+        vTaskDelay( 100 / portTICK_PERIOD_MS);
+    }
+    return true;
 }
