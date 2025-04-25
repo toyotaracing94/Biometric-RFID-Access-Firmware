@@ -1,9 +1,7 @@
 #ifndef BLEMODULE_H
 #define BLEMODULE_H
 
-#include <BLEServer.h>
-#include <BLEDevice.h>
-#include <BLEAdvertising.h>
+#include "NimBLEDevice.h"
 
 #include "BLECallback.h"
 
@@ -22,8 +20,8 @@ public:
     void sendReport(int statusCode);
 
 private:
-    BLEServer* _bleServer;
-    BLEAdvertising* _bleAdvertise;
+    NimBLEServer* _bleServer;
+    NimBLEAdvertising* _bleAdvertise;
 
     DeviceInfoService* _deviceInfoService;
     DoorInfoService* _doorInfoService;

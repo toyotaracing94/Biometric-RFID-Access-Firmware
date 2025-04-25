@@ -4,10 +4,12 @@
 #include "StatusCodes.h"
 
 /**
- * @brief BLE callback class for handling write operations on the Door characteristic.
+ * @brief Handles write operations to the Door characteristic.
  * 
+ * @param pCharacteristic Pointer to the characteristic that was written to.
+ * @param connInfo        Connection information of the client that wrote the data.
  */
-void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
+void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo){
     const std::string& value = pCharacteristic -> getValue();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Incoming Door Characteristic UUID value of %s", value.c_str());
 
@@ -131,8 +133,10 @@ void DoorCharacteristicCallbacks::onWrite(BLECharacteristic* pCharacteristic){
 /**
  * @brief BLE callback class for handling write operations on the AC Remote characteristic.
  * 
+ * @param pCharacteristic Pointer to the characteristic that was written to.
+ * @param connInfo        Connection information of the client that wrote the data.
  */
-void ACCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
+void ACCharacteristicCallback::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo){
     const std::string& value = pCharacteristic -> getValue();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Incoming AC Characteristic UUID value of %s", value.c_str()); 
     pCharacteristic -> setValue(value);
@@ -144,8 +148,10 @@ void ACCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
 /**
  * @brief BLE callback class for handling write operations on the LED Remote characteristic.
  * 
+ * @param pCharacteristic Pointer to the characteristic that was written to.
+ * @param connInfo        Connection information of the client that wrote the data.
  */
-void LEDRemoteCharacteristicCallback::onWrite(BLECharacteristic* pCharacteristic){
+void LEDRemoteCharacteristicCallback::onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo){
     const std::string& value = pCharacteristic -> getValue();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Incoming LED Remote Characteristic UUID value of %s", value.c_str());
     pCharacteristic->setValue(value);
@@ -178,44 +184,42 @@ void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Info Service");
     _pService = _pServer->createService(SERVICE_UUID);
 
+    // Initialize BLE Door Characteristic with Notify property
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Characteristic");
     _pDoorChar = _pService->createCharacteristic(
         DOOR_CHARACTERISTIC_UUID,
-        BLECharacteristic::PROPERTY_WRITE |
-        BLECharacteristic::PROPERTY_READ  |
-        BLECharacteristic::PROPERTY_NOTIFY 
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
-    _pDoorChar -> addDescriptor(new BLE2902());
-    _pDoorChar -> setCallbacks(new DoorCharacteristicCallbacks());
-  
+    _pDoorChar->setCallbacks(new DoorCharacteristicCallbacks());
+
+    // Initialize BLE AC Remote Characteristic
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE AC Remote Characteristic");
     _pACChar = _pService->createCharacteristic(
         AC_REMOTE_CHARACTERISTIC_UUID,
-        BLECharacteristic::PROPERTY_WRITE |
-        BLECharacteristic::PROPERTY_READ 
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
     );
-    _pACChar -> addDescriptor(new BLE2902());
-    _pACChar -> setCallbacks(new ACCharacteristicCallback());
+    _pACChar->setCallbacks(new ACCharacteristicCallback());
 
+    // Initialize BLE LED Remote Characteristic
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE LED Remote Characteristic");
     _pLedChar = _pService->createCharacteristic(
         LED_REMOTE_CHARACTERISTIC_UUID,
-        BLECharacteristic::PROPERTY_WRITE |
-        BLECharacteristic::PROPERTY_READ 
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
     );
-    _pLedChar -> addDescriptor(new BLE2902());
-    _pLedChar -> setCallbacks(new LEDRemoteCharacteristicCallback());
+    _pLedChar->setCallbacks(new LEDRemoteCharacteristicCallback());
 
+    // Initialize BLE Notification Characteristic with Notify property
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Notification Characteristic");
     _pNotificationChar = _pService->createCharacteristic(
         NOTIFICATION_CHARACTERISTIC_UUID,
-        BLECharacteristic::PROPERTY_NOTIFY |
-            BLECharacteristic::PROPERTY_READ);
-    _pNotificationChar->addDescriptor(new BLE2902());
+        NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ
+    );
 
-    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Add Primary Service for Door Service");
+    // Start the service
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Starting Door Info Service");
     _pService->start();
 }
+
 
  /**
  * @brief Sends a JSON notification to the connected client.
