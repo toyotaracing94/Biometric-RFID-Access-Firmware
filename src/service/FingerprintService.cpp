@@ -180,7 +180,7 @@ bool FingerprintService::authenticateAccessFingerprint(){
                 snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
 
                 if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-                    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send NFC message to WiFi queue!");
+                    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send Fingerprint message to WiFi queue!");
                 }
 
                 return true;
@@ -254,7 +254,7 @@ void FingerprintService::sendbleNotification(const char *status, const char *use
  * @param status int Status code
  */
 void FingerprintService::sendbleNotification(int statusCode){
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Sending Fingerprint Service Action Result to BLE Notification");
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Sending Fingerprint Service Action Result to BLE Notification, Status Code: %d", statusCode);
     _bleModule->sendReport(statusCode);
 }
 
@@ -272,7 +272,7 @@ void FingerprintService::sendbleNotification(int statusCode){
  * @return Always returns false
  */
 bool FingerprintService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
-    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "%s", message);
+    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     sendbleNotification(statusCode);
 
     if (cleanup && visitorId) {

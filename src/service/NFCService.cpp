@@ -207,7 +207,7 @@ void NFCService::sendbleNotification(const char *status, const char *username, c
  * @param status int Status code
  */
 void NFCService::sendbleNotification(int statusCode){
-    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Sending Fingerprint Service Action Result to BLE Notification");
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Sending NFC Service Action Result to BLE Notification, Status Code: %d", statusCode);
     _bleModule->sendReport(statusCode);
 }
 
@@ -226,7 +226,7 @@ void NFCService::sendbleNotification(int statusCode){
  * @return Always returns false
  */
 bool NFCService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
-    ESP_LOGE(NFC_SERVICE_LOG_TAG, "%s", message);
+    ESP_LOGE(NFC_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     sendbleNotification(statusCode);
 
     if (cleanup && visitorId) {
@@ -263,7 +263,7 @@ bool NFCService::handleError(int statusCode, const char* username, const char* v
  * @return Always returns false
  */
 bool NFCService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
-    ESP_LOGE(NFC_SERVICE_LOG_TAG, "%s", message);
+    ESP_LOGE(NFC_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     sendbleNotification(statusCode);
     return false;
 }
