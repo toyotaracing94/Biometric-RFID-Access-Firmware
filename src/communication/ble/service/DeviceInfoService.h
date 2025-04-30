@@ -2,9 +2,7 @@
 #define DEVICEINFOSERVICE_H
 #define DEVICE_INFO_SERVICE_LOG_TAG "DEVICE INFO SERVICE"
 
-#include <BLEServer.h>
-#include <BLEService.h>
-#include <BLECharacteristic.h>
+#include "NimBLEDevice.h"
 #include <esp_log.h>
 #include "versionInfo.h"
 
@@ -15,15 +13,15 @@
 
 class DeviceInfoService {
 public:
-    DeviceInfoService(BLEServer* pServer);
+    DeviceInfoService(NimBLEServer* pServer);
     ~DeviceInfoService();
     void startService();
 
 private:
-    BLEServer* _pServer;
-    BLEService* _pService;
-    BLECharacteristic* _pManufacturerNameChar;
-    BLECharacteristic* _pFirmwareRevisionChar;
+    NimBLEServer* _pServer;
+    NimBLEService* _pService;
+    NimBLECharacteristic* _pManufacturerNameChar;
+    NimBLECharacteristic* _pFirmwareRevisionChar;
 };
 
 #endif

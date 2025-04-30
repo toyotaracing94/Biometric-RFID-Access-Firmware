@@ -1,6 +1,6 @@
 #include "DeviceInfoService.h"
 
-DeviceInfoService::DeviceInfoService(BLEServer* pServer) {
+DeviceInfoService::DeviceInfoService(NimBLEServer* pServer) {
     this -> _pServer = pServer;
     this -> _pService = nullptr;
     this -> _pManufacturerNameChar = nullptr;
@@ -20,13 +20,13 @@ void DeviceInfoService::startService() {
 
     _pManufacturerNameChar = _pService -> createCharacteristic(
         MANUFACTURER_NAME_UUID,
-        BLECharacteristic::PROPERTY_READ
+        NIMBLE_PROPERTY::READ
     );
     _pManufacturerNameChar -> setValue("Capability Center Division");
 
     _pFirmwareRevisionChar = _pService->createCharacteristic(
         FIRMWARE_REVISION_UUID,
-        BLECharacteristic::PROPERTY_READ
+        NIMBLE_PROPERTY::READ
     );
     _pFirmwareRevisionChar -> setValue(CURRENT_FIRMWARE_VERSION);
     _pService -> start();

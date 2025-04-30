@@ -3,10 +3,7 @@
 
 #define DOOR_INFO_SERVICE_LOG_TAG "DOOR_INFO_SERVICE"
 
-#include <BLEServer.h>
-#include <BLEService.h>
-#include <BLECharacteristic.h>
-#include <BLE2902.h>
+#include "NimBLEDevice.h"
 #include <esp_log.h>
 #include <ArduinoJson.h>
 
@@ -18,19 +15,19 @@
 #define AC_REMOTE_CHARACTERISTIC_UUID        "9f54dbb9-e127-4d80-a1ab-413d48023ad2"  
 #define NOTIFICATION_CHARACTERISTIC_UUID     "01952383-cf1a-705c-8744-2eee6f3f80c8"
 
-class DoorCharacteristicCallbacks : public BLECharacteristicCallbacks {
+class DoorCharacteristicCallbacks : public NimBLECharacteristicCallbacks {
     public:
-        void onWrite(BLECharacteristic* pCharacteristic) override;
+        void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
 };
 
-class ACCharacteristicCallback : public BLECharacteristicCallbacks {
+class ACCharacteristicCallback : public NimBLECharacteristicCallbacks {
     public:
-        void onWrite(BLECharacteristic* pCharacteristic) override;
+        void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
 };
 
-class LEDRemoteCharacteristicCallback : public BLECharacteristicCallbacks {
+class LEDRemoteCharacteristicCallback : public NimBLECharacteristicCallbacks {
     public:
-        void onWrite(BLECharacteristic* pCharacteristic) override;
+        void onWrite(NimBLECharacteristic* pCharacteristic, NimBLEConnInfo& connInfo) override;
 };
 
 
@@ -43,12 +40,12 @@ class DoorInfoService {
         void sendNotification(char* status, char* message);
 
     private:
-        BLEServer* _pServer;
-        BLEService* _pService;
-        BLECharacteristic* _pDoorChar;
-        BLECharacteristic* _pACChar;
-        BLECharacteristic* _pLedChar;
-        BLECharacteristic* _pNotificationChar;
+        NimBLEServer* _pServer;
+        NimBLEService* _pService;
+        NimBLECharacteristic* _pDoorChar;
+        NimBLECharacteristic* _pACChar;
+        NimBLECharacteristic* _pLedChar;
+        NimBLECharacteristic* _pNotificationChar;
 };
 
 #endif

@@ -1,14 +1,13 @@
 #ifndef BLE_CALLBACK
 #define BLE_CALLBACK
 
-#include <BLEServer.h>
-#include <BLEDevice.h>
+#include "NimBLEDevice.h"
 
 /// @brief The BLECallback class handles BLE server connection events trigger
-class BLECallback : public BLEServerCallbacks {  
+class BLECallback : public NimBLEServerCallbacks{  
     public:
-        void onConnect(BLEServer *pServer) override;
-        void onDisconnect(BLEServer *pServer) override;
+        void onConnect(NimBLEServer*pServer, NimBLEConnInfo& connInfo) override;
+        void onDisconnect(NimBLEServer*pServer, NimBLEConnInfo& connInfo, int reason) override;
 };  
 
 #endif

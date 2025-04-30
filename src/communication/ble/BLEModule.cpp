@@ -15,8 +15,8 @@ BLEModule::BLEModule() {}
 void BLEModule::initBLE(){
     ESP_LOGI(BLE_MODULE_LOG_TAG, "Initializing BLE Server and Service...");
     
-    BLEDevice::init(BLESERVERNAME);
-    _bleServer = BLEDevice::createServer();
+    NimBLEDevice::init(std::string(BLESERVERNAME));
+    _bleServer = NimBLEDevice::createServer();
     _bleServer -> setCallbacks(new BLECallback());
 }
 
@@ -36,13 +36,17 @@ void BLEModule::setupCharacteristic(){
     _doorInfoService = new DoorInfoService(_bleServer);
     _doorInfoService->startService();
 
-    _bleAdvertise = BLEDevice::getAdvertising();
-    _bleAdvertise -> setScanResponse(true);  
-    _bleAdvertise -> setMinPreferred(0x06);  
-    _bleAdvertise -> setMinPreferred(0x12);  
-    BLEDevice::startAdvertising();  
-    
-    ESP_LOGI(BLE_MODULE_LOG_TAG, "BLE initialized. Waiting for client to connect...");  
+    // Configure advertising with name
+    _bleAdvertise = NimBLEDevice::getAdvertising();
+
+    NimBLEAdvertisementData advData;
+    advData.setName(BLESERVERNAME);
+    _bleAdvertise->setAdvertisementData(advData);
+
+    // Start advertising
+    _bleAdvertise->start();
+
+    ESP_LOGI(BLE_MODULE_LOG_TAG, "BLE initialized. Waiting for client to connect...");
 }
 
 /**
