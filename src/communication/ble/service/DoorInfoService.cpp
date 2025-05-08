@@ -181,6 +181,12 @@ DoorInfoService::~DoorInfoService() {}
  * @brief Starts the DoorInfoService by creating characteristics and adding them to the service.
  * 
  * This creates characteristics for door, AC remote, LED remote, and notification and starts the service.
+ * 
+ * @note
+ * See this for more reference
+ * 
+ * 1. For descriptor --> https://h2zero.github.io/NimBLE-Arduino/md__migration__guide.html#descriptors
+ * 2. For chacateristic descriptor again? --> https://github.com/h2zero/esp-nimble-cpp/issues/2
  */
 void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Info Service");
@@ -193,22 +199,34 @@ void DoorInfoService::startService() {
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
     _pDoorChar->setCallbacks(new DoorCharacteristicCallbacks());
+    NimBLEDescriptor* doorDesc = new NimBLEDescriptor(
+        NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
+    doorDesc->setValue("Door Characteristic");
+    _pDoorChar->addDescriptor(doorDesc);
 
     // Initialize BLE AC Remote Characteristic
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE AC Remote Characteristic");
     _pACChar = _pService->createCharacteristic(
         AC_REMOTE_CHARACTERISTIC_UUID,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
     _pACChar->setCallbacks(new ACCharacteristicCallback());
+    NimBLEDescriptor* acRemoteDesc = new NimBLEDescriptor(
+        NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
+    acRemoteDesc->setValue("AC Remote Characteristic");
+    _pACChar->addDescriptor(acRemoteDesc);
 
     // Initialize BLE LED Remote Characteristic
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE LED Remote Characteristic");
     _pLedChar = _pService->createCharacteristic(
         LED_REMOTE_CHARACTERISTIC_UUID,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
     _pLedChar->setCallbacks(new LEDRemoteCharacteristicCallback());
+    NimBLEDescriptor* ledDesc = new NimBLEDescriptor(
+        NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
+    ledDesc->setValue("LED Remote Characteristic");
+    _pLedChar->addDescriptor(ledDesc);
 
     // Initialize BLE Notification Characteristic with Notify property
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Notification Characteristic");
@@ -216,6 +234,11 @@ void DoorInfoService::startService() {
         NOTIFICATION_CHARACTERISTIC_UUID,
         NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ
     );
+    _pNotificationChar->setCallbacks(new LEDRemoteCharacteristicCallback());
+    NimBLEDescriptor* notifDesc = new NimBLEDescriptor(
+        NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
+    notifDesc->setValue("Notification Characteristic");
+    _pNotificationChar->addDescriptor(notifDesc);
 
     // Start the service
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Starting Door Info Service");

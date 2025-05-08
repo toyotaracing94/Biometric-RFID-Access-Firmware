@@ -10,7 +10,7 @@ BLEModule::BLEModule() {}
  * This method initializes the BLE device, creates the BLE server, and sets the callbacks for handling
  * BLE events. It is intended to be called when the BLE module is first initialized.
  *
- * @see BLEDevice::init(), BLEDevice::createServer(), BLEServer::setCallbacks()
+ * @see NimBLEDevice::init(), NimBLEDevice::createServer(), NimBLEDevice::setCallbacks()
  */
 void BLEModule::initBLE(){
     ESP_LOGI(BLE_MODULE_LOG_TAG, "Initializing BLE Server and Service...");
@@ -21,12 +21,12 @@ void BLEModule::initBLE(){
 }
 
 /**
- * @brief Sets up BLE characteristics, services, and advertising of each service of the BLE
+ * @brief Sets up BLE characteristics and the services
  * 
- * This method registers any kind of services for the BLE Service Channel, then configures them into BLE advertising
- * to make the device discoverable by clients. It is called after the BLE server is initialized.
+ * This method registers any kind of custom services for the BLE Service Channel.
+ * enabling BLE clients to interact with the services
  *
- * @see BLEDevice::getAdvertising(), BLEAdvertising::setScanResponse(), BLEDevice::startAdvertising()
+ * @see DeviceInfoService::startService(), DoorInfoService::startService()
  */
 void BLEModule::setupCharacteristic(){
     // Register BLE Service
@@ -36,17 +36,49 @@ void BLEModule::setupCharacteristic(){
     _doorInfoService = new DoorInfoService(_bleServer);
     _doorInfoService->startService();
 
-    // Configure advertising with name
-    _bleAdvertise = NimBLEDevice::getAdvertising();
+    ESP_LOGI(BLE_MODULE_LOG_TAG, "BLE services set up.");
+}
 
-    NimBLEAdvertisementData advData;
-    advData.setName(BLESERVERNAME);
-    _bleAdvertise->setAdvertisementData(advData);
+/**
+ * @brief Configures and starts BLE advertising with device name and registered service UUID.
+ * 
+ * This function sets up BLE advertising by configuring both the primary advertising data
+ * and the scan response data. The device name is included in the advertising payload,
+ * while the 128-bit service UUID is included in the scan response. This allows BLE clients
+ * to discover the device and retrieve additional information upon scanning.
+ * 
+ * @details
+ * - Advertising Data (`advData`) includes the device name.
+ * - Scan Response Data (`scanRespData`) includes the full 128-bit Service UUID.
+ * - Advertising is started after configuration is complete.
+ */
+void BLEModule::setupAdvertising(){
+    // Advertising data
+    // This is the main data sent during the initial advertisement
+    NimBLEAdvertisementData advertisingData;
+    advertisingData.setName(BLESERVERNAME);
+    advertisingData.addTxPower();
+    advertisingData.setFlags(BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP);
+
+    // Optional: Add manufacturer-specific data. I'm gonna borrow Toyota Motor Corporation
+    // Big-Endian format
+    std::string mfgData = std::string("\x77\x09\x01\x02\x03\x04", 6);
+    advertisingData.setManufacturerData(mfgData);
+
+    // Scan response data
+    // This is data that can be sent as a response to a scan request after the device is discovered
+    NimBLEAdvertisementData scanRespData;
+
+    // Add service UUIDs to scan response data
+    scanRespData.addServiceUUID(SERVICE_UUID);
+
+    // Set advertising data (main advertisement data + scan response data)
+    NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
+    pAdvertising->setAdvertisementData(advertisingData);
+    pAdvertising->setScanResponseData(scanRespData);
 
     // Start advertising
-    _bleAdvertise->start();
-
-    ESP_LOGI(BLE_MODULE_LOG_TAG, "BLE initialized. Waiting for client to connect...");
+    pAdvertising->start();
 }
 
 /**

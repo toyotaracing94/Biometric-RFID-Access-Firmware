@@ -9,13 +9,14 @@
 #include "communication/ble/service/DoorInfoService.h"
 
 // Define BLE service and characteristic UUIDs
-#define BLESERVERNAME               "Yaris Cross Door Auth"
+#define BLESERVERNAME               "Yaris Door Auth"
 
 class BLEModule {
 public:
     BLEModule();
     void initBLE();
     void setupCharacteristic();
+    void setupAdvertising();
     void sendReport(const char* status, const JsonObject& payload, const char* message);
     void sendReport(int statusCode);
 
