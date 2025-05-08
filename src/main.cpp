@@ -77,6 +77,7 @@ extern "C" void app_main(void)
     // Setup BLE
     bleModule -> initBLE();
     bleModule -> setupCharacteristic();
+    bleModule -> setupAdvertising();
 
     // Start Task
     nfcTask -> startTask();

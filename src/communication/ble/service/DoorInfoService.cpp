@@ -198,7 +198,7 @@ void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE AC Remote Characteristic");
     _pACChar = _pService->createCharacteristic(
         AC_REMOTE_CHARACTERISTIC_UUID,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
     _pACChar->setCallbacks(new ACCharacteristicCallback());
 
@@ -206,7 +206,7 @@ void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE LED Remote Characteristic");
     _pLedChar = _pService->createCharacteristic(
         LED_REMOTE_CHARACTERISTIC_UUID,
-        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE
+        NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
     _pLedChar->setCallbacks(new LEDRemoteCharacteristicCallback());
 
