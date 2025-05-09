@@ -37,6 +37,7 @@ class DoorInfoService {
         ~DoorInfoService();
         void startService();
         void sendNotification(JsonDocument& json);
+        void sendNotification(char* status);
         void sendNotification(char* status, char* message);
 
     private:

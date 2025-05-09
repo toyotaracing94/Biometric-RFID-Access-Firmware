@@ -32,18 +32,17 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     if (command != nullptr)
         ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Name: Command = %s", command);
 
-    if (!data.isNull())
-    {
+    if (!data.isNull()){
         if (name != nullptr)
             ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Name: Name = %s", name);
-        if (data["key_access"].is<const char *>())
+        if (data["key_access_id"].is<const char *>())
         {
-            key_access = data["key_access"].as<const char *>();
+            key_access = data["key_access_id"].as<const char *>();
             ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Data: Key Access = %s", key_access);
         }
-        else if (data["key_access"].is<int>())
+        else if (data["key_access_id"].is<int>())
         {
-            int key_access_int = data["key_access"].as<int>();
+            int key_access_int = data["key_access_id"].as<int>();
             char buffer[8];
             itoa(key_access_int, buffer, 10);
             key_access = buffer;
@@ -67,24 +66,47 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     }
 
     // Error handling when BLE Door Characteristic Callback kicks in
-    if (strcmp(command, "register_fp") == 0)
-    {
-        if (name == nullptr)
-        {
-            char message[20];
-            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_REGISTER_FINGERPRINT_NO_NAME);
-            pCharacteristic->setValue(message);
-            pCharacteristic->notify();
+    if (strcmp(command, "register_fp") == 0){
+        if (name == nullptr && visitor_id != nullptr && key_access != nullptr){
+
+            JsonDocument document;
+            document["status"] = FAILED_TO_REGISTER_FINGERPRINT_NO_NAME;
+            String buffer;
+            serializeJson(document, buffer);
+            pCharacteristic -> setValue(buffer.c_str());
+            pCharacteristic -> notify();
 
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but 'name' is empty. Cannot proceed.");
             return;
         }
-    }
-    if (strcmp(command, "delete_fp") == 0)
-    {
+        
+        if (visitor_id == nullptr || key_access == nullptr){
+            JsonDocument document;
+            document["status"] = FAILED_TO_DELETE_FINGERPRINT_NO_ID;
+            String buffer;
+            serializeJson(document, buffer);
+            pCharacteristic -> setValue(buffer.c_str());
+            pCharacteristic -> notify();
 
-        if (visitor_id == nullptr)
-        {
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but `visitor_id` or `key_access` is empty. Cannot proceed.");
+            return;
+        }
+
+        if (name == nullptr && visitor_id == nullptr && key_access == nullptr){
+            JsonDocument document;
+            document["status"] = FAILED_TO_DELETE_FINGERPRINT_NO_NAME_AND_ID;
+            String buffer;
+            serializeJson(document, buffer);
+            pCharacteristic -> setValue(buffer.c_str());
+            pCharacteristic -> notify();
+            
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but 'name', `visitor_id`, `key_access` is empty. Cannot proceed.");
+            return;
+        }
+    }
+
+    if (strcmp(command, "delete_fp") == 0){
+        if (key_access == nullptr){
             char message[20];
             snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_FINGERPRINT_NO_ID);
             pCharacteristic->setValue(message);
@@ -94,10 +116,9 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
             return;
         }
     }
-    if (strcmp(command, "register_rfid") == 0)
-    {
-        if (name == nullptr)
-        {
+
+    if (strcmp(command, "register_rfid") == 0){
+        if (name == nullptr){
             char message[20];
             snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_REGISTER_NFC_NO_NAME);
             pCharacteristic->setValue(message);
@@ -107,11 +128,9 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
             return;
         }
     }
-    if (strcmp(command, "delete_rfid") == 0)
-    {
-
-        if (visitor_id == nullptr)
-        {
+    
+    if (strcmp(command, "delete_rfid") == 0){
+        if (visitor_id == nullptr){
             char message[20];
             snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_ID);
             pCharacteristic->setValue(message);
@@ -127,7 +146,7 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     commandBleData.setKeyAccess(key_access);
     commandBleData.setVisitorId(visitor_id);
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Valid Data Door Characteristic: Payload = %s", value.c_str());
-    vTaskDelay( 50/ portTICK_PERIOD_MS);
+    vTaskDelay( 50 / portTICK_PERIOD_MS);
 }
 
 /**
@@ -256,6 +275,24 @@ void DoorInfoService::startService() {
 void DoorInfoService::sendNotification(JsonDocument& json){
     String buffer;
     serializeJson(json, buffer);
+    _pNotificationChar -> setValue(buffer.c_str());
+    _pNotificationChar -> notify();
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent to Notification Characteristic!");
+}
+
+/**
+ * @brief Sends a status as a notification to the client.
+ * 
+ * This function creates a simple JSON document with the status sends it to the notification characteristic.
+ * 
+ * @param status The status of the notification.
+ */
+void DoorInfoService::sendNotification(char* status){ 
+    JsonDocument document;
+    document["status"] = status;
+
+    String buffer;
+    serializeJson(document, buffer);
     _pNotificationChar -> setValue(buffer.c_str());
     _pNotificationChar -> notify();
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Notification sent to Notification Characteristic!");

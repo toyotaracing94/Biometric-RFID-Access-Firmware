@@ -15,7 +15,7 @@ class FingerprintService
 public:
     FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay, BLEModule* bleModule, QueueHandle_t fingerprintQueueRequest, QueueHandle_t fingerprintQueueResponse);
     bool setup();
-    bool addFingerprint(const char *username);
+    bool addFingerprint(const char *username, const char *visitorId, const char *keyAccessId);
     bool deleteFingerprint(const char *visitorId);
     bool authenticateAccessFingerprint();
     uint8_t generateFingerprintId();

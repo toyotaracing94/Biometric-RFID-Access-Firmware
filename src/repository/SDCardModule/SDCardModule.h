@@ -20,16 +20,16 @@ public:
     SDCardModule();
     bool setup();
 
-    bool isFingerprintIdRegistered(int id);
-    bool saveFingerprintToSDCard(const char *username, int id, const char *visitorId);
-    bool deleteFingerprintFromSDCard(const char *visitorId);
-    int getFingerprintIdByVisitorId(const char *visitorId);
-    std::string* getVisitorIdByFingerprintId(int fingerprintId);
+    bool isFingerprintIdRegistered(int fingerprintId);
+    bool saveFingerprintToSDCard(const char *username, int fingerprintId, const char *visitorId, const char *keyAccessId);
+    bool deleteFingerprintFromSDCard(const char *keyAccessId);
+    int getFingerprintIdByKeyAccessId(const char *keyAccessId);
+    std::string* getKeyAccessIdByFingerprintId(int fingerprintId);
 
-    bool isNFCIdRegistered(const char *id);
-    bool saveNFCToSDCard(const char *username, const char *id, const char *visitorId);
+    bool isNFCIdRegistered(const char *uidCard);
+    bool saveNFCToSDCard(const char *username, const char *uidCard, const char *visitorId);
     bool deleteNFCFromSDCard(const char *visitorId);
-    std::string* getVisitorIdByNFC(char *id);
+    std::string* getVisitorIdByNFC(char *uidCard);
 
     void createEmptyJsonFileIfNotExists(const char *filepath);
     JsonDocument syncData();

@@ -97,7 +97,7 @@ bool SDCardModule::isFingerprintIdRegistered(int id) {
         JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
         for (JsonObject fingerprint : fingerprints) {
             // Check if the fingerprintId matches
-            if (fingerprint["fingerprintId"].as<int>() == id) {
+            if (fingerprint["fingerprint_id"].as<int>() == id) {
                 ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint ID %d found under user %s", id, currentUsername);
                 return true;
             }
@@ -111,16 +111,17 @@ bool SDCardModule::isFingerprintIdRegistered(int id) {
 /**
  * @brief Saves a fingerprint ID for a user to the SD card.
  *
- * Creates or updates a user with the given username and fingerprint ID.
+ * Creates or updates a user with the given username, visitor ID, key access ID (to relate the key access to the server) and fingerprint ID.
  * If the fingerprint ID is already registered, returns false.
  *
- * @param username The username of the user.
- * @param fingerprintId The fingerprint ID to save.
- * @param keyAccessId The Key Access ID/Visitor ID that represent the fingerprint key access in the server
+ * @param username The username of the user
+ * @param fingerprintId The fingerprint ID to save
+ * @param visitorId The Visitor ID that represent the user of the kye access
+ * @param keyAccessId The Key Access ID that represent the fingerprint key access in the server
  * @return `true` if the fingerprint data was successfully saved, `false` otherwise.
  */
-bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprintId, const char *keyAccessId) {
-    ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d, KeyAccessId %s", username, fingerprintId, keyAccessId);
+bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprintId, const char *visitorId, const char *keyAccessId) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d, VisitorId %s, KeyAccessId %s", username, fingerprintId, visitorId, keyAccessId);
     createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
 
     if (isFingerprintIdRegistered(fingerprintId)) {
@@ -151,11 +152,11 @@ bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprint
         if (user["name"] == username) {
             JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
             JsonObject newFingerprint = fingerprints.createNestedObject();
-            newFingerprint["fingerprintId"] = fingerprintId;
-            newFingerprint["keyAccessId"] = keyAccessId;
+            newFingerprint["fingerprint_id"] = fingerprintId;
+            newFingerprint["key_access_id"] = keyAccessId;
 
             userFound = true;
-            ESP_LOGI(SD_CARD_LOG_TAG, "Added new Fingerprint ID to existing user, Username %s, ID %d", username, fingerprintId);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Added new Fingerprint ID to existing user, Username %s, VisitorID %s, KeyAccessID %s, Fingerprint ID %d", username, visitorId, keyAccessId, fingerprintId);
             break;
         }
     }
@@ -164,13 +165,14 @@ bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprint
     if (!userFound) {
         JsonObject newUser = document.add<JsonObject>();
         newUser["name"] = username;
+        newUser["visitor_id"] = visitorId;
         JsonArray fingerprints = newUser.createNestedArray("fingerprints");
 
         JsonObject newFingerprint = fingerprints.createNestedObject();
-        newFingerprint["fingerprintId"] = fingerprintId;
-        newFingerprint["keyAccessId"] = keyAccessId;
+        newFingerprint["fingerprint_id"] = fingerprintId;
+        newFingerprint["key_access_id"] = keyAccessId;
 
-        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s with Fingerprint ID: %d", username, fingerprintId);
+        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s, VisitorID %s, KeyAccessID %s, Fingerprint ID %d", username, visitorId, keyAccessId, fingerprintId);
     }
 
     // Write back to file
@@ -195,26 +197,11 @@ bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprint
  * Searches for the given keyAccessId that associated the specified fingerprint ID.
  * If `id == 0`, all fingerprints of all the users are removed.
  *
- * @param keyAccessId The fingerprint ID to delete.　or `0` to delete allfingerprints models of the user
+ * @param keyAccessId The fingerprint Key Access ID to delete.
  * @return `true` if the fingerprint ID was successfully deleted, `false` otherwise.
  */
 bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Deleting Fingerprint ID Data, KeyAccessId: %s", keyAccessId);
-
-    if (strcmp(keyAccessId, "0") == 0) {
-        // Delete all fingerprint data by creating an empty JSON array
-        File file = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
-        if (file) {
-            // Write an empty JSON array to the file
-            file.print("[]");
-            file.close();
-            ESP_LOGI(SD_CARD_LOG_TAG, "All fingerprint data deleted successfully from SD Card");
-            return true;
-        } else {
-            ESP_LOGE(SD_CARD_LOG_TAG, "Error opening file for deletion of all data: %s", FINGERPRINT_FILE_PATH);
-            return false;
-        }
-    }
 
     // Open the file and create new Static JsonDocument
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -246,7 +233,7 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
             JsonObject fingerprint = fingerprints[j].as<JsonObject>();
 
             // Compare the keyAccessId (fingerprint key) with the input
-            if (fingerprint["keyAccessId"].as<String>() == keyAccessId) {
+            if (fingerprint["key_access_id"].as<String>() == keyAccessId) {
                 fingerprints.remove(j);
                 userFound = true;
                 ESP_LOGI(SD_CARD_LOG_TAG, "Removed Fingerprint Access for User with KeyAccessId: %s", keyAccessId);
@@ -287,7 +274,7 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
  * @param keyAccessId The Key Access ID to search for.
  * @return The Fingerprint ID if found, or -1 if not found.
  */
-int SDCardModule::getFingerprintIdByVisitorId(const char* keyAccessId) {
+int SDCardModule::getFingerprintIdByKeyAccessId(const char* keyAccessId) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Searching for Fingerprint ID by KeyAccessId: %s", keyAccessId);
 
     JsonDocument document;
@@ -342,7 +329,7 @@ int SDCardModule::getFingerprintIdByVisitorId(const char* keyAccessId) {
  * @param fingerprintId The Key Access ID to search for.
  * @return The Fingerprint ID if found, or -1 if not found.
  */
-std::string* SDCardModule::getVisitorIdByFingerprintId(int fingerprintId) {
+std::string* SDCardModule::getKeyAccessIdByFingerprintId(int fingerprintId) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Get KeyAccessId by Fingerprint ID %d in SD Card", fingerprintId);
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
     JsonDocument document;

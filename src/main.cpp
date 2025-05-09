@@ -98,6 +98,7 @@ extern "C" void app_main(void)
         const char *command = commandBleData.getCommand();
         const char *name = commandBleData.getName();
         const char *visitorId = commandBleData.getVisitorId();
+        const char *keyAccessId = commandBleData.getKeyAccess();
 
         switch (systemState) {
             case RUNNING:
@@ -124,13 +125,13 @@ extern "C" void app_main(void)
                 ESP_LOGI(LOG_TAG,"Start Registering RFID!");
                 nfcTask -> suspendTask();
 
-            nfcService->addNFC(name);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
+                nfcService->addNFC(name);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-            systemState = RUNNING;
-            commandBleData.clear();
-            nfcTask->resumeTask();
-            break;
+                systemState = RUNNING;
+                commandBleData.clear();
+                nfcTask->resumeTask();
+                break;
 
             case DELETE_RFID:
                 ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
@@ -148,7 +149,7 @@ extern "C" void app_main(void)
                 ESP_LOGI(LOG_TAG, "Start Registering Fingerprint!");
                 fingerprintTask->suspendTask();
 
-                fingerprintService->addFingerprint(name);
+                fingerprintService->addFingerprint(name, visitorId, keyAccessId);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;
@@ -160,7 +161,7 @@ extern "C" void app_main(void)
                 ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint!");
                 fingerprintTask->suspendTask();
 
-                fingerprintService->deleteFingerprint(visitorId);
+                fingerprintService->deleteFingerprint(keyAccessId);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;

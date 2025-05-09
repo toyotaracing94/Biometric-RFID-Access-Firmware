@@ -40,7 +40,7 @@ enum ErrorCode {
     FAILED_TO_PARSE_RESPONSE_SERVER = -208,                 /* Failed to parse the server's response during NFC operation                           */
 
     /// SD Card Error (301-400)
-    FAILED_TO_RETRIEVE_VISITORID_FROM_SDCARD = -301,        /* Failed to retrieve visitor ID from the SD card                                       */
+    FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD = -301,      /* Failed to retrieve Key Access ID from the SD card                                    */
     FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD = -302,       /* Failed to save fingerprint access info to SD card                                    */
     FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD = -303,   /* Failed to delete fingerprint access info from SD card                                */
     FAILED_SAVE_NFC_ACCESS_TO_SD_CARD = -304,               /* Failed to save NFC access info to SD card                                            */

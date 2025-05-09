@@ -19,72 +19,32 @@ bool FingerprintService::setup(){
  * the given fingerprint ID and add the associate ID of that model to save it to SD Card
  *
  * @param username The username to associate with the fingerprint ID.
+ * @param visitorId The Visitor ID that represent the user of the key access
+ * @param keyAccessId The Key Access ID that represent the fingerprint key access in the server
  * @return
  *      - true if the fingerprint model was successfully added and Fingerprint ID saved to the SD card; false otherwise.  
  */
-bool FingerprintService::addFingerprint(const char *username) {
+bool FingerprintService::addFingerprint(const char *username, const char *visitorId, const char *keyAccessId) {
     uint8_t fingerprintId = generateFingerprintId();
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enrolling new Fingerprint User! Username %s FingerprintID %d", username, fingerprintId);
-
-    // Getting the visitorId first from the server
-    // Pass the message into the queue message format
-    FingerprintQueueRequest msg;
-    msg.state = ENROLL_FP;
-    msg.fingerprintId = fingerprintId;
-    snprintf(msg.username, sizeof(msg.username), "%s", username);
-    snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);
-    msg.statusCode = START_REGISTERING_FINGERPRINT_ACCESS;
-
-    // Send back the information to the server first to get the visitor id pass first from server
-    if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-        return handleError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, username, "", "Failed to send Fingerprint message to WiFi queue!", false);
-    }
-
-    // Catch back the response from the queue with timeout of 5s
-    // Will just mark for now that if there's no response from the wifi task, it probably failed
-    // and I'll immediately return false
-    FingerprintQueueResponse resp;
-    if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
-        return handleError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, username, "", "Failed to receive Fingerprint message response from WiFi queue!", false);
-    }
-
-    // TODO: Make the request id to match with the response
-
-    // Parse JSON response to extract visitor_id
-    JsonDocument document;
-    DeserializationError error = deserializeJson(document, resp.response);
-
-    if (error) {
-        return handleError(FAILED_TO_PARSE_RESPONSE, username, "", "Failed to parse the response!", false);
-    }
-
-    int statusCode = document["stat_code"].as<int>();
-    if (statusCode != 200) {
-        return handleError(FAILED_REQUEST_TO_SERVER, username, "", "Failed request to server!", false);
-    }
-    
-    const char* visitorId = document["data"]["visitor_id"];
-    if (visitorId == nullptr || strlen(visitorId) == 0) {
-        return handleError(FAILED_GET_VISITORID_FROM_SERVER, username, "", "Failed to get Visitor ID from server!", false);
-    }
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enrolling new Fingerprint User! Username %s, ID %d, VisitorId %s, KeyAccessId %s", username, fingerprintId, visitorId, keyAccessId);
 
     // Start registering the fingerprint / turn on the protocol for registering fingerprint on sensor side
     // as the data already been confirmed has been saved into the server
     sendbleNotification(START_REGISTERING_FINGERPRINT_ACCESS);
 
     if (!_fingerprintSensor->addFingerprintModel(fingerprintId, std::bind(&FingerprintService::addFingerprintCallback, this, std::placeholders::_1))) {
-        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, visitorId, "Failed to add Fingerprint Model!", true);
+        return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, visitorId, "Failed to add Fingerprint Model!", false);
     }
 
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d Under Visitor ID %s. Saving to SD card...", fingerprintId, visitorId);
     // Save the fingerprint data to SD card
-    if (!_sdCardModule->saveFingerprintToSDCard(username, fingerprintId, visitorId)){
+    if (!_sdCardModule->saveFingerprintToSDCard(username, fingerprintId, visitorId, keyAccessId)){
         // If the save fingerprint to SD Card failed
         // Delete back the visitorId that has been saved to the server
-        return handleError(FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD, username, visitorId, "Failed to register Fingerprint to SD Card!", true);
+        return handleError(FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD, username, visitorId, "Failed to register Fingerprint to SD Card!", false);
     }
 
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, VisitorID: %s, FingerprintID: %d", username, visitorId, fingerprintId);
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint saved to SD card successfully for User: %s, FingerprintID: %d, VisitorID: %s, KeyAccessID : %s", username, fingerprintId, visitorId, keyAccessId);
     sendbleNotification(SUCCESS_REGISTERING_FINGERPRINT_ACCESS);
     return true;
 }
@@ -95,49 +55,29 @@ bool FingerprintService::addFingerprint(const char *username) {
  * This function attempts to delete a fingerprint model from the fingerprint sensor and
  * also removes the associated fingerprint data from the SD card.
  *
- * @param visitorId The Visitor ID that was associated with the fingerprint ID from the server to be deleted at SD Card
+ * @param keyAccessId The Key Access ID that was associated with the fingerprint ID from the server to be deleted at SD Card
  * @return true if the fingerprint was successfully deleted from both the sensor and the SD card;
  *         false otherwise.
  */
-bool FingerprintService::deleteFingerprint(const char *visitorId) {
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint User! Visitor ID = %s", visitorId);
-
-    // Delete first the data that on the server side
-    // Pass the message into the queue message format
-    FingerprintQueueRequest msg;
-    snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId);
-    msg.state = DELETE_FP;
-
-    // Send back the information to the server first to get the visitor id pass first from server
-    if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-        return handleDeleteError(FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE, visitorId, "Failed to send Fingerprint message to WiFi queue!");
-    }
-
-    // Also Catch back the response from the queue with timeout of 5s
-    // Will just mark for now that if there's no response from the wifi task, it probably failed
-    // and I'll immediately return false
-    FingerprintQueueResponse resp;
-    if (xQueueReceive(_fingerprintQueueResponse, &resp, pdMS_TO_TICKS(5000)) != pdPASS) {
-        return handleDeleteError(FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE, visitorId, "Failed to receive Fingerprint message response from WiFi queue!");
-    }
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Response: %s", resp.response);
+bool FingerprintService::deleteFingerprint(const char *keyAccessId) {
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint User! Key Access ID = %s", keyAccessId);
 
     // Get the fingerprintId from the SD Card
-    int fingerprintId = _sdCardModule->getFingerprintIdByVisitorId(visitorId);
+    int fingerprintId = _sdCardModule->getFingerprintIdByKeyAccessId(keyAccessId);
     if (fingerprintId <= 0) {
-        return handleDeleteError(FAILED_TO_RETRIEVE_VISITORID_FROM_SDCARD, visitorId, "Failed to retrieve user data for Visitor ID!");
+        return handleDeleteError(FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD, keyAccessId, "Failed to retrieve user data for Key Access ID!");
     }
 
-    // If success there is visitorId associated with fingerprint, then delete them from the sensor and from the SD Card
+    // If success there is key access ID associated with fingerprint, then delete them from the sensor and from the SD Card
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint ID %d from sensor! ", fingerprintId);
     bool deleteFingerprintResultSensor = _fingerprintSensor->deleteFingerprintModel(fingerprintId);
 
     if (deleteFingerprintResultSensor) {
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model deleted successfully from sensor for FingerprintID: %d", fingerprintId);
-        bool deleteFingerprintSDCard = _sdCardModule->deleteFingerprintFromSDCard(visitorId);
+        bool deleteFingerprintSDCard = _sdCardModule->deleteFingerprintFromSDCard(keyAccessId);
 
         if (!deleteFingerprintSDCard) {
-            return handleDeleteError(FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD, visitorId, "Failed to delete Fingerprint from SD card!");
+            return handleDeleteError(FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD, keyAccessId, "Failed to delete Fingerprint from SD card!");
         }
 
         // Prepare the data payload
@@ -146,7 +86,7 @@ bool FingerprintService::deleteFingerprint(const char *visitorId) {
         return true;
 
     } else {
-        return handleDeleteError(FAILED_TO_DELETE_FINGERPRINT_MODEL, visitorId, "Failed to delete fingerprint model from sensor for FingerprintID: %d");
+        return handleDeleteError(FAILED_TO_DELETE_FINGERPRINT_MODEL, keyAccessId, "Failed to delete fingerprint model from sensor for FingerprintID: %d");
     }
 }
 
@@ -169,15 +109,15 @@ bool FingerprintService::authenticateAccessFingerprint(){
             ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Match with ID %d", isRegsiteredModel);
             _doorRelay->toggleRelay();
 
-            // Get the visitor Id of that Fingerprint ID
-            std::string *visitorId = _sdCardModule->getVisitorIdByFingerprintId(isRegsiteredModel);
+            // Get the key access Id of that Fingerprint ID
+            std::string *keyAccessId = _sdCardModule->getKeyAccessIdByFingerprintId(isRegsiteredModel);
 
-            if(visitorId != nullptr){
+            if(keyAccessId != nullptr){
                 // Send the access history without waiting the response
                 FingerprintQueueRequest msg;
                 msg.state = AUTHENTICATE_FP;
                 msg.fingerprintId = isRegsiteredModel;
-                snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId->c_str());
+                snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", keyAccessId->c_str());
 
                 if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
                     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send Fingerprint message to WiFi queue!");
