@@ -7,7 +7,7 @@
 struct NFCQueueRequest {
     int request_id;
     char username[25];
-    char visitorId[40];
+    char keyAccessId[40];
     char uidCard[32]; 
     char vehicleInformationNumber[24];
     SystemState state;
@@ -23,7 +23,7 @@ struct FingerprintQueueRequest {
     int request_id;
     int fingerprintId;
     char username[25];
-    char visitorId[40];
+    char keyAccessId[40];
     char vehicleInformationNumber[24];
     SystemState state;
     int statusCode;

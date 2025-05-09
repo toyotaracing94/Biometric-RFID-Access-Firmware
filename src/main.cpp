@@ -125,7 +125,7 @@ extern "C" void app_main(void)
                 ESP_LOGI(LOG_TAG,"Start Registering RFID!");
                 nfcTask -> suspendTask();
 
-                nfcService->addNFC(name);
+                nfcService->addNFC(name, visitorId, keyAccessId);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;
@@ -137,7 +137,7 @@ extern "C" void app_main(void)
                 ESP_LOGI(LOG_TAG, "Start Deleting RFID!");
                 nfcTask->suspendTask();
 
-                nfcService->deleteNFC(visitorId);
+                nfcService->deleteNFC(keyAccessId);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;

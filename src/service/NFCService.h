@@ -16,8 +16,8 @@ class NFCService {
     public:
         NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule, QueueHandle_t nfcQueueRequest, QueueHandle_t nfcQueueResponse);
         bool setup();
-        bool addNFC(const char* username);
-        bool deleteNFC(const char *visitorId);
+        bool addNFC(const char *username, const char *visitorId, const char *keyAccessId);
+        bool deleteNFC(const char *keyAccessId);
         bool authenticateAccessNFC();
 
         // Helper functions

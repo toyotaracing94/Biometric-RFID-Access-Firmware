@@ -72,10 +72,10 @@ NFCQueueResponse WifiService::addNFCToServer(NFCQueueRequest nfcrequest){
  * @return NFCQueueResponse The NFC response
  */
 NFCQueueResponse WifiService::deleteNFCFromServer(NFCQueueRequest nfcrequest){
-    ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for deleting NFC data to the server. Visitor ID : %s", nfcrequest.visitorId);
+    ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for deleting NFC data to the server. Key Access ID : %s", nfcrequest.keyAccessId);
     
     // For now url will be stored here first
-    std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(nfcrequest.visitorId);
+    std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(nfcrequest.keyAccessId);
     
     // Send the request to the server
     std::string response = _wifi->sendDeleteRequest(url);
@@ -95,14 +95,14 @@ NFCQueueResponse WifiService::deleteNFCFromServer(NFCQueueRequest nfcrequest){
  * @return NFCQueueResponse The NFC response
  */
 NFCQueueResponse WifiService::authenticateAccessNFCToServer(NFCQueueRequest nfcrequest){
-    ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for addding history NFC data access to the server. Visitor ID %s", nfcrequest.visitorId);
+    ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for addding history NFC data access to the server. Visitor ID %s", nfcrequest.keyAccessId);
 
     // For now url will be stored here first
     std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/activity";
 
     // Prepare the document payload
     JsonDocument document;
-    document["visitor_id"] = nfcrequest.visitorId;
+    document["key_access_id"] = nfcrequest.keyAccessId;
 
     // Serialize the json into c-string
     std::string payload;
@@ -162,7 +162,7 @@ FingerprintQueueResponse WifiService::deleteFingerprintFromServer(FingerprintQue
     ESP_LOGI(WIFI_SERVICE_LOG_TAG, "Sending request for deleting Fingerprint data to the server");
 
     // For now url will be stored here first
-    std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(fingerprintRequest.visitorId);
+    std::string url = "http://203.100.57.59:3000/api/v1/user-vehicle/visitor/" + std::string(fingerprintRequest.keyAccessId);
 
     // Send the request to the server
     std::string response = _wifi->sendDeleteRequest(url);
@@ -189,7 +189,7 @@ FingerprintQueueResponse WifiService::authenticateAccessFingerprintToServer(Fing
 
     // Prepare the document payload
     JsonDocument document;
-    document["visitor_id"] = fingerprintRequest.visitorId;
+    document["key_access_id"] = fingerprintRequest.keyAccessId;
 
     // Serialize the json into c-string
     std::string payload;

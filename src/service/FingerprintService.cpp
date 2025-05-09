@@ -117,7 +117,7 @@ bool FingerprintService::authenticateAccessFingerprint(){
                 FingerprintQueueRequest msg;
                 msg.state = AUTHENTICATE_FP;
                 msg.fingerprintId = isRegsiteredModel;
-                snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", keyAccessId->c_str());
+                snprintf(msg.keyAccessId, sizeof(msg.keyAccessId), "%s", keyAccessId->c_str());
 
                 if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
                     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send Fingerprint message to WiFi queue!");
@@ -206,24 +206,24 @@ void FingerprintService::sendbleNotification(int statusCode){
  *
  * @param statusCode The status code related to the error from the `ErrorCode` enum
  * @param username Name of the user associated with the operation.
- * @param visitorId Visitor ID to be used for cleanup (can be nullptr if not applicable).
+ * @param keyAccessId Key Access ID to be used for cleanup (can be nullptr if not applicable).
  * @param message Error message to log and send in the notification.
  * @param cleanup If true and visitorId is provided, will send a REMOVE_FP request to the server.
  * @return Always returns false
  */
-bool FingerprintService::handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup) {
+bool FingerprintService::handleError(int statusCode, const char* username, const char* keyAccessId, const char* message, bool cleanup) {
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     sendbleNotification(statusCode);
 
-    if (cleanup && visitorId) {
+    if (cleanup && keyAccessId) {
         FingerprintQueueRequest msg;
         msg.state = DELETE_FP;
-        snprintf(msg.visitorId, sizeof(msg.visitorId), "%s", visitorId);
+        snprintf(msg.keyAccessId, sizeof(msg.keyAccessId), "%s", keyAccessId);
         snprintf(msg.username, sizeof(msg.username), "%s", username);
         snprintf(msg.vehicleInformationNumber, sizeof(msg.vehicleInformationNumber), "%s", VIN);
 
         if (xQueueSend(_fingerprintQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
-            ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send cleanup request for visitor ID: %s", visitorId);
+            ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to send cleanup request for Key Access ID: %s", keyAccessId);
         }
 
         FingerprintQueueResponse resp;

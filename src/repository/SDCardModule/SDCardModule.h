@@ -27,9 +27,9 @@ public:
     std::string* getKeyAccessIdByFingerprintId(int fingerprintId);
 
     bool isNFCIdRegistered(const char *uidCard);
-    bool saveNFCToSDCard(const char *username, const char *uidCard, const char *visitorId);
-    bool deleteNFCFromSDCard(const char *visitorId);
-    std::string* getVisitorIdByNFC(char *uidCard);
+    bool saveNFCToSDCard(const char *username, const char *uidCard, const char *visitorId, const char *keyAccessId);
+    bool deleteNFCFromSDCard(const char *keyAccessId);
+    std::string* getKeyAccessIdByNFCUid(char *uidCard);
 
     void createEmptyJsonFileIfNotExists(const char *filepath);
     JsonDocument syncData();
