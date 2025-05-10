@@ -18,6 +18,7 @@ class NFCService {
         bool setup();
         bool addNFC(const char *username, const char *visitorId, const char *keyAccessId);
         bool deleteNFC(const char *keyAccessId);
+        bool deleteNFCsUser(const char *visitorId);
         bool authenticateAccessNFC();
 
         // Helper functions

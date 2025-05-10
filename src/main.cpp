@@ -118,6 +118,9 @@ extern "C" void app_main(void)
                     if (strcmp(command, "delete_rfid") == 0) {
                         systemState = DELETE_RFID;
                     }
+                    if (strcmp(command, "delete_rfid_user") == 0){
+                        systemState = DELETE_RFID_USER;
+                    }
                     if (strcmp(command, "update_visitor") == 0) {
                         systemState = UPDATE_VISITOR;
                     }
@@ -141,6 +144,18 @@ extern "C" void app_main(void)
                 nfcTask->suspendTask();
 
                 nfcService->deleteNFC(keyAccessId);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                nfcTask->resumeTask();
+                break;
+
+            case DELETE_RFID_USER:
+                ESP_LOGI(LOG_TAG, "Start Deleting User RFID!");
+                nfcTask->suspendTask();
+
+                nfcService->deleteNFCsUser(visitorId);
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;

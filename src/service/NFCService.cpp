@@ -59,7 +59,7 @@ bool NFCService::addNFC(const char *username, const char *visitorId, const char 
 /**
  * @brief Delete an NFC card from the SD card associated with the given username.
  *
- * This function attempts to delete the NFC card UID associated with a user from the SD card.
+ * This function attempts to delete the NFC card UID associated with a key access ID from the SD card.
  * If the NFC card UID is empty or passed as "null", no deletion will occur.
  *
  * @param keyAccessId The Key Access ID that was associated with the NFC UID from the server to be deleted at SD Card
@@ -73,12 +73,37 @@ bool NFCService::deleteNFC(const char *keyAccessId) {
     bool deleteNFCfromSDCard = _sdCardModule->deleteNFCFromSDCard(keyAccessId);
 
     if (!deleteNFCfromSDCard) {
-        ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card deleted successfully for Key Access ID: %s", keyAccessId);
+        ESP_LOGI(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for Key Access ID: %s", keyAccessId);
         return handleDeleteError(FAILED_DELETE_NFC_ACCESS_TO_SD_CARD, "Failed to delete NFC Card from SD Card");
         
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID successfully deleted to SD card for Key Access ID: %s", keyAccessId);
     sendbleNotification(SUCCESS_DELETING_NFC_ACCESS);
+    return true;
+}
+
+/**
+ * @brief Delete a NFC card access control under a user from the SD card associated with the given visitor ID.
+ *
+ * This function attempts to delete all NFC card UID associated with a user from the SD card.
+ * If the NFC card UID is empty or passed as "null", no deletion will occur.
+ *
+ * @param keyAccessId The Key Access ID that was associated with the NFC UID from the server to be deleted at SD Card
+ * @return true if the NFC UID was successfully deleted from the SD card, false otherwise.  
+ */
+bool NFCService::deleteNFCsUser(const char *visitorId){
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting NFC Card User Access! Visitor ID = %s", visitorId);
+
+    // Start deleting them first on the SD Card
+    bool deleteNFCsfromSDCard = _sdCardModule->deleteNFCsUserFromSDCard(visitorId);
+
+    if (!deleteNFCsfromSDCard) {
+        ESP_LOGI(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card access's for under Visitor ID: %s", visitorId);
+        return handleDeleteError(FAILED_TO_DELETE_NFCS_USER, "Failed to delete NFC Card from SD Card");
+        
+    }
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID user successfully deleted from SD card under visitor ID: %s", visitorId);
+    sendbleNotification(SUCCESS_DELETING_NFCS_USER);
     return true;
 }
 

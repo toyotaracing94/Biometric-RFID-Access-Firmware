@@ -169,13 +169,25 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     }
     
     if (strcmp(command, "delete_rfid") == 0){
+        if (key_access == nullptr){
+            char message[20];
+            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_ID);
+            pCharacteristic->setValue(message);
+            pCharacteristic->notify();
+
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid' command but `key access id` is empty. Cannot proceed.");
+            return;
+        }
+    }
+
+    if (strcmp(command, "delete_rfid_user") == 0){
         if (visitor_id == nullptr){
             char message[20];
             snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_ID);
             pCharacteristic->setValue(message);
             pCharacteristic->notify();
 
-            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid' command but `visitor id` is empty. Cannot proceed.");
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid_user' command but `visitor_id` is empty. Cannot proceed.");
             return;
         }
     }

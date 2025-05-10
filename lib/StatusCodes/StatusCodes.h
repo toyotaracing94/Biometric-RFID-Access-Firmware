@@ -42,6 +42,7 @@ enum ErrorCode {
     FAILED_TO_PARSE_RESPONSE_SERVER = -208,                         /* Failed to parse the server's response during NFC operation                           */
     FAILED_TO_REGISTER_NFC_NO_VISITOR_ID_OR_KEY_ACCESS_ID = -209,   /* Failed to register NFC access because no Visitor ID or Key Access was provided       */
     FAILED_TO_REGISTER_NFC_NO_NAME_AND_ID = -210,                   /* Failed to register NFC access because no name and ID was provided                    */
+    FAILED_TO_DELETE_NFCS_USER = -211,                              /* Failed to delete NFC access under such user                                          */
 
     /// SD Card Error (301-400)
     FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD = -301,      /* Failed to retrieve Key Access ID from the SD card                                       */
@@ -91,6 +92,7 @@ enum SuccessCode {
     SUCCESS_REGISTERING_NFC_ACCESS = 203,                   /* Successfully registered NFC access                                                   */
     SUCCESS_DELETING_NFC_ACCESS = 204,                      /* Successfully deleted NFC access                                                      */
     STATUS_NFC_CARD_SUCCESS_READ = 205,                     /* Successfully getting the NFC Card UID From the sensor                                */
+    SUCCESS_DELETING_NFCS_USER = 206,
 };
 
 #endif // ERROR_CODE_H

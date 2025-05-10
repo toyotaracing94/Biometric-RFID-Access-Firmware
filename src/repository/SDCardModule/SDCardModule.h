@@ -33,6 +33,7 @@ public:
     bool isNFCIdRegistered(const char *uidCard);
     bool saveNFCToSDCard(const char *username, const char *uidCard, const char *visitorId, const char *keyAccessId);
     bool deleteNFCFromSDCard(const char *keyAccessId);
+    bool deleteNFCsUserFromSDCard(const char *visitorId);
     std::string* getKeyAccessIdByNFCUid(char *uidCard);
 
     void createEmptyJsonFileIfNotExists(const char *filepath);

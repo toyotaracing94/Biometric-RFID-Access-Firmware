@@ -267,6 +267,14 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
     }
 }
 
+/**
+ * @brief Deletes all the fingerprint users from record on the SD card.
+ *
+ * Searches for the given visitorId that associated the specified fingerprints.
+ *
+ * @param visitorId The visitor ID of the user
+ * @return `true` if the fingerprints was successfully deleted, `false` otherwise.
+ */
 bool SDCardModule::deleteFingerprintsUserFromSDCard(const char* visitorId){
     ESP_LOGI(SD_CARD_LOG_TAG, "Deleting Fingerprints User, Visitor ID: %s", visitorId);
 
@@ -321,7 +329,6 @@ bool SDCardModule::deleteFingerprintsUserFromSDCard(const char* visitorId){
         return false;
     }
 }
-
 
 /**
  * @brief Gets the Fingerprint ID associated with a given keyAccessId.
@@ -683,6 +690,69 @@ bool SDCardModule::deleteNFCFromSDCard(const char *keyAccessId) {
         }
     } else {
         ESP_LOGE(SD_CARD_LOG_TAG, "Key Access ID %s not found or no NFC data to remove", keyAccessId);
+        return false;
+    }
+}
+
+/**
+ * @brief Deletes all the NFC Card access of an user from record of the SD card.
+ *
+ * Searches for the given visitorId that associated the specified NFC Card access.
+ *
+ * @param visitorId The visitor ID of the user
+ * @return `true` if the NFCs was successfully deleted, `false` otherwise.
+ */
+bool SDCardModule::deleteNFCsUserFromSDCard(const char *visitorId){
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC Data User, Visitor ID %s", visitorId);
+
+    // Open the file for reading the data
+    File file = SD.open(RFID_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if (file) {
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        return false;
+    }
+
+    // Search for the user with the given visitor_id
+    bool userFound = false;
+    JsonArray users = document.as<JsonArray>();
+    for (int i = 0; i < users.size(); i++) {
+        JsonObject user = users[i].as<JsonObject>();
+        if (user["visitor_id"] == visitorId) {
+            users.remove(i);
+            userFound = true;
+            ESP_LOGI(SD_CARD_LOG_TAG, "User with Visitor ID %s deleted in memory", visitorId);
+            break;
+        }
+    }
+
+    if (userFound) {
+        // Write the modified JSON data back to the SD card
+        file = SD.open(RFID_FILE_PATH, FILE_WRITE);
+        if (file) {
+            if (serializeJson(document, file) == 0) {
+                ESP_LOGE(SD_CARD_LOG_TAG, "Failed to serialize JSON to file");
+                file.close();
+                return false;
+            }
+            file.close();
+            ESP_LOGI(SD_CARD_LOG_TAG, "NFC data change is successfully stored to SD Card");
+            return true;
+        } else {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to change NFC data on SD Card");
+            return false;
+        }
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "NFC Data with Visitor Id %s not found in Storage system!", visitorId);
         return false;
     }
 }
