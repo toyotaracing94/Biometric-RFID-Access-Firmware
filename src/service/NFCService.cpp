@@ -74,7 +74,7 @@ bool NFCService::deleteNFC(const char *keyAccessId) {
 
     if (!deleteNFCfromSDCard) {
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC card deleted successfully for Key Access ID: %s", keyAccessId);
-        return handleDeleteError(FAILED_DELETE_NFC_ACCESS_TO_SD_CARD, keyAccessId, "Failed to delete NFC Card from SD Card");
+        return handleDeleteError(FAILED_DELETE_NFC_ACCESS_TO_SD_CARD, "Failed to delete NFC Card from SD Card");
         
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID successfully deleted to SD card for Key Access ID: %s", keyAccessId);
@@ -200,11 +200,10 @@ bool NFCService::handleError(int statusCode, const char* username, const char* k
  * This is for handle of deletion error, what are we going to cleanup? We already are!
  *
  * @param statusCode The status code related to the error from the `ErrorCode` enum
- * @param keyAccessId Visitor ID
  * @param message Error message to log and send in the notification.
  * @return Always returns false
  */
-bool NFCService::handleDeleteError(int statusCode, const char* keyAccessId, const char* message) {
+bool NFCService::handleDeleteError(int statusCode, const char* message) {
     ESP_LOGE(NFC_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     sendbleNotification(statusCode);
     return false;
