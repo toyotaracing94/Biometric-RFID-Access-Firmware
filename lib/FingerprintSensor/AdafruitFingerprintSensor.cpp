@@ -169,10 +169,9 @@ bool AdafruitFingerprintSensor::addFingerprintModel(int id, std::function<void(i
  * @brief  Deletes a fingerprint model from the sensor.
  *
  * This function deletes a fingerprint model from the sensor's memory.
- * If `id` is `0`, all fingerprint models are deleted.
- * Otherwise, the model with the specified `id` is deleted.
+ * The model with the specified `id` is deleted.
  *
- * @param id  The ID of the fingerprint model to delete, or `0` to delete all models.
+ * @param id  The ID of the fingerprint model to delete
  *
  * @return
  *      - true  If the fingerprint model was successfully deleted.
@@ -182,30 +181,30 @@ bool AdafruitFingerprintSensor::deleteFingerprintModel(int id){
     ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Deleting Fingerprint Model with ID %d", id);
     activateSuccessLED(FINGERPRINT_LED_BREATHING, 128, 1);
 
-    if (id == 0){
-        if (_fingerprintSensor.emptyDatabase() == FINGERPRINT_OK){
-            ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Successfully deleted all Fingerprint Model from sensor!");
-            activateSuccessLED(FINGERPRINT_LED_BREATHING, 255, 1);
-            return true;
-        }
-        else{
-            ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Unsuccessfull delete all Fingerprint Model from sensor!");
-            activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
-            return false;
-        }
+    if (_fingerprintSensor.deleteModel(id) == FINGERPRINT_OK){
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint model with ID %d successfully deleted from sensor!", id);
+        activateSuccessLED(FINGERPRINT_LED_BREATHING, 128, 1);
+        return true;
     }
     else{
-        if (_fingerprintSensor.deleteModel(id) == FINGERPRINT_OK){
-            ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Fingerprint model with ID %d successfully deleted from sensor!", id);
-            activateSuccessLED(FINGERPRINT_LED_BREATHING, 128, 1);
-            return true;
-        }
-        else{
-            ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to delete Fingerprint Model with ID %d", id);
-            activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
-            return false;
-        }
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Failed to delete Fingerprint Model with ID %d", id);
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
+        return false;
     }
+}
+
+bool AdafruitFingerprintSensor::deleteAllFingerprintModel(){
+    ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Deleting All Fingerprint Model");
+    if (_fingerprintSensor.emptyDatabase() == FINGERPRINT_OK){
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Successfully deleted all Fingerprint Model from sensor!");
+        activateSuccessLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        return true;
+    }
+    else{
+        ESP_LOGI(ADAFRUIT_SENSOR_LOG_TAG, "Unsuccessfull delete all Fingerprint Model from sensor!");
+        activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
+        return false;
+    }   
 }
 
 /**

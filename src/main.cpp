@@ -112,6 +112,9 @@ extern "C" void app_main(void)
                     if (strcmp(command, "delete_fp_user") == 0){
                         systemState = DELETE_FP_USER;
                     }
+                    if (strcmp(command, "delete_fp_sensor") == 0){
+                        systemState = DELETE_FP_SENSOR;
+                    }
                     if (strcmp(command, "register_rfid") == 0) {
                         systemState = ENROLL_RFID;
                     }
@@ -199,6 +202,17 @@ extern "C" void app_main(void)
                 fingerprintTask->resumeTask();
                 break;
 
+            case DELETE_FP_SENSOR:
+                ESP_LOGI(LOG_TAG, "Start Deleting All Fingerprint Models!");
+                fingerprintTask->suspendTask();
+
+                fingerprintService->deleteAllFingerprintModel();
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                break;
 
             case UPDATE_VISITOR:
                 ESP_LOGI(LOG_TAG, "Start Sync Data!");

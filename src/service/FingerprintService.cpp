@@ -137,6 +137,28 @@ bool FingerprintService::deleteFingerprintsUser(const char *visitorId) {
 }
 
 /**
+ * @brief Delete all the fingerprint access control on the sensor
+ *
+ * This function to delete the all the fingerprint model in the sensor  
+ *
+ * @return true if the all fingerprint model was successfully deleted from the sensor;
+ *         false otherwise.
+ */
+bool FingerprintService::deleteAllFingerprintModel(){
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting All Fingerprint Models!");
+
+    if(_fingerprintSensor->deleteAllFingerprintModel()){
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Successfully deleted all the fingerprint model from the sensor");
+        sendbleNotification(SUCCESS_DELETING_ALL_FINGERPRINTS_MODEL);
+        return true;
+    }
+
+    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete all the fingerprints model from the sensor");
+    sendbleNotification(FAILED_DELETING_ALL_FINGERPRINTS_MODEL);
+    return false;
+}
+
+/**
  * @brief Authenticate a fingerprint and grant access if registered.
  *
  * This function checks if the fingerprint captured by the sensor matches a registered fingerprint.

@@ -18,6 +18,7 @@ public:
     bool addFingerprint(const char *username, const char *visitorId, const char *keyAccessId);
     bool deleteFingerprint(const char *keyAccessId);
     bool deleteFingerprintsUser(const char *visitorId);
+    bool deleteAllFingerprintModel();
     bool authenticateAccessFingerprint();
     uint8_t generateFingerprintId();
 

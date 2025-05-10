@@ -30,6 +30,7 @@ enum ErrorCode {
     FINGERPRINT_CAPTURE_TIMEOUT = -117,                     /* Timeout occured while waiting for the FIngerprint Image Input                        */
     NO_FINGERPRINTS_FOUND_UNDER_USER = -118,                /* There are no Fingerprint was found under user                                        */
     FAILED_TO_DELETE_FINGERPRINTS_USER = -119,              /* Failed to delete the fingerprints under user                                         */
+    FAILED_DELETING_ALL_FINGERPRINTS_MODEL = -120,          /* Failed to delete all the fingerprints model from the sensor                          */
 
     /// NFC Error Code (201-300)
     FAILED_TO_REGISTER_NFC_NO_NAME = -201,                          /* Failed to register NFC access because no name was provided                           */
@@ -85,6 +86,7 @@ enum SuccessCode {
     STATUS_FINGERPRINT_PLACE_SECOND_CAPTURE = 108,          /* Prompt to place finger again for second capture                                      */
     STATUS_FINGERPRINT_REGISTERING_FINGER_MODEL = 109,      /* Creating and storing fingerprint model from captured features                        */
     SUCCESS_DELETING_FINGERPRINTS_USER = 110,               /* Success deleted all the fingerprints on under user                                   */
+    SUCCESS_DELETING_ALL_FINGERPRINTS_MODEL = 111,          /* Success deleted all the fingerprints model in the sensor                             */
 
     /// NFC Success Code (201-300)
     START_REGISTERING_NFC_CARD_ACCESS = 201,                /* Initiating NFC card registration process                                             */
@@ -92,7 +94,7 @@ enum SuccessCode {
     SUCCESS_REGISTERING_NFC_ACCESS = 203,                   /* Successfully registered NFC access                                                   */
     SUCCESS_DELETING_NFC_ACCESS = 204,                      /* Successfully deleted NFC access                                                      */
     STATUS_NFC_CARD_SUCCESS_READ = 205,                     /* Successfully getting the NFC Card UID From the sensor                                */
-    SUCCESS_DELETING_NFCS_USER = 206,
+    SUCCESS_DELETING_NFCS_USER = 206,                       /* Successfully deleted all the fingerprints on under user                              */
 };
 
 #endif // ERROR_CODE_H
