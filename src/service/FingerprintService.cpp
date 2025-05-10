@@ -107,7 +107,6 @@ bool FingerprintService::deleteFingerprintsUser(const char *visitorId) {
 
     // Get all the fingerprintId under a user from the SD Card
     std::vector<int> userFingerprintIds = _sdCardModule->getFingerprintIdsByVisitorId(visitorId);
- 
     if (!userFingerprintIds.empty()) {
         // Now delete the user data in the SD Card
         // Don't want to delete the model first if the SD Card is failed
@@ -123,13 +122,16 @@ bool FingerprintService::deleteFingerprintsUser(const char *visitorId) {
                     ESP_LOGW(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete Fingerprint ID %d", id);
                 }
             }
+            sendbleNotification(SUCCESS_DELETING_FINGERPRINTS_USER);
             return true;
         } else {
             ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete user data for Visitor ID = %s from SD Card", visitorId);
+            sendbleNotification(FAILED_TO_DELETE_FINGERPRINTS_USER);
             return false;
         }
     } else {
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "No fingerprints found for Visitor ID = %s. Perhaps already deleted. But will still return false", visitorId);
+        sendbleNotification(NO_FINGERPRINTS_FOUND_UNDER_USER);
         return false;
     }
 }

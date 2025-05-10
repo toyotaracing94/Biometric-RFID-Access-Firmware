@@ -28,6 +28,8 @@ enum ErrorCode {
     FAILED_TO_GET_FINGERPRINT_FIRST_CONVERT = -115,         /* Failed to convert the first fingerprint image into template features                 */
     FAILED_TO_GET_FINGERPRINT_SECOND_CONVERT = -116,        /* Failed to convert the second fingerprint image into template features                */
     FINGERPRINT_CAPTURE_TIMEOUT = -117,                     /* Timeout occured while waiting for the FIngerprint Image Input                        */
+    NO_FINGERPRINTS_FOUND_UNDER_USER = -118,                /* There are no Fingerprint was found under user                                        */
+    FAILED_TO_DELETE_FINGERPRINTS_USER = -119,              /* Failed to delete the fingerprints under user                                         */
 
     /// NFC Error Code (201-300)
     FAILED_TO_REGISTER_NFC_NO_NAME = -201,                          /* Failed to register NFC access because no name was provided                           */
@@ -81,7 +83,8 @@ enum SuccessCode {
     STATUS_FINGERPRINT_LIFT_FINGER_FROM_SENSOR = 107,       /* Prompt to lift finger after first capture                                            */
     STATUS_FINGERPRINT_PLACE_SECOND_CAPTURE = 108,          /* Prompt to place finger again for second capture                                      */
     STATUS_FINGERPRINT_REGISTERING_FINGER_MODEL = 109,      /* Creating and storing fingerprint model from captured features                        */
- 
+    SUCCESS_DELETING_FINGERPRINTS_USER = 110,               /* Success deleted all the fingerprints on under user                                   */
+
     /// NFC Success Code (201-300)
     START_REGISTERING_NFC_CARD_ACCESS = 201,                /* Initiating NFC card registration process                                             */
     READY_FOR_NFC_CARD_INPUT = 202,                         /* System is ready and waiting for NFC card input                                       */
