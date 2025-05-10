@@ -108,6 +108,26 @@ bool NFCService::deleteNFCsUser(const char *visitorId){
 }
 
 /**
+ * @brief Deletes the NFC key access file
+ *
+ * Deletes the `/rfids.json` file from the SD card.   
+ *
+ * @return true if the file was deleted successfully, false otherwise.
+ */
+bool NFCService::deleteNFCAccessFile(){
+    ESP_LOGI(NFC_SERVICE_LOG_TAG, "Deleting the NFC .json Key Access file!");
+
+    if(_sdCardModule->deleteAccessJsonFile(LockType::RFID)){
+        ESP_LOGI(NFC_SERVICE_LOG_TAG, "Successfully deleted the NFC key access file");
+        sendbleNotification(SUCCESS_DELETING_NFC_ACCESS_FILE);
+        return true;
+    }
+    ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to delete the NFCs key access file");
+    sendbleNotification(FAILED_TO_DELETE_NFC_ACCESS_FILE);
+    return false;
+}
+
+/**
  * @brief Authenticate access using an NFC card.
  *
  * This function reads the NFC card and checks if the UID is registered in the system.

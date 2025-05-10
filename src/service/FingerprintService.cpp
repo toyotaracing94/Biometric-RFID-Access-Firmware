@@ -158,7 +158,14 @@ bool FingerprintService::deleteAllFingerprintModel(){
     return false;
 }
 
-bool FingerprintService::deleteFingerprintFile(){
+/**
+ * @brief Deletes the Fingerprint key access file
+ *
+ * Deletes the `/fingerprints.json` file from the SD card.   
+ *
+ * @return true if the file was deleted successfully, false otherwise.
+ */
+bool FingerprintService::deleteFingerprintAccessFile(){
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting the Fingerprint .json Key Access file!");
 
     if(_sdCardModule->deleteAccessJsonFile(LockType::FINGERPRINT)){

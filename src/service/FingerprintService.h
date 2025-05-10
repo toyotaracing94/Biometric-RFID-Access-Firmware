@@ -19,7 +19,7 @@ public:
     bool deleteFingerprint(const char *keyAccessId);
     bool deleteFingerprintsUser(const char *visitorId);
     bool deleteAllFingerprintModel();
-    bool deleteFingerprintFile();
+    bool deleteFingerprintAccessFile();
     bool authenticateAccessFingerprint();
     uint8_t generateFingerprintId();
 
