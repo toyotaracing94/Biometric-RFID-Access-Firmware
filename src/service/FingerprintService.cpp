@@ -29,17 +29,19 @@ bool FingerprintService::addFingerprint(const char *username, const char *visito
     ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Enrolling new Fingerprint User! Username %s, ID %d, VisitorId %s, KeyAccessId %s", username, fingerprintId, visitorId, keyAccessId);
 
     // Start registering the fingerprint / turn on the protocol for registering fingerprint on sensor side
-    // as the data already been confirmed has been saved into the server
     sendbleNotification(START_REGISTERING_FINGERPRINT_ACCESS);
 
     if (!_fingerprintSensor->addFingerprintModel(fingerprintId, std::bind(&FingerprintService::addFingerprintCallback, this, std::placeholders::_1))) {
         return handleError(FAILED_TO_ADD_FINGERPRINT_MODEL, username, visitorId, "Failed to add Fingerprint Model!", false);
     }
 
-    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d Under Visitor ID %s. Saving to SD card...", fingerprintId, visitorId);
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint model added successfully for FingerprintID: %d Under Visitor ID %s Key Access ID %s. Saving to SD card...", fingerprintId, visitorId, keyAccessId);
     // Save the fingerprint data to SD card
     if (!_sdCardModule->saveFingerprintToSDCard(username, fingerprintId, visitorId, keyAccessId)){
         // If the save fingerprint to SD Card failed
+        // Delete the data from the sensor
+        _fingerprintSensor->deleteFingerprintModel(fingerprintId);
+
         // Delete back the visitorId that has been saved to the server
         return handleError(FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD, username, visitorId, "Failed to register Fingerprint to SD Card!", false);
     }
@@ -65,7 +67,7 @@ bool FingerprintService::deleteFingerprint(const char *keyAccessId) {
     // Get the fingerprintId from the SD Card
     int fingerprintId = _sdCardModule->getFingerprintIdByKeyAccessId(keyAccessId);
     if (fingerprintId <= 0) {
-        return handleDeleteError(FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD, keyAccessId, "Failed to retrieve user data for Key Access ID!");
+        return handleDeleteError(FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD, "Failed to retrieve user data for Key Access ID!");
     }
 
     // If success there is key access ID associated with fingerprint, then delete them from the sensor and from the SD Card
@@ -77,7 +79,7 @@ bool FingerprintService::deleteFingerprint(const char *keyAccessId) {
         bool deleteFingerprintSDCard = _sdCardModule->deleteFingerprintFromSDCard(keyAccessId);
 
         if (!deleteFingerprintSDCard) {
-            return handleDeleteError(FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD, keyAccessId, "Failed to delete Fingerprint from SD card!");
+            return handleDeleteError(FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD, "Failed to delete Fingerprint from SD card!");
         }
 
         // Prepare the data payload
@@ -86,7 +88,7 @@ bool FingerprintService::deleteFingerprint(const char *keyAccessId) {
         return true;
 
     } else {
-        return handleDeleteError(FAILED_TO_DELETE_FINGERPRINT_MODEL, keyAccessId, "Failed to delete fingerprint model from sensor for FingerprintID: %d");
+        return handleDeleteError(FAILED_TO_DELETE_FINGERPRINT_MODEL, "Failed to delete fingerprint model from sensor for FingerprintID: %d");
     }
 }
 
@@ -126,7 +128,7 @@ bool FingerprintService::authenticateAccessFingerprint(){
                 return true;
             }
         }
-        // TODO : Perhaps implement callback that tell the FingerprintModel is save correctly, but the data is not save into the Microcontroller System
+
         ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint Model ID %d is Registered on Sensor, but not appear in stored data. Cannot open the Door Lock!", isRegsiteredModel);
         return false;
     }
@@ -243,11 +245,10 @@ bool FingerprintService::handleError(int statusCode, const char* username, const
  * This is for handle of deletion error, what are we going to cleanup? We already are!
  *
  * @param statusCode The status code related to the error from the `ErrorCode` enum
- * @param visitorId Visitor ID
  * @param message Error message to log and send in the notification.
  * @return Always returns false  
  */
-bool FingerprintService::handleDeleteError(int statusCode, const char* visitorId, const char* message) {
+bool FingerprintService::handleDeleteError(int statusCode, const char* message) {
     ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Error Code: %d, %s", statusCode, message);
     sendbleNotification(statusCode);
     return false;

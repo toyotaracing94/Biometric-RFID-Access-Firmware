@@ -30,17 +30,19 @@ enum ErrorCode {
     FINGERPRINT_CAPTURE_TIMEOUT = -117,                     /* Timeout occured while waiting for the FIngerprint Image Input                        */
 
     /// NFC Error Code (201-300)
-    FAILED_TO_REGISTER_NFC_NO_NAME = -201,                  /* Failed to register NFC access because no name was provided                           */
-    FAILED_TO_DELETE_NFC_NO_NAME = -202,                    /* Failed to delete NFC access because no name was provided                             */
-    FAILED_TO_DELETE_NFC_NO_ID = -203,                      /* Failed to delete NFC access because no ID was provided                               */
-    FAILED_TO_DELETE_NFC_NO_NAME_AND_ID = -204,             /* Failed to delete NFC access because both name and ID were not provided               */
-    NFC_CARD_TIMEOUT = -205,                                /* Timeout occurred while waiting for NFC card input                                    */
-    FAILED_TO_SEND_REQUEST_TO_SERVER = -206,                /* Failed to send a request to the backend server                                       */
-    FAILED_TO_GET_VISITOR_ID_TO_NFC = -207,                 /* Failed to obtain visitor ID for NFC registration                                     */
-    FAILED_TO_PARSE_RESPONSE_SERVER = -208,                 /* Failed to parse the server's response during NFC operation                           */
+    FAILED_TO_REGISTER_NFC_NO_NAME = -201,                          /* Failed to register NFC access because no name was provided                           */
+    FAILED_TO_DELETE_NFC_NO_NAME = -202,                            /* Failed to delete NFC access because no name was provided                             */
+    FAILED_TO_DELETE_NFC_NO_ID = -203,                              /* Failed to delete NFC access because no ID was provided                               */
+    FAILED_TO_DELETE_NFC_NO_NAME_AND_ID = -204,                     /* Failed to delete NFC access because both name and ID were not provided               */
+    NFC_CARD_TIMEOUT = -205,                                        /* Timeout occurred while waiting for NFC card input                                    */
+    FAILED_TO_SEND_REQUEST_TO_SERVER = -206,                        /* Failed to send a request to the backend server                                       */
+    FAILED_TO_GET_VISITOR_ID_TO_NFC = -207,                         /* Failed to obtain visitor ID for NFC registration                                     */
+    FAILED_TO_PARSE_RESPONSE_SERVER = -208,                         /* Failed to parse the server's response during NFC operation                           */
+    FAILED_TO_REGISTER_NFC_NO_VISITOR_ID_OR_KEY_ACCESS_ID = -209,   /* Failed to register NFC access because no Visitor ID or Key Access was provided       */
+    FAILED_TO_REGISTER_NFC_NO_NAME_AND_ID = -210,                   /* Failed to register NFC access because no name and ID was provided                    */
 
     /// SD Card Error (301-400)
-    FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD = -301,      /* Failed to retrieve Key Access ID from the SD card                                    */
+    FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD = -301,      /* Failed to retrieve Key Access ID from the SD card                                       */
     FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD = -302,       /* Failed to save fingerprint access info to SD card                                    */
     FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD = -303,   /* Failed to delete fingerprint access info from SD card                                */
     FAILED_SAVE_NFC_ACCESS_TO_SD_CARD = -304,               /* Failed to save NFC access info to SD card                                            */

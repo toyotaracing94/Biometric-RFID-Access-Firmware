@@ -118,13 +118,40 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     }
 
     if (strcmp(command, "register_rfid") == 0){
-        if (name == nullptr){
-            char message[20];
-            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_REGISTER_NFC_NO_NAME);
-            pCharacteristic->setValue(message);
-            pCharacteristic->notify();
+        if (name == nullptr && visitor_id != nullptr && key_access != nullptr){
+
+            JsonDocument document;
+            document["status"] = FAILED_TO_REGISTER_NFC_NO_NAME;
+            String buffer;
+            serializeJson(document, buffer);
+            pCharacteristic -> setValue(buffer.c_str());
+            pCharacteristic -> notify();
 
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but 'name' is empty. Cannot proceed.");
+            return;
+        }
+        
+        if (visitor_id == nullptr || key_access == nullptr){
+            JsonDocument document;
+            document["status"] = FAILED_TO_REGISTER_NFC_NO_VISITOR_ID_OR_KEY_ACCESS_ID;
+            String buffer;
+            serializeJson(document, buffer);
+            pCharacteristic -> setValue(buffer.c_str());
+            pCharacteristic -> notify();
+
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but `visitor_id` or `key_access` is empty. Cannot proceed.");
+            return;
+        }
+
+        if (name == nullptr && visitor_id == nullptr && key_access == nullptr){
+            JsonDocument document;
+            document["status"] = FAILED_TO_REGISTER_NFC_NO_NAME_AND_ID;
+            String buffer;
+            serializeJson(document, buffer);
+            pCharacteristic -> setValue(buffer.c_str());
+            pCharacteristic -> notify();
+            
+            ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but 'name', `visitor_id`, `key_access` is empty. Cannot proceed.");
             return;
         }
     }
