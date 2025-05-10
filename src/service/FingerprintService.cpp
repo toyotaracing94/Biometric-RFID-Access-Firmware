@@ -158,6 +158,19 @@ bool FingerprintService::deleteAllFingerprintModel(){
     return false;
 }
 
+bool FingerprintService::deleteFingerprintFile(){
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting the Fingerprint .json Key Access file!");
+
+    if(_sdCardModule->deleteAccessJsonFile(LockType::FINGERPRINT)){
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Successfully deleted the fingerprint key access file");
+        sendbleNotification(SUCCESS_DELETING_FINGERPRINT_ACCESS_FILE);
+        return true;
+    }
+    ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete the fingerprints key access file");
+    sendbleNotification(FAILED_TO_DELETE_FINGERPRINT_ACCESS_FILE);
+    return false;
+}
+
 /**
  * @brief Authenticate a fingerprint and grant access if registered.
  *

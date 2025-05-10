@@ -7,6 +7,7 @@
 #include <Arduino.h>
 
 #include <vector>
+#include "enum/LockType.h"
 
 #define CS_PIN 5    // Chip Select pin
 #define SCK_PIN 18  // Clock pin
@@ -36,6 +37,7 @@ public:
     bool deleteNFCsUserFromSDCard(const char *visitorId);
     std::string* getKeyAccessIdByNFCUid(char *uidCard);
 
+    bool deleteAccessJsonFile(LockType type);
     void createEmptyJsonFileIfNotExists(const char *filepath);
     JsonDocument syncData();
 };

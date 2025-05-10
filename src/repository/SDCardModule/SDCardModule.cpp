@@ -807,6 +807,48 @@ std::string* SDCardModule::getKeyAccessIdByNFCUid(char *id) {
 }
 
 /**
+ * @brief Deletes a JSON file (RFID or Fingerprint) based on the provided LockType.
+ *
+ * @param type LockType that determines which file to delete:
+ *             - LockType::RFID -> Deletes `/rfid_data.json`
+ *             - LockType::Fingerprint -> Deletes `/fingerprints.json`
+ *
+ * @return true if the file was deleted or doesn't exist.
+ *         false if the file could not be deleted or an invalid LockType was provided.
+ *
+ * @note Logs errors for invalid LockType or failed deletions.
+ */
+bool SDCardModule::deleteAccessJsonFile(LockType type) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete the JSON Key Access File, Type %d", type);
+
+    // Switch the file path based on LockType
+    const char* filePath = nullptr;
+    if (type == LockType::RFID) {
+        filePath = RFID_FILE_PATH;
+    } else if (type == LockType::FINGERPRINT) {
+        filePath = FINGERPRINT_FILE_PATH;
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Invalid LockType: %d", type);
+        return false;
+    }
+
+    // Check if the file exists
+    if (SD.exists(filePath)) {
+        // Attempt to delete the file
+        if (SD.remove(filePath)) {
+            ESP_LOGI(SD_CARD_LOG_TAG, "%s file deleted successfully.", filePath);
+            return true;
+        } else {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to delete %s file.", filePath);
+            return false;
+        }
+    } else {
+        ESP_LOGI(SD_CARD_LOG_TAG, "%s file does not exist.", filePath);
+        return false;
+    }
+}
+
+/**
  * @brief Ensures that an empty JSON file exists at the specified path. If there isn't, create the new object in there
  *
  * @param filePath The path to the JSON file to create.

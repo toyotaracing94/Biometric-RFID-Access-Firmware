@@ -115,6 +115,9 @@ extern "C" void app_main(void)
                     if (strcmp(command, "delete_fp_sensor") == 0){
                         systemState = DELETE_FP_SENSOR;
                     }
+                    if (strcmp(command, "delete_fp_fs") == 0){
+                        systemState = DELETE_FP_FS;
+                    }
                     if (strcmp(command, "register_rfid") == 0) {
                         systemState = ENROLL_RFID;
                     }
@@ -195,6 +198,18 @@ extern "C" void app_main(void)
                 fingerprintTask->suspendTask();
 
                 fingerprintService->deleteFingerprintsUser(visitorId);
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                break;
+
+            case DELETE_FP_FS:
+                ESP_LOGI(LOG_TAG, "Start Deleting Fingerprint .json Key Access file!");
+                fingerprintTask->suspendTask();
+
+                fingerprintService->deleteFingerprintFile();
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 systemState = RUNNING;
