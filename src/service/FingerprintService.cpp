@@ -92,6 +92,47 @@ bool FingerprintService::deleteFingerprint(const char *keyAccessId) {
     }
 }
 
+/**
+ * @brief Delete a fingerprint access control under a user
+ *
+ * This function to delete the all the fingerprint key access of a user. Will delete both fingerprint model
+ * on the sensor and on the SD Card of the user fingerprint
+ *
+ * @param visitorID The Visitor ID of the user
+ * @return true if the fingerprint was successfully deleted from both the sensor and the SD card;
+ *         false otherwise.
+ */
+bool FingerprintService::deleteFingerprintsUser(const char *visitorId) {
+    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Deleting Fingerprint User! Visitor ID = %s", visitorId);
+
+    // Get all the fingerprintId under a user from the SD Card
+    std::vector<int> userFingerprintIds = _sdCardModule->getFingerprintIdsByVisitorId(visitorId);
+ 
+    if (!userFingerprintIds.empty()) {
+        // Now delete the user data in the SD Card
+        // Don't want to delete the model first if the SD Card is failed
+        if (_sdCardModule->deleteFingerprintsUserFromSDCard(visitorId)) {
+            ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Successfully deleted user data for Visitor ID = %s from SD Card", visitorId);
+
+            // Will not care whatever the outcome, true or false will move on to delete the user
+            ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Found %d fingerprints for Visitor ID = %s. Deleting fingerprint models.", userFingerprintIds.size(), visitorId);
+            for (int id : userFingerprintIds) {
+                if (_fingerprintSensor->deleteFingerprintModel(id)) {
+                    ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "Fingerprint ID %d deleted successfully", id);
+                } else {
+                    ESP_LOGW(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete Fingerprint ID %d", id);
+                }
+            }
+            return true;
+        } else {
+            ESP_LOGE(FINGERPRINT_SERVICE_LOG_TAG, "Failed to delete user data for Visitor ID = %s from SD Card", visitorId);
+            return false;
+        }
+    } else {
+        ESP_LOGI(FINGERPRINT_SERVICE_LOG_TAG, "No fingerprints found for Visitor ID = %s. Perhaps already deleted. But will still return false", visitorId);
+        return false;
+    }
+}
 
 /**
  * @brief Authenticate a fingerprint and grant access if registered.

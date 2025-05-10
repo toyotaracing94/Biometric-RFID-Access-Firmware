@@ -267,9 +267,64 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
     }
 }
 
+bool SDCardModule::deleteFingerprintsUserFromSDCard(const char* visitorId){
+    ESP_LOGI(SD_CARD_LOG_TAG, "Deleting Fingerprints User, Visitor ID: %s", visitorId);
+
+    // Open the file and create new Static JsonDocument
+    File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if (file) {
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the file: %s", FINGERPRINT_FILE_PATH);
+        return false;
+    }
+
+    // Search for the user with the given visitor_id
+    bool userFound = false;
+    JsonArray users = document.as<JsonArray>();
+    for (int i = 0; i < users.size(); i++) {
+        JsonObject user = users[i].as<JsonObject>();
+        if (user["visitor_id"] == visitorId) {
+            users.remove(i);
+            userFound = true;
+            ESP_LOGI(SD_CARD_LOG_TAG, "User with Visitor ID %s deleted in memory", visitorId);
+            break;
+        }
+    }
+
+    if (userFound) {
+        // Write the modified JSON data back to the SD card
+        file = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
+        if (file) {
+            if (serializeJson(document, file) == 0) {
+                ESP_LOGE(SD_CARD_LOG_TAG, "Failed to serialize JSON to file");
+                file.close();
+                return false;
+            }
+            file.close();
+            ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint data change is successfully stored to SD Card");
+            return true;
+        } else {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to change Fingerprint data on SD Card");
+            return false;
+        }
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Fingerprint Data with Visitor Id %s not found in Storage system!", visitorId);
+        return false;
+    }
+}
+
 
 /**
- * @brief Gets the Fingerprint ID associated with a given VisitorId.
+ * @brief Gets the Fingerprint ID associated with a given keyAccessId.
  *
  * @param keyAccessId The Key Access ID to search for.
  * @return The Fingerprint ID if found, or -1 if not found.
@@ -321,6 +376,58 @@ int SDCardModule::getFingerprintIdByKeyAccessId(const char* keyAccessId) {
 
     ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint model with KeyAccessId: %s not found", keyAccessId);
     return -1;
+}
+
+/**
+ * @brief Gets the list of Fingerprint ID associated with a given VisitorId.
+ *
+ * @param visitorId The Visitor ID to search for.
+ * @return The Fingerprint ID's if found, or empty list.
+ */
+std::vector<int> SDCardModule::getFingerprintIdsByVisitorId(const char *visitorId) {
+    std::vector<int> fingerprintIds;
+
+    ESP_LOGI(SD_CARD_LOG_TAG, "Fetching Fingerprint IDs for Visitor ID %s", visitorId);
+
+    // Read the JSON from SD card
+    File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if (file) {
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return fingerprintIds;
+        }
+        file.close();
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the file: %s", FINGERPRINT_FILE_PATH);
+        return fingerprintIds;
+    }
+
+    // Search for the user with the given visitor_id
+    bool userFound = false;
+    for (JsonObject user : document.as<JsonArray>()) {
+        if (user["visitor_id"] == visitorId) {
+            // User found, now extract the fingerprint IDs
+            JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
+            for (JsonObject fingerprint : fingerprints) {
+                int fingerprintId = fingerprint["fingerprint_id"];
+                fingerprintIds.push_back(fingerprintId);  // Add to the list
+            }
+            userFound = true;
+            ESP_LOGI(SD_CARD_LOG_TAG, "Found %d fingerprints for Visitor ID %s", fingerprintIds.size(), visitorId);
+            break;
+        }
+    }
+
+    // If user is not found, fingerprintIds will remain empty
+    if (!userFound) {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Visitor ID %s not found", visitorId);
+    }
+
+    return fingerprintIds;
 }
 
 /**

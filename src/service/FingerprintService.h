@@ -16,14 +16,15 @@ public:
     FingerprintService(FingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *DoorRelay, BLEModule* bleModule, QueueHandle_t fingerprintQueueRequest, QueueHandle_t fingerprintQueueResponse);
     bool setup();
     bool addFingerprint(const char *username, const char *visitorId, const char *keyAccessId);
-    bool deleteFingerprint(const char *visitorId);
+    bool deleteFingerprint(const char *keyAccessId);
+    bool deleteFingerprintsUser(const char *visitorId);
     bool authenticateAccessFingerprint();
     uint8_t generateFingerprintId();
 
     // Helper functions
     void sendbleNotification(int statusCode);
-    void sendbleNotification(const char *status, const char *username, const char *visitorId, const char *type, const char *message);
-    bool handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup);
+    void sendbleNotification(const char *status, const char *username, const char *keyAccessId, const char *type, const char *message);
+    bool handleError(int statusCode, const char* username, const char* keyAccessId, const char* message, bool cleanup);
     bool handleDeleteError(int statusCode, const char* message);
     void addFingerprintCallback(int statusCode);
 

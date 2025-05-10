@@ -6,6 +6,8 @@
 #include <ArduinoJson.h>
 #include <Arduino.h>
 
+#include <vector>
+
 #define CS_PIN 5    // Chip Select pin
 #define SCK_PIN 18  // Clock pin
 #define MISO_PIN 19 // Master In Slave Out
@@ -23,7 +25,9 @@ public:
     bool isFingerprintIdRegistered(int fingerprintId);
     bool saveFingerprintToSDCard(const char *username, int fingerprintId, const char *visitorId, const char *keyAccessId);
     bool deleteFingerprintFromSDCard(const char *keyAccessId);
+    bool deleteFingerprintsUserFromSDCard(const char *visitorId);
     int getFingerprintIdByKeyAccessId(const char *keyAccessId);
+    std::vector<int> getFingerprintIdsByVisitorId(const char *visitorId);
     std::string* getKeyAccessIdByFingerprintId(int fingerprintId);
 
     bool isNFCIdRegistered(const char *uidCard);

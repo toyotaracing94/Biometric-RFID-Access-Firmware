@@ -11,6 +11,7 @@ enum SystemState
     RUNNING,            /* The normal state of the system operation                                         */
     ENROLL_FP,          /* The state to change system transtition to register new Fingerprint               */
     DELETE_FP,          /* The state to change system transtition to delete Fingerprint access              */
+    DELETE_FP_USER,     /* The state to change the system transitition to delete a user fingerprint access  */
     AUTHENTICATE_FP,    /* The state when authenticate the Fingerprint Access                               */
     ENROLL_RFID,        /* The state to change system transtition to register new RFID                      */
     DELETE_RFID,        /* The state to change system transtition to delete RFID access                     */
