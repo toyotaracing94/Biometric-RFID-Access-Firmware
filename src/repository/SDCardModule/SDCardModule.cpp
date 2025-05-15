@@ -232,8 +232,17 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
         for (int j = 0; j < fingerprints.size(); j++) {
             JsonObject fingerprint = fingerprints[j].as<JsonObject>();
 
+            // Get key_access_id
+            const char* currentKeyAccessId = fingerprint["key_access_id"];
+
+            // Safely check for both possible Fingerprint Key Access ID Field first
+            if (currentKeyAccessId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint entry missing key_access_id. Skipping.");
+                continue;
+            }
+
             // Compare the keyAccessId (fingerprint key) with the input
-            if (fingerprint["key_access_id"].as<String>() == keyAccessId) {
+            if (strcmp(currentKeyAccessId, keyAccessId) == 0) {
                 fingerprints.remove(j);
                 userFound = true;
                 ESP_LOGI(SD_CARD_LOG_TAG, "Removed Fingerprint Access for User with KeyAccessId: %s", keyAccessId);
@@ -300,7 +309,16 @@ bool SDCardModule::deleteFingerprintsUserFromSDCard(const char* visitorId){
     JsonArray users = document.as<JsonArray>();
     for (int i = 0; i < users.size(); i++) {
         JsonObject user = users[i].as<JsonObject>();
-        if (user["visitor_id"] == visitorId) {
+
+        // Get visitor_id
+        const char* userVisitorId = user["visitor_id"];
+        // Safely check for both possible Fingerprint Key Access ID JSON Field first
+        if (userVisitorId == nullptr) {
+            ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint entry missing Visitor ID. Skipping.");
+            continue;
+        }
+
+        if (strcmp(userVisitorId, visitorId) == 0) {
             users.remove(i);
             userFound = true;
             ESP_LOGI(SD_CARD_LOG_TAG, "User with Visitor ID %s deleted in memory", visitorId);
@@ -428,7 +446,7 @@ std::vector<int> SDCardModule::getFingerprintIdsByVisitorId(const char *visitorI
             JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
             for (JsonObject fingerprint : fingerprints) {
                 int fingerprintId = fingerprint["fingerprint_id"];
-                fingerprintIds.push_back(fingerprintId);  // Add to the list
+                fingerprintIds.push_back(fingerprintId);
             }
 
             userFound = true;
@@ -524,7 +542,13 @@ bool SDCardModule::isNFCIdRegistered(const char *id) {
 
         // Loop through each NFC entry for the current user
         for (JsonObject nfc : nfcs) {
-            const char *nfcId = nfc["nfcId"];
+            const char *nfcId = nfc["nfc_uid"];
+
+            // Check first if there is named key_access_id, to prevent nullptr comparison
+            if (nfcId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry missing key_access_id. Skipping.");
+                continue;
+            }
 
             // Check if the current NFC ID matches the one we're looking for
             if (strcmp(nfcId, id) == 0) {
@@ -582,7 +606,7 @@ bool SDCardModule::saveNFCToSDCard(const char *username, const char *uidCard, co
             JsonArray nfcs = user["nfcs"].as<JsonArray>();
             JsonObject newNfc = nfcs.createNestedObject();
             newNfc["nfc_uid"] = uidCard;
-            newNfc["key_access_id"] = visitorId;
+            newNfc["key_access_id"] = keyAccessId;
             userFound = true;
 
             ESP_LOGI(SD_CARD_LOG_TAG, "Added new NFC ID to existing user, Username %s, NFC ID %s", username, uidCard);
@@ -600,7 +624,7 @@ bool SDCardModule::saveNFCToSDCard(const char *username, const char *uidCard, co
         JsonArray nfcs = newUser.createNestedArray("nfcs");
         JsonObject newNfc = nfcs.createNestedObject();
         newNfc["nfc_uid"] = uidCard;
-        newNfc["key_access_id"] = visitorId;
+        newNfc["key_access_id"] = keyAccessId;
 
         ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s with NFC ID: %s", username, uidCard);
     }
@@ -665,14 +689,23 @@ bool SDCardModule::deleteNFCFromSDCard(const char *keyAccessId) {
         for (int j = 0; j < nfcCards.size(); j++) {
             JsonObject nfcCard = nfcCards[j].as<JsonObject>();
 
-            // Compare the keyAccessId (fingerprint key) with the input
-            if (nfcCard["key_access_id"].as<String>() == keyAccessId) {
+            // Get key_access_id
+            const char* currentKeyAccessId = nfcCard["key_access_id"];
+
+            // Safely check for both possible NFC ID and Key Access JSON Field first
+            if (currentKeyAccessId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry missing key_access_id. Skipping.");
+                continue;
+            }
+
+            if (strcmp(currentKeyAccessId, keyAccessId) == 0) {
                 nfcCards.remove(j);
                 keyAccessFound = true;
                 ESP_LOGI(SD_CARD_LOG_TAG, "Removed NFC Access for User with KeyAccessId: %s", keyAccessId);
                 break;
             }
         }
+
         if (keyAccessFound) {
             break;
         }
@@ -735,7 +768,16 @@ bool SDCardModule::deleteNFCsUserFromSDCard(const char *visitorId){
     JsonArray users = document.as<JsonArray>();
     for (int i = 0; i < users.size(); i++) {
         JsonObject user = users[i].as<JsonObject>();
-        if (user["visitor_id"] == visitorId) {
+
+        // Get visitor_id
+        const char* userVisitorId = user["visitor_id"];
+        // Safely check for both possible NFC ID and Key Access JSON Field first
+        if (userVisitorId == nullptr) {
+            ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry missing Visitor ID. Skipping.");
+            continue;
+        }
+
+        if (strcmp(userVisitorId, visitorId) == 0) {
             users.remove(i);
             userFound = true;
             ESP_LOGI(SD_CARD_LOG_TAG, "User with Visitor ID %s deleted in memory", visitorId);
@@ -801,7 +843,19 @@ std::string* SDCardModule::getKeyAccessIdByNFCUid(char *id) {
                 const char* storedId = nfcCard["nfc_uid"];
                 const char* keyAccessId = nfcCard["key_access_id"];
 
-                if (storedId == id && keyAccessId != nullptr) {
+                // Check first if there is named key_access_id or nfc_uid field, to prevent nullptr comparison
+                if (storedId == nullptr) {
+                    ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry seems missing nfc_uid. Skipping.");
+                    continue;
+                }
+
+                if (keyAccessId == nullptr) {
+                    ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry seems missing key_access_id. Skipping.");
+                    continue;
+                }
+
+                // Check if the current NFC ID matches the one we're looking for
+                if (strcmp(storedId, id) == 0) {
                     ESP_LOGI(SD_CARD_LOG_TAG, "Found keyAccessId %s for NFC Unique ID %s", keyAccessId, storedId);
                     return new std::string(keyAccessId);
                 }
