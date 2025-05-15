@@ -148,7 +148,7 @@ bool NFCService::authenticateAccessNFC(){
 
             // Send the access history without waiting the response
             NFCQueueRequest msg;
-            msg.state = AUTEHNTICATE_RFID;
+            msg.state = AUTHENTICATE_RFID;
             snprintf(msg.keyAccessId, sizeof(msg.keyAccessId), "%s", keyAccessId->c_str());
             snprintf(msg.uidCard, sizeof(msg.uidCard), "%s", uidCard);
 

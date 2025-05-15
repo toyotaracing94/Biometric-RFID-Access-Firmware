@@ -133,6 +133,9 @@ extern "C" void app_main(void){
                     if (strcmp(command, "update_visitor") == 0) {
                         systemState = UPDATE_VISITOR;
                     }
+                    if (strcmp(command, "delete_access_user") == 0){
+                        systemState = DELETE_ACCESS_USER;
+                    }
                 }
                 break;
             
@@ -242,6 +245,50 @@ extern "C" void app_main(void){
                 systemState = RUNNING;
                 commandBleData.clear();
                 fingerprintTask->resumeTask();
+                break;
+
+            case DELETE_ACCESS_USER:
+                // Exception to use the { } scoped block only if
+                // You are to lazy to make this into one service, as it need multiple
+                // colaboration between two or more service to be worked on
+                {
+                ESP_LOGI(LOG_TAG, "Start Deleting All Key Access Under User!");
+
+                fingerprintTask->suspendTask();
+                nfcTask->suspendTask();
+
+                // Declare and initialize variables inside the block
+                bool fingerprintUserDeleted = fingerprintService->deleteFingerprintsUser(visitorId);
+                bool nfcUserDeleted = nfcService->deleteNFCsUser(visitorId);
+
+                if (fingerprintUserDeleted)
+                    ESP_LOGI(LOG_TAG, "Fingerprint key access successfully deleted for Visitor ID: %s", visitorId);
+                else
+                    ESP_LOGW(LOG_TAG, "Failed to delete fingerprint key access for Visitor ID: %s", visitorId);
+
+                if (nfcUserDeleted)
+                    ESP_LOGI(LOG_TAG, "NFC key access successfully deleted for Visitor ID: %s", visitorId);
+                else
+                    ESP_LOGW(LOG_TAG, "Failed to delete NFC key access for Visitor ID: %s", visitorId);
+
+                // If at least one operation is successful, send success notification
+                if (fingerprintUserDeleted || nfcUserDeleted) {
+                    ESP_LOGI(LOG_TAG, "At least one key access entry was deleted successfully for Visitor ID: %s", visitorId);
+                    bleModule->sendReport(SUCCESS_DELETE_USERS_KEY_ACCESS);
+                }
+
+                // If both operations failed, send failure notification
+                if (!fingerprintUserDeleted && !nfcUserDeleted) {
+                    ESP_LOGW(LOG_TAG, "Both key access entries failed to delete for Visitor ID: %s", visitorId);
+                    bleModule->sendReport(FAILED_DELETE_USERS_KEY_ACCESS);
+                }
+                vTaskDelay(1000 / portTICK_PERIOD_MS);
+                
+                systemState = RUNNING;
+                commandBleData.clear();
+                fingerprintTask->resumeTask();
+                nfcTask->resumeTask();
+                }
                 break;
 
             case UPDATE_VISITOR:

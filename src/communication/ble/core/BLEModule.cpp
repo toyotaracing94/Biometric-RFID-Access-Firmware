@@ -114,7 +114,7 @@ void BLEModule::sendReport(const char* status, const JsonObject& payload, const 
  *
  */
 void BLEModule::sendReport(int statusCode){
-    ESP_LOGI(BLE_MODULE_LOG_TAG, "Sending notification to door notification characteristic");
+    ESP_LOGI(BLE_MODULE_LOG_TAG, "Sending notification to door notification characteristic, status Code: %d", statusCode);
 
     JsonDocument document;
     document["status"]  = statusCode;

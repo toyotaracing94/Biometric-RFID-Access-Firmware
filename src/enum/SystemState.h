@@ -6,8 +6,7 @@
  * @brief Enum representing the type of access control (RFID or Fingerprint).
  *
  */
-enum SystemState
-{
+enum SystemState{
     RUNNING,            /* The normal state of the system operation                                             */
     ENROLL_FP,          /* The state to change system transtition to register new Fingerprint                   */
     DELETE_FP,          /* The state to change system transtition to delete Fingerprint access                  */
@@ -19,7 +18,8 @@ enum SystemState
     DELETE_RFID,        /* The state to change system transtition to delete RFID access                         */
     DELETE_RFID_USER,   /* The state to change the system transtition to delete a user RFID access              */
     DELETE_RFID_FS,     /* The state to change the system transitition to delete RFID key access .json          */
-    AUTEHNTICATE_RFID,  /* The state when authenticate the RFID Card Access                                     */
+    AUTHENTICATE_RFID,  /* The state when authenticate the RFID Card Access                                     */
+    DELETE_ACCESS_USER, /* The state to change system transtition to delete all key access under a user id      */
     UPDATE_VISITOR,     /* The state to change system transtition to sync service between esp32 and titan       */
 };
 

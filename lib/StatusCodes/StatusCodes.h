@@ -68,7 +68,10 @@ enum ErrorCode {
     FAILED_GET_VISITORID_FROM_SERVER = -602,                /* Failed to retrieve a visitor ID from the server                                      */
 
     // BLE Error (700-799)
-    INVALID_JSON_BLE_REQUEST_FORMAT = -700,                     /* Invalid Request JSON Format                                                          */ 
+    INVALID_JSON_BLE_REQUEST_FORMAT = -700,                 /* Invalid Request JSON Format                                                          */ 
+
+    // Etc (900-999)
+    FAILED_DELETE_USERS_KEY_ACCESS = -900                   /* Failed to delete the all key access user have                                        */
 };
 
 /**
@@ -101,7 +104,10 @@ enum SuccessCode {
     SUCCESS_DELETING_NFC_ACCESS = 204,                      /* Successfully deleted NFC access                                                      */
     STATUS_NFC_CARD_SUCCESS_READ = 205,                     /* Successfully getting the NFC Card UID From the sensor                                */
     SUCCESS_DELETING_NFCS_USER = 206,                       /* Successfully deleted all the fingerprints on under user                              */
-    SUCCESS_DELETING_NFC_ACCESS_FILE = 207,         /* Success deleted the NFC key access .json file                                        */
+    SUCCESS_DELETING_NFC_ACCESS_FILE = 207,                 /* Success deleted the NFC key access .json file                                        */
+
+    // Etc (900-999)
+    SUCCESS_DELETE_USERS_KEY_ACCESS = 900,                  /* Success deleting the key access of a user (well at least one of them)                */
 };
 
 #endif // STATUS_CODE_H

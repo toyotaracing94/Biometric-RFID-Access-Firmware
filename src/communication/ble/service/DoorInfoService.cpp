@@ -143,6 +143,14 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
         }
     }
 
+    if (strcmp(command, "delete_access_user") == 0){
+        if (visitor_id == nullptr){
+            ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_access_user' command but `visitor_id` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_NFC_NO_ID);
+            return;
+        }
+    }
+    
     commandBleData.setCommand(command);
     commandBleData.setName(name);
     commandBleData.setKeyAccess(key_access);
