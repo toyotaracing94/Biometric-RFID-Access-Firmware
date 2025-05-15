@@ -365,16 +365,23 @@ int SDCardModule::getFingerprintIdByKeyAccessId(const char* keyAccessId) {
     }
 
     // Search for the KeyAccessId in the "fingerprints" array of each user
+    ESP_LOGI(SD_CARD_LOG_TAG, "Begin Searching in %s File", FINGERPRINT_FILE_PATH);
     for (JsonObject user : document.as<JsonArray>()) {
         JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
         
         // Iterate through fingerprints array to find the keyAccessId
         for (JsonObject fingerprint : fingerprints) {
-            const char* currentKeyAccessId = fingerprint["keyAccessId"];
+            const char* currentKeyAccessId = fingerprint["key_access_id"];
+            
+            // Check first if there is named key_access_id, to prevent nullptr comparison
+            if (currentKeyAccessId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint entry missing key_access_id. Skipping.");
+                continue;
+            }
             
             // If the keyAccessId matches, return the associated fingerprintId
             if (strcmp(currentKeyAccessId, keyAccessId) == 0) {
-                int fingerprintId = fingerprint["fingerprintId"].as<int>();
+                int fingerprintId = fingerprint["fingerprint_id"].as<int>();
                 ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint model found for KeyAccessId: %s, FingerprintId: %d", keyAccessId, fingerprintId);
                 return fingerprintId;
             }
@@ -423,6 +430,7 @@ std::vector<int> SDCardModule::getFingerprintIdsByVisitorId(const char *visitorI
                 int fingerprintId = fingerprint["fingerprint_id"];
                 fingerprintIds.push_back(fingerprintId);  // Add to the list
             }
+
             userFound = true;
             ESP_LOGI(SD_CARD_LOG_TAG, "Found %d fingerprints for Visitor ID %s", fingerprintIds.size(), visitorId);
             break;

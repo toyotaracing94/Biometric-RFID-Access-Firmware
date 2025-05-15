@@ -5,7 +5,7 @@
 #include "DoorRelay.h"
 #include "StatusCodes.h"
 #include "repository/SDCardModule/SDCardModule.h"
-#include "communication/ble/BLEModule.h"
+#include "communication/ble/core/BLEModule.h"
 #include "entity/QueueMessage.h"
 #include "enum/LockType.h"
 #include "enum/SystemState.h"

@@ -3,6 +3,10 @@
 #include "entity/CommandBleData.h"
 #include "StatusCodes.h"
 
+
+DoorCharacteristicCallbacks::DoorCharacteristicCallbacks(NimBLECharacteristic *pNotificationChar) 
+    : _pNotificationChar(pNotificationChar){}
+
 /**
  * @brief Handles write operations to the Door characteristic.
  * 
@@ -16,10 +20,11 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     JsonDocument incomingData;
     DeserializationError error = deserializeJson(incomingData, value);
 
-    if (error)
-    {
+    if (error){
         ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Failed to deserialize JSON. Error: %s", error.c_str());
         incomingData.clear();
+
+        BLEMessageSender::sendNotification(_pNotificationChar, INVALID_JSON_BLE_REQUEST_FORMAT);
         return;
     }
 
@@ -68,126 +73,72 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     // Error handling when BLE Door Characteristic Callback kicks in
     if (strcmp(command, "register_fp") == 0){
         if (name == nullptr && visitor_id != nullptr && key_access != nullptr){
-
-            JsonDocument document;
-            document["status"] = FAILED_TO_REGISTER_FINGERPRINT_NO_NAME;
-            String buffer;
-            serializeJson(document, buffer);
-            pCharacteristic -> setValue(buffer.c_str());
-            pCharacteristic -> notify();
-
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but 'name' is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_REGISTER_FINGERPRINT_NO_NAME);
             return;
         }
         
         if (visitor_id == nullptr || key_access == nullptr){
-            JsonDocument document;
-            document["status"] = FAILED_TO_DELETE_FINGERPRINT_NO_ID;
-            String buffer;
-            serializeJson(document, buffer);
-            pCharacteristic -> setValue(buffer.c_str());
-            pCharacteristic -> notify();
-
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but `visitor_id` or `key_access` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_FINGERPRINT_NO_ID);
             return;
         }
 
         if (name == nullptr && visitor_id == nullptr && key_access == nullptr){
-            JsonDocument document;
-            document["status"] = FAILED_TO_DELETE_FINGERPRINT_NO_NAME_AND_ID;
-            String buffer;
-            serializeJson(document, buffer);
-            pCharacteristic -> setValue(buffer.c_str());
-            pCharacteristic -> notify();
-            
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_fp' command, but 'name', `visitor_id`, `key_access` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_FINGERPRINT_NO_NAME_AND_ID);
             return;
         }
     }
 
     if (strcmp(command, "delete_fp") == 0){
         if (key_access == nullptr){
-            char message[20];
-            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_FINGERPRINT_NO_ID);
-            pCharacteristic->setValue(message);
-            pCharacteristic->notify();
-
             ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_fp' command but `visitor_id` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_FINGERPRINT_NO_ID);
             return;
         }
     }
 
     if (strcmp(command, "delete_fp_user") == 0){
         if (visitor_id == nullptr){
-            char message[20];
-            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_FINGERPRINT_NO_ID);
-            pCharacteristic->setValue(message);
-            pCharacteristic->notify();
-
             ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_fp_user' command but `visitor_id` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_FINGERPRINT_NO_ID);
             return;
         }
     }
 
     if (strcmp(command, "register_rfid") == 0){
         if (name == nullptr && visitor_id != nullptr && key_access != nullptr){
-
-            JsonDocument document;
-            document["status"] = FAILED_TO_REGISTER_NFC_NO_NAME;
-            String buffer;
-            serializeJson(document, buffer);
-            pCharacteristic -> setValue(buffer.c_str());
-            pCharacteristic -> notify();
-
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but 'name' is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_REGISTER_NFC_NO_NAME);
             return;
         }
         
         if (visitor_id == nullptr || key_access == nullptr){
-            JsonDocument document;
-            document["status"] = FAILED_TO_REGISTER_NFC_NO_VISITOR_ID_OR_KEY_ACCESS_ID;
-            String buffer;
-            serializeJson(document, buffer);
-            pCharacteristic -> setValue(buffer.c_str());
-            pCharacteristic -> notify();
-
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but `visitor_id` or `key_access` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_REGISTER_NFC_NO_VISITOR_ID_OR_KEY_ACCESS_ID);
             return;
         }
 
         if (name == nullptr && visitor_id == nullptr && key_access == nullptr){
-            JsonDocument document;
-            document["status"] = FAILED_TO_REGISTER_NFC_NO_NAME_AND_ID;
-            String buffer;
-            serializeJson(document, buffer);
-            pCharacteristic -> setValue(buffer.c_str());
-            pCharacteristic -> notify();
-            
             ESP_LOGE(DOOR_INFO_SERVICE_LOG_TAG, "Received 'register_rfid' command, but 'name', `visitor_id`, `key_access` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_REGISTER_NFC_NO_NAME_AND_ID);
             return;
         }
     }
     
     if (strcmp(command, "delete_rfid") == 0){
         if (key_access == nullptr){
-            char message[20];
-            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_ID);
-            pCharacteristic->setValue(message);
-            pCharacteristic->notify();
-
             ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid' command but `key access id` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_NFC_NO_ID);
             return;
         }
     }
 
     if (strcmp(command, "delete_rfid_user") == 0){
         if (visitor_id == nullptr){
-            char message[20];
-            snprintf(message, sizeof(message), "ERROR : %d", FAILED_TO_DELETE_NFC_NO_ID);
-            pCharacteristic->setValue(message);
-            pCharacteristic->notify();
-
             ESP_LOGW(DOOR_INFO_SERVICE_LOG_TAG, "Received 'delete_rfid_user' command but `visitor_id` is empty. Cannot proceed.");
+            BLEMessageSender::sendNotification(_pNotificationChar, FAILED_TO_DELETE_NFC_NO_ID);
             return;
         }
     }
@@ -196,6 +147,7 @@ void DoorCharacteristicCallbacks::onWrite(NimBLECharacteristic* pCharacteristic,
     commandBleData.setName(name);
     commandBleData.setKeyAccess(key_access);
     commandBleData.setVisitorId(visitor_id);
+
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Received Valid Data Door Characteristic: Payload = %s", value.c_str());
     vTaskDelay( 50 / portTICK_PERIOD_MS);
 }
@@ -262,13 +214,24 @@ void DoorInfoService::startService() {
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Info Service");
     _pService = _pServer->createService(SERVICE_UUID);
 
+    // Initialize BLE Notification Characteristic with Notify property
+    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Notification Characteristic");
+    _pNotificationChar = _pService->createCharacteristic(
+        NOTIFICATION_CHARACTERISTIC_UUID,
+        NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ
+    );
+    NimBLEDescriptor* notifDesc = new NimBLEDescriptor(
+        NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
+    notifDesc->setValue("Notification Characteristic");
+    _pNotificationChar->addDescriptor(notifDesc);
+
     // Initialize BLE Door Characteristic with Notify property
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Door Characteristic");
     _pDoorChar = _pService->createCharacteristic(
         DOOR_CHARACTERISTIC_UUID,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::NOTIFY
     );
-    _pDoorChar->setCallbacks(new DoorCharacteristicCallbacks());
+    _pDoorChar->setCallbacks(new DoorCharacteristicCallbacks(_pNotificationChar));
     NimBLEDescriptor* doorDesc = new NimBLEDescriptor(
         NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
     doorDesc->setValue("Door Characteristic");
@@ -297,18 +260,6 @@ void DoorInfoService::startService() {
         NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
     ledDesc->setValue("LED Remote Characteristic");
     _pLedChar->addDescriptor(ledDesc);
-
-    // Initialize BLE Notification Characteristic with Notify property
-    ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Initializing BLE Notification Characteristic");
-    _pNotificationChar = _pService->createCharacteristic(
-        NOTIFICATION_CHARACTERISTIC_UUID,
-        NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ
-    );
-    _pNotificationChar->setCallbacks(new LEDRemoteCharacteristicCallback());
-    NimBLEDescriptor* notifDesc = new NimBLEDescriptor(
-        NimBLEUUID((uint16_t)0x2901), NIMBLE_PROPERTY::READ, 64, _pDoorChar); 
-    notifDesc->setValue("Notification Characteristic");
-    _pNotificationChar->addDescriptor(notifDesc);
 
     // Start the service
     ESP_LOGI(DOOR_INFO_SERVICE_LOG_TAG, "Starting Door Info Service");

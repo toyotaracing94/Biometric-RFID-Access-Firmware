@@ -12,6 +12,8 @@
 #include "AdafruitNFCSensor.h"
 #include "DoorRelay.h"
 #include "repository/SDCardModule/SDCardModule.h"
+
+#include "communication/ble/core/BLEModule.h"
 #include "ota/ota.h"
 
 #include "service/FingerprintService.h"
@@ -23,7 +25,6 @@
 #include "tasks/FingerprintTask/FingerprintTask.h"
 #include "tasks/WifiTask/WifiTask.h"
 
-#include "communication/ble/BLEModule.h"
 #include "entity/CommandBleData.h"
 #include "entity/QueueMessage.h"
 

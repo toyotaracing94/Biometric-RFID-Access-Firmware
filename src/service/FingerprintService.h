@@ -7,7 +7,7 @@
 #include "config/Config.h"
 #include "enum/LockType.h"
 #include "entity/QueueMessage.h"
-#include "communication/ble/BLEModule.h"
+#include "communication/ble/core/BLEModule.h"
 
 /// @brief Class that manages the Fingerprint Access Control system by wrapping the functionalitites of Fingerprint sensor, SD Card module, and the Door Relay
 class FingerprintService
