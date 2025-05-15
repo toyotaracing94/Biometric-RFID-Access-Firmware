@@ -46,6 +46,15 @@ extern "C" void app_main(void){
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK( ret );
+
+    // Initializing the Communication Service and Protocols
+    BLEModule *bleModule = new BLEModule();
+    OTA *otaModule = new OTA();
+
+    // Setup BLE
+    bleModule -> initBLE();
+    bleModule -> setupCharacteristic();
+    bleModule -> setupAdvertising();
     
     // Create a queue for handling WiFi States
     fingerprintQueueRequest = xQueueCreate(10, sizeof(FingerprintQueueRequest));
@@ -59,10 +68,6 @@ extern "C" void app_main(void){
     FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
 
-    // Initializing the Communication Service and Protocols
-    BLEModule *bleModule = new BLEModule();
-    OTA *otaModule = new OTA();
-
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule, fingerprintQueueRequest, fingerprintQueueResponse);
     NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule, nfcQueueRequest, nfcQueueResponse);
@@ -73,11 +78,6 @@ extern "C" void app_main(void){
     NFCTask *nfcTask = new NFCTask("NFC Task", 3, nfcService);
     FingerprintTask *fingerprintTask = new FingerprintTask("Fingerprint Task", 3, fingerprintService);
     WifiTask *wifiTask = new WifiTask("Wifi Task", 10, wifiService, nfcQueueRequest, nfcQueueResponse, fingerprintQueueRequest, fingerprintQueueResponse);
-
-    // Setup BLE
-    bleModule -> initBLE();
-    bleModule -> setupCharacteristic();
-    bleModule -> setupAdvertising();
 
     // Start Task
     nfcTask -> startTask();
