@@ -19,7 +19,13 @@ AdafruitNFCSensor::AdafruitNFCSensor()
  */
 bool AdafruitNFCSensor::setup(){
     ESP_LOGI(NFC_SENSOR_LOG_TAG, "Start NFC Sensor Setup!");
+
+    // Re-initialize I2C and reset from any previous I2C connections
+    Wire.end();
     Wire.begin(SDA_PIN, SCL_PIN);
+
+    // Add delay to wait sensor to be ready and timing issues for the watchdog
+    vTaskDelay(200 / portTICK_PERIOD_MS);
     _pn532Sensor.begin();
 
     uint8_t retries = 1;
