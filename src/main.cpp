@@ -63,10 +63,10 @@ extern "C" void app_main(void){
     nfcQueueResponse = xQueueCreate(10, sizeof(NFCQueueResponse));
 
     // Initialize the Sensor and Electrical Components
-    DoorRelay *doorRelay = new DoorRelay();
     SDCardModule *sdCardModule = new SDCardModule();
     FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
+    DoorRelay *doorRelay = new DoorRelay();
 
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule, fingerprintQueueRequest, fingerprintQueueResponse);
