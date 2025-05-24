@@ -22,6 +22,7 @@ bool AdafruitNFCSensor::setup(){
 
     // Re-initialize I2C and reset from any previous I2C connections
     Wire.end();
+    vTaskDelay(500 / portTICK_PERIOD_MS);
     Wire.begin(SDA_PIN, SCL_PIN);
 
     // Add delay to wait sensor to be ready and timing issues for the watchdog
