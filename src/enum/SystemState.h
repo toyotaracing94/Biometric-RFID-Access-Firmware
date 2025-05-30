@@ -21,6 +21,8 @@ enum SystemState{
     AUTHENTICATE_RFID,  /* The state when authenticate the RFID Card Access                                     */
     DELETE_ACCESS_USER, /* The state to change system transtition to delete all key access under a user id      */
     UPDATE_VISITOR,     /* The state to change system transtition to sync service between esp32 and titan       */
+    DOOR_LOCK,          /* The state where the door is locked through a relay or other mechanism.               */
+    DOOR_UNLOCK,        /* The state where the door is unlocked, allowing access.                               */
 };
 
 

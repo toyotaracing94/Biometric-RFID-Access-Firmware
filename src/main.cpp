@@ -136,6 +136,12 @@ extern "C" void app_main(void){
                     if (strcmp(command, "delete_access_user") == 0){
                         systemState = DELETE_ACCESS_USER;
                     }
+                    if (strcmp(command, "door_lock") == 0){
+                        systemState = DOOR_LOCK;
+                    }
+                    if (strcmp(command, "door_unlock") == 0){
+                        systemState = DOOR_UNLOCK;
+                    }
                 }
                 break;
             
@@ -305,6 +311,26 @@ extern "C" void app_main(void){
                 nfcTask->resumeTask();
                 break;
             
+            case DOOR_LOCK:
+                ESP_LOGI(LOG_TAG, "Closing the Door!");
+                doorRelay->lockRelay();
+
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                break;
+
+            case DOOR_UNLOCK:
+                ESP_LOGI(LOG_TAG, "Opening the Door!");
+                doorRelay->unlockRelay();
+
+                vTaskDelay(100 / portTICK_PERIOD_MS);
+
+                systemState = RUNNING;
+                commandBleData.clear();
+                break;
+
             default:
                 break;
         }

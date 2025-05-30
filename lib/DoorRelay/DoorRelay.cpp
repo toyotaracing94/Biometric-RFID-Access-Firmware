@@ -44,17 +44,37 @@ bool DoorRelay::setup(){
 void DoorRelay::toggleRelay(){
     if (toggleState){
         ESP_LOGI(DOOR_RELAY_LOG_TAG, "relayUnlock ON (DOOR UNLOCK)...");
-        gpio_set_level(RELAY_UNLOCK_PIN, 0);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        gpio_set_level(RELAY_UNLOCK_PIN, 1);
+        unlockRelay();
     }
     else{
         ESP_LOGI(DOOR_RELAY_LOG_TAG, "relayLock ON (DOOR LOCK)...");
-        gpio_set_level(RELAY_LOCK_PIN, 0);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
-        gpio_set_level(RELAY_LOCK_PIN, 1);
+        lockRelay();
     }
     stateLockCounter++;
     toggleState = !toggleState;
     ESP_LOGI(DOOR_RELAY_LOG_TAG, "State Lock Counter Internal %d", stateLockCounter);
+}
+
+/**
+ * @brief Locks the door by activating the relay.
+ * 
+ * @return void
+ */
+void DoorRelay::lockRelay(){
+    ESP_LOGI(DOOR_RELAY_LOG_TAG, "Activating relay lock mechanism");
+    gpio_set_level(RELAY_LOCK_PIN, 0);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    gpio_set_level(RELAY_LOCK_PIN, 1);
+}
+
+/**
+ * @brief Unlocks the door by activating the relay pin of the unlock.
+ * 
+ * @return void
+ */
+void DoorRelay::unlockRelay(){
+    ESP_LOGI(DOOR_RELAY_LOG_TAG, "Activating relay unlock mechanism");
+    gpio_set_level(RELAY_UNLOCK_PIN, 0);
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+    gpio_set_level(RELAY_UNLOCK_PIN, 1);
 }
