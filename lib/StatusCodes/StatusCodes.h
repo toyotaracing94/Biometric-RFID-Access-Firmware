@@ -1,5 +1,5 @@
-#ifndef ERROR_CODE_H
-#define ERROR_CODE_H
+#ifndef STATUS_CODE_H
+#define STATUS_CODE_H
 
 /**
  * @enum ErrorCode
@@ -9,7 +9,7 @@
  * fingerprint, NFC, SD card, queue, document parsing, and server-related operations.
  */
 enum ErrorCode {
-    /// Fingerprint Error Code (100-200)
+    /// Fingerprint Error Code (100-199)
     FAILED_TO_CONVERT_IMAGE_TO_FEATURE = -100,              /* Failed to convert the image to Fingerprint feature                                   */
     FAILED_IMAGE_CONVERSION_ERROR = -101,                   /* Failed when conversion image                                                         */
     FAILED_TO_MAKE_FINGERPRINT_MODEL = -102,                /* Failed to create the final Fingerprint model                                         */
@@ -28,36 +28,50 @@ enum ErrorCode {
     FAILED_TO_GET_FINGERPRINT_FIRST_CONVERT = -115,         /* Failed to convert the first fingerprint image into template features                 */
     FAILED_TO_GET_FINGERPRINT_SECOND_CONVERT = -116,        /* Failed to convert the second fingerprint image into template features                */
     FINGERPRINT_CAPTURE_TIMEOUT = -117,                     /* Timeout occured while waiting for the FIngerprint Image Input                        */
+    NO_FINGERPRINTS_FOUND_UNDER_USER = -118,                /* There are no Fingerprint was found under user                                        */
+    FAILED_TO_DELETE_FINGERPRINTS_USER = -119,              /* Failed to delete the fingerprints under user                                         */
+    FAILED_DELETING_ALL_FINGERPRINTS_MODEL = -120,          /* Failed to delete all the fingerprints model from the sensor                          */
+    FAILED_TO_DELETE_FINGERPRINT_ACCESS_FILE = -121,        /* Failed to delete the Fingerprint key access .json file                               */         
 
-    /// NFC Error Code (201-300)
-    FAILED_TO_REGISTER_NFC_NO_NAME = -201,                  /* Failed to register NFC access because no name was provided                           */
-    FAILED_TO_DELETE_NFC_NO_NAME = -202,                    /* Failed to delete NFC access because no name was provided                             */
-    FAILED_TO_DELETE_NFC_NO_ID = -203,                      /* Failed to delete NFC access because no ID was provided                               */
-    FAILED_TO_DELETE_NFC_NO_NAME_AND_ID = -204,             /* Failed to delete NFC access because both name and ID were not provided               */
-    NFC_CARD_TIMEOUT = -205,                                /* Timeout occurred while waiting for NFC card input                                    */
-    FAILED_TO_SEND_REQUEST_TO_SERVER = -206,                /* Failed to send a request to the backend server                                       */
-    FAILED_TO_GET_VISITOR_ID_TO_NFC = -207,                 /* Failed to obtain visitor ID for NFC registration                                     */
-    FAILED_TO_PARSE_RESPONSE_SERVER = -208,                 /* Failed to parse the server's response during NFC operation                           */
+    /// NFC Error Code (200-299)
+    FAILED_TO_REGISTER_NFC_NO_NAME = -201,                          /* Failed to register NFC access because no name was provided                           */
+    FAILED_TO_DELETE_NFC_NO_NAME = -202,                            /* Failed to delete NFC access because no name was provided                             */
+    FAILED_TO_DELETE_NFC_NO_ID = -203,                              /* Failed to delete NFC access because no ID was provided                               */
+    FAILED_TO_DELETE_NFC_NO_NAME_AND_ID = -204,                     /* Failed to delete NFC access because both name and ID were not provided               */
+    NFC_CARD_TIMEOUT = -205,                                        /* Timeout occurred while waiting for NFC card input                                    */
+    FAILED_TO_SEND_REQUEST_TO_SERVER = -206,                        /* Failed to send a request to the backend server                                       */
+    FAILED_TO_GET_VISITOR_ID_TO_NFC = -207,                         /* Failed to obtain visitor ID for NFC registration                                     */
+    FAILED_TO_PARSE_RESPONSE_SERVER = -208,                         /* Failed to parse the server's response during NFC operation                           */
+    FAILED_TO_REGISTER_NFC_NO_VISITOR_ID_OR_KEY_ACCESS_ID = -209,   /* Failed to register NFC access because no Visitor ID or Key Access was provided       */
+    FAILED_TO_REGISTER_NFC_NO_NAME_AND_ID = -210,                   /* Failed to register NFC access because no name and ID was provided                    */
+    FAILED_TO_DELETE_NFCS_USER = -211,                              /* Failed to delete NFC access under such user                                          */
+    FAILED_TO_DELETE_NFC_ACCESS_FILE = -212,                        /* Failed to delete the NFC key access .json file                                       */
 
-    /// SD Card Error (301-400)
-    FAILED_TO_RETRIEVE_VISITORID_FROM_SDCARD = -301,        /* Failed to retrieve visitor ID from the SD card                                       */
+    /// SD Card Error (300-399)
+    FAILED_TO_RETRIEVE_KEYACCESSID_FROM_SDCARD = -301,      /* Failed to retrieve Key Access ID from the SD card                                       */
     FAILED_SAVE_FINGERPRINT_ACCESS_TO_SD_CARD = -302,       /* Failed to save fingerprint access info to SD card                                    */
     FAILED_DELETE_FINGERPRINT_ACCESS_FROM_SD_CARD = -303,   /* Failed to delete fingerprint access info from SD card                                */
     FAILED_SAVE_NFC_ACCESS_TO_SD_CARD = -304,               /* Failed to save NFC access info to SD card                                            */
     FAILED_DELETE_NFC_ACCESS_TO_SD_CARD = -305,             /* Failed to delete NFC access info from SD card                                        */
 
-    /// Queue Related Error (401-500)
+    /// Queue Related Error (400-499)
     FAILED_TO_SEND_FINGERPRINT_TO_WIFI_QUEUE = -401,        /* Failed to enqueue fingerprint data to WiFi queue                                     */
     FAILED_TO_RECV_FINGERPRINT_FROM_WIFI_QUEUE = -402,      /* Failed to receive fingerprint data from WiFi queue                                   */
     FAILED_TO_SEND_NFC_TO_WIFI_QUEUE = -403,                /* Failed to enqueue NFC data to WiFi queue                                             */
     FAILED_TO_RECV_NFC_FROM_WIFI_QUEUE = -404,              /* Failed to receive NFC data from WiFi queue                                           */
 
-    /// Document Parsing Error (501-600)
+    /// Document Parsing Error (500-599)
     FAILED_TO_PARSE_RESPONSE = -501,                        /* General failure when parsing a document or server response                           */
 
-    /// Server Error (601-700)
+    /// Server Error (600-699)
     FAILED_REQUEST_TO_SERVER = -601,                        /* Server request failed due to connection or response error                            */
     FAILED_GET_VISITORID_FROM_SERVER = -602,                /* Failed to retrieve a visitor ID from the server                                      */
+
+    // BLE Error (700-799)
+    INVALID_JSON_BLE_REQUEST_FORMAT = -700,                 /* Invalid Request JSON Format                                                          */ 
+
+    // Etc (900-999)
+    FAILED_DELETE_USERS_KEY_ACCESS = -900                   /* Failed to delete the all key access user have                                        */
 };
 
 /**
@@ -68,7 +82,7 @@ enum ErrorCode {
  * codes used to communicate current progress/status to the client (e.g., BLE notification).
  */
 enum SuccessCode {
-    /// Fingerprint Success Code (100-200)
+    /// Fingerprint Success Code (100-199)
     START_REGISTERING_FINGERPRINT_ACCESS = 100,             /* Initiating fingerprint registration process                                          */
     SUCCESS_REGISTERING_FINGERPRINT_ACCESS = 101,           /* Successfully registered fingerprint                                                  */
     SUCCESS_DELETING_FINGERPRINT_ACCESS = 102,              /* Successfully deleted fingerprint access                                              */
@@ -79,13 +93,21 @@ enum SuccessCode {
     STATUS_FINGERPRINT_LIFT_FINGER_FROM_SENSOR = 107,       /* Prompt to lift finger after first capture                                            */
     STATUS_FINGERPRINT_PLACE_SECOND_CAPTURE = 108,          /* Prompt to place finger again for second capture                                      */
     STATUS_FINGERPRINT_REGISTERING_FINGER_MODEL = 109,      /* Creating and storing fingerprint model from captured features                        */
- 
-    /// NFC Success Code (201-300)
+    SUCCESS_DELETING_FINGERPRINTS_USER = 110,               /* Success deleted all the fingerprints on under user                                   */
+    SUCCESS_DELETING_ALL_FINGERPRINTS_MODEL = 111,          /* Success deleted all the fingerprints model in the sensor                             */
+    SUCCESS_DELETING_FINGERPRINT_ACCESS_FILE = 112,         /* Success deleted the fingerprints key access .json file                               */
+
+    /// NFC Success Code (200-299)
     START_REGISTERING_NFC_CARD_ACCESS = 201,                /* Initiating NFC card registration process                                             */
     READY_FOR_NFC_CARD_INPUT = 202,                         /* System is ready and waiting for NFC card input                                       */
     SUCCESS_REGISTERING_NFC_ACCESS = 203,                   /* Successfully registered NFC access                                                   */
     SUCCESS_DELETING_NFC_ACCESS = 204,                      /* Successfully deleted NFC access                                                      */
     STATUS_NFC_CARD_SUCCESS_READ = 205,                     /* Successfully getting the NFC Card UID From the sensor                                */
+    SUCCESS_DELETING_NFCS_USER = 206,                       /* Successfully deleted all the fingerprints on under user                              */
+    SUCCESS_DELETING_NFC_ACCESS_FILE = 207,                 /* Success deleted the NFC key access .json file                                        */
+
+    // Etc (900-999)
+    SUCCESS_DELETE_USERS_KEY_ACCESS = 900,                  /* Success deleting the key access of a user (well at least one of them)                */
 };
 
-#endif // ERROR_CODE_H
+#endif // STATUS_CODE_H

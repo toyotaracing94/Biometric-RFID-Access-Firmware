@@ -97,7 +97,7 @@ bool SDCardModule::isFingerprintIdRegistered(int id) {
         JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
         for (JsonObject fingerprint : fingerprints) {
             // Check if the fingerprintId matches
-            if (fingerprint["fingerprintId"].as<int>() == id) {
+            if (fingerprint["fingerprint_id"].as<int>() == id) {
                 ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint ID %d found under user %s", id, currentUsername);
                 return true;
             }
@@ -111,16 +111,17 @@ bool SDCardModule::isFingerprintIdRegistered(int id) {
 /**
  * @brief Saves a fingerprint ID for a user to the SD card.
  *
- * Creates or updates a user with the given username and fingerprint ID.
+ * Creates or updates a user with the given username, visitor ID, key access ID (to relate the key access to the server) and fingerprint ID.
  * If the fingerprint ID is already registered, returns false.
  *
- * @param username The username of the user.
- * @param fingerprintId The fingerprint ID to save.
- * @param keyAccessId The Key Access ID/Visitor ID that represent the fingerprint key access in the server
+ * @param username The username of the user
+ * @param fingerprintId The fingerprint ID to save
+ * @param visitorId The Visitor ID that represent the user of the kye access
+ * @param keyAccessId The Key Access ID that represent the fingerprint key access in the server
  * @return `true` if the fingerprint data was successfully saved, `false` otherwise.
  */
-bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprintId, const char *keyAccessId) {
-    ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d, KeyAccessId %s", username, fingerprintId, keyAccessId);
+bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprintId, const char *visitorId, const char *keyAccessId) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Saving Fingerprint ID Data, Username %s, ID %d, VisitorId %s, KeyAccessId %s", username, fingerprintId, visitorId, keyAccessId);
     createEmptyJsonFileIfNotExists(FINGERPRINT_FILE_PATH);
 
     if (isFingerprintIdRegistered(fingerprintId)) {
@@ -151,11 +152,11 @@ bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprint
         if (user["name"] == username) {
             JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
             JsonObject newFingerprint = fingerprints.createNestedObject();
-            newFingerprint["fingerprintId"] = fingerprintId;
-            newFingerprint["keyAccessId"] = keyAccessId;
+            newFingerprint["fingerprint_id"] = fingerprintId;
+            newFingerprint["key_access_id"] = keyAccessId;
 
             userFound = true;
-            ESP_LOGI(SD_CARD_LOG_TAG, "Added new Fingerprint ID to existing user, Username %s, ID %d", username, fingerprintId);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Added new Fingerprint ID to existing user, Username %s, VisitorID %s, KeyAccessID %s, Fingerprint ID %d", username, visitorId, keyAccessId, fingerprintId);
             break;
         }
     }
@@ -164,13 +165,14 @@ bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprint
     if (!userFound) {
         JsonObject newUser = document.add<JsonObject>();
         newUser["name"] = username;
+        newUser["visitor_id"] = visitorId;
         JsonArray fingerprints = newUser.createNestedArray("fingerprints");
 
         JsonObject newFingerprint = fingerprints.createNestedObject();
-        newFingerprint["fingerprintId"] = fingerprintId;
-        newFingerprint["keyAccessId"] = keyAccessId;
+        newFingerprint["fingerprint_id"] = fingerprintId;
+        newFingerprint["key_access_id"] = keyAccessId;
 
-        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s with Fingerprint ID: %d", username, fingerprintId);
+        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s, VisitorID %s, KeyAccessID %s, Fingerprint ID %d", username, visitorId, keyAccessId, fingerprintId);
     }
 
     // Write back to file
@@ -195,26 +197,11 @@ bool SDCardModule::saveFingerprintToSDCard(const char *username, int fingerprint
  * Searches for the given keyAccessId that associated the specified fingerprint ID.
  * If `id == 0`, all fingerprints of all the users are removed.
  *
- * @param keyAccessId The fingerprint ID to delete.　or `0` to delete allfingerprints models of the user
+ * @param keyAccessId The fingerprint Key Access ID to delete.
  * @return `true` if the fingerprint ID was successfully deleted, `false` otherwise.
  */
 bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Deleting Fingerprint ID Data, KeyAccessId: %s", keyAccessId);
-
-    if (strcmp(keyAccessId, "0") == 0) {
-        // Delete all fingerprint data by creating an empty JSON array
-        File file = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
-        if (file) {
-            // Write an empty JSON array to the file
-            file.print("[]");
-            file.close();
-            ESP_LOGI(SD_CARD_LOG_TAG, "All fingerprint data deleted successfully from SD Card");
-            return true;
-        } else {
-            ESP_LOGE(SD_CARD_LOG_TAG, "Error opening file for deletion of all data: %s", FINGERPRINT_FILE_PATH);
-            return false;
-        }
-    }
 
     // Open the file and create new Static JsonDocument
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
@@ -245,8 +232,17 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
         for (int j = 0; j < fingerprints.size(); j++) {
             JsonObject fingerprint = fingerprints[j].as<JsonObject>();
 
+            // Get key_access_id
+            const char* currentKeyAccessId = fingerprint["key_access_id"];
+
+            // Safely check for both possible Fingerprint Key Access ID Field first
+            if (currentKeyAccessId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint entry missing key_access_id. Skipping.");
+                continue;
+            }
+
             // Compare the keyAccessId (fingerprint key) with the input
-            if (fingerprint["keyAccessId"].as<String>() == keyAccessId) {
+            if (strcmp(currentKeyAccessId, keyAccessId) == 0) {
                 fingerprints.remove(j);
                 userFound = true;
                 ESP_LOGI(SD_CARD_LOG_TAG, "Removed Fingerprint Access for User with KeyAccessId: %s", keyAccessId);
@@ -280,14 +276,85 @@ bool SDCardModule::deleteFingerprintFromSDCard(const char* keyAccessId) {
     }
 }
 
+/**
+ * @brief Deletes all the fingerprint users from record on the SD card.
+ *
+ * Searches for the given visitorId that associated the specified fingerprints.
+ *
+ * @param visitorId The visitor ID of the user
+ * @return `true` if the fingerprints was successfully deleted, `false` otherwise.
+ */
+bool SDCardModule::deleteFingerprintsUserFromSDCard(const char* visitorId){
+    ESP_LOGI(SD_CARD_LOG_TAG, "Deleting Fingerprints User, Visitor ID: %s", visitorId);
+
+    // Open the file and create new Static JsonDocument
+    File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if (file) {
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the file: %s", FINGERPRINT_FILE_PATH);
+        return false;
+    }
+
+    // Search for the user with the given visitor_id
+    bool userFound = false;
+    JsonArray users = document.as<JsonArray>();
+    for (int i = 0; i < users.size(); i++) {
+        JsonObject user = users[i].as<JsonObject>();
+
+        // Get visitor_id
+        const char* userVisitorId = user["visitor_id"];
+        // Safely check for both possible Fingerprint Key Access ID JSON Field first
+        if (userVisitorId == nullptr) {
+            ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint entry missing Visitor ID. Skipping.");
+            continue;
+        }
+
+        if (strcmp(userVisitorId, visitorId) == 0) {
+            users.remove(i);
+            userFound = true;
+            ESP_LOGI(SD_CARD_LOG_TAG, "User with Visitor ID %s deleted in memory", visitorId);
+            break;
+        }
+    }
+
+    if (userFound) {
+        // Write the modified JSON data back to the SD card
+        file = SD.open(FINGERPRINT_FILE_PATH, FILE_WRITE);
+        if (file) {
+            if (serializeJson(document, file) == 0) {
+                ESP_LOGE(SD_CARD_LOG_TAG, "Failed to serialize JSON to file");
+                file.close();
+                return false;
+            }
+            file.close();
+            ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint data change is successfully stored to SD Card");
+            return true;
+        } else {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to change Fingerprint data on SD Card");
+            return false;
+        }
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Fingerprint Data with Visitor Id %s not found in Storage system!", visitorId);
+        return false;
+    }
+}
 
 /**
- * @brief Gets the Fingerprint ID associated with a given VisitorId.
+ * @brief Gets the Fingerprint ID associated with a given keyAccessId.
  *
  * @param keyAccessId The Key Access ID to search for.
  * @return The Fingerprint ID if found, or -1 if not found.
  */
-int SDCardModule::getFingerprintIdByVisitorId(const char* keyAccessId) {
+int SDCardModule::getFingerprintIdByKeyAccessId(const char* keyAccessId) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Searching for Fingerprint ID by KeyAccessId: %s", keyAccessId);
 
     JsonDocument document;
@@ -316,16 +383,23 @@ int SDCardModule::getFingerprintIdByVisitorId(const char* keyAccessId) {
     }
 
     // Search for the KeyAccessId in the "fingerprints" array of each user
+    ESP_LOGI(SD_CARD_LOG_TAG, "Begin Searching in %s File", FINGERPRINT_FILE_PATH);
     for (JsonObject user : document.as<JsonArray>()) {
         JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
         
         // Iterate through fingerprints array to find the keyAccessId
         for (JsonObject fingerprint : fingerprints) {
-            const char* currentKeyAccessId = fingerprint["keyAccessId"];
+            const char* currentKeyAccessId = fingerprint["key_access_id"];
+            
+            // Check first if there is named key_access_id, to prevent nullptr comparison
+            if (currentKeyAccessId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "Fingerprint entry missing key_access_id. Skipping.");
+                continue;
+            }
             
             // If the keyAccessId matches, return the associated fingerprintId
             if (strcmp(currentKeyAccessId, keyAccessId) == 0) {
-                int fingerprintId = fingerprint["fingerprintId"].as<int>();
+                int fingerprintId = fingerprint["fingerprint_id"].as<int>();
                 ESP_LOGI(SD_CARD_LOG_TAG, "Fingerprint model found for KeyAccessId: %s, FingerprintId: %d", keyAccessId, fingerprintId);
                 return fingerprintId;
             }
@@ -337,12 +411,65 @@ int SDCardModule::getFingerprintIdByVisitorId(const char* keyAccessId) {
 }
 
 /**
+ * @brief Gets the list of Fingerprint ID associated with a given VisitorId.
+ *
+ * @param visitorId The Visitor ID to search for.
+ * @return The Fingerprint ID's if found, or empty list.
+ */
+std::vector<int> SDCardModule::getFingerprintIdsByVisitorId(const char *visitorId) {
+    std::vector<int> fingerprintIds;
+
+    ESP_LOGI(SD_CARD_LOG_TAG, "Fetching Fingerprint IDs for Visitor ID %s", visitorId);
+
+    // Read the JSON from SD card
+    File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if (file) {
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return fingerprintIds;
+        }
+        file.close();
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the file: %s", FINGERPRINT_FILE_PATH);
+        return fingerprintIds;
+    }
+
+    // Search for the user with the given visitor_id
+    bool userFound = false;
+    for (JsonObject user : document.as<JsonArray>()) {
+        if (user["visitor_id"] == visitorId) {
+            // User found, now extract the fingerprint IDs
+            JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
+            for (JsonObject fingerprint : fingerprints) {
+                int fingerprintId = fingerprint["fingerprint_id"];
+                fingerprintIds.push_back(fingerprintId);
+            }
+
+            userFound = true;
+            ESP_LOGI(SD_CARD_LOG_TAG, "Found %d fingerprints for Visitor ID %s", fingerprintIds.size(), visitorId);
+            break;
+        }
+    }
+
+    // If user is not found, fingerprintIds will remain empty
+    if (!userFound) {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Visitor ID %s not found", visitorId);
+    }
+
+    return fingerprintIds;
+}
+
+/**
  * @brief Gets the Visitor ID that associated with the given fingerprint Id
  *
  * @param fingerprintId The Key Access ID to search for.
  * @return The Fingerprint ID if found, or -1 if not found.
  */
-std::string* SDCardModule::getVisitorIdByFingerprintId(int fingerprintId) {
+std::string* SDCardModule::getKeyAccessIdByFingerprintId(int fingerprintId) {
     ESP_LOGI(SD_CARD_LOG_TAG, "Get KeyAccessId by Fingerprint ID %d in SD Card", fingerprintId);
     File file = SD.open(FINGERPRINT_FILE_PATH, FILE_READ);
     JsonDocument document;
@@ -365,8 +492,8 @@ std::string* SDCardModule::getVisitorIdByFingerprintId(int fingerprintId) {
         JsonArray fingerprints = user["fingerprints"].as<JsonArray>();
         if (!fingerprints.isNull()) {
             for (JsonObject fingerprint : fingerprints) {
-                int storedId = fingerprint["fingerprintId"];
-                const char* keyAccessId = fingerprint["keyAccessId"];
+                int storedId = fingerprint["fingerprint_id"];
+                const char* keyAccessId = fingerprint["key_access_id"];
 
                 if (storedId == fingerprintId && keyAccessId != nullptr) {
                     ESP_LOGI(SD_CARD_LOG_TAG, "Found keyAccessId %s for Fingerprint ID %d", keyAccessId, fingerprintId);
@@ -415,7 +542,13 @@ bool SDCardModule::isNFCIdRegistered(const char *id) {
 
         // Loop through each NFC entry for the current user
         for (JsonObject nfc : nfcs) {
-            const char *nfcId = nfc["nfcId"];
+            const char *nfcId = nfc["nfc_uid"];
+
+            // Check first if there is named key_access_id, to prevent nullptr comparison
+            if (nfcId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry missing key_access_id. Skipping.");
+                continue;
+            }
 
             // Check if the current NFC ID matches the one we're looking for
             if (strcmp(nfcId, id) == 0) {
@@ -433,17 +566,18 @@ bool SDCardModule::isNFCIdRegistered(const char *id) {
  * @brief Saves an NFC ID for a user to the SD card.
  *
  * @param username The username of the user.
- * @param nfcId The NFC ID to save.
- * @param visitorId The Visitor ID/Key Access Id to save.
+ * @param uidCard The NFC Unique ID from sensor reading to save.
+ * @param visitorId The Visitor ID that represent the user of the kye access
+ * @param keyAccessId The Key Access ID that represent the fingerprint key access in the server
  * @return `true` if the NFC data was successfully saved, `false` otherwise.
  */
-bool SDCardModule::saveNFCToSDCard(const char *username, const char *nfcId, const char *visitorId) {
-    ESP_LOGI(SD_CARD_LOG_TAG, "Saving NFC Data, Username %s, NFC ID %s", username, nfcId);
+bool SDCardModule::saveNFCToSDCard(const char *username, const char *uidCard, const char *visitorId, const char *keyAccessId) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Saving NFC Data, Username %s, NFC UID %s, Visitor ID %s, Key Access ID %s", username, uidCard, visitorId, keyAccessId);
 
     createEmptyJsonFileIfNotExists(RFID_FILE_PATH);
 
-    if (isNFCIdRegistered(nfcId)) {
-        ESP_LOGE(SD_CARD_LOG_TAG, "NFC ID %s is already registered under another user!", nfcId);
+    if (isNFCIdRegistered(uidCard)) {
+        ESP_LOGE(SD_CARD_LOG_TAG, "NFC ID %s is already registered under another user!", uidCard);
         return false;
     }
 
@@ -471,11 +605,11 @@ bool SDCardModule::saveNFCToSDCard(const char *username, const char *nfcId, cons
             // If the user is found, add the new NFC info to the 'nfcs' array
             JsonArray nfcs = user["nfcs"].as<JsonArray>();
             JsonObject newNfc = nfcs.createNestedObject();
-            newNfc["nfcId"] = nfcId;
-            newNfc["keyAccessId"] = visitorId;
+            newNfc["nfc_uid"] = uidCard;
+            newNfc["key_access_id"] = keyAccessId;
             userFound = true;
 
-            ESP_LOGI(SD_CARD_LOG_TAG, "Added new NFC ID to existing user, Username %s, NFC ID %s", username, nfcId);
+            ESP_LOGI(SD_CARD_LOG_TAG, "Added new NFC ID to existing user, Username %s, NFC ID %s", username, uidCard);
             break;
         }
     }
@@ -489,10 +623,10 @@ bool SDCardModule::saveNFCToSDCard(const char *username, const char *nfcId, cons
         // Create the 'nfcs' array for this new user
         JsonArray nfcs = newUser.createNestedArray("nfcs");
         JsonObject newNfc = nfcs.createNestedObject();
-        newNfc["nfcId"] = nfcId;
-        newNfc["keyAccessId"] = visitorId;
+        newNfc["nfc_uid"] = uidCard;
+        newNfc["key_access_id"] = keyAccessId;
 
-        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s with NFC ID: %s", username, nfcId);
+        ESP_LOGI(SD_CARD_LOG_TAG, "Created new user %s with NFC ID: %s", username, uidCard);
     }
 
     // Write the modified JSON data back to the SD card
@@ -520,26 +654,11 @@ bool SDCardModule::saveNFCToSDCard(const char *username, const char *nfcId, cons
  * Searches for the given user and removes the specified NFC ID.
  * If `id == 0`, all NFC IDs of the user are removed.
  *
- * @param visitorId The NFC Visitor ID to delete. or `0` to delete all NFC access of the user
+ * @param keyAccessId The fingerprint Key Access ID to delete.
  * @return `true` if the NFC ID was successfully deleted, `false` otherwise.
  */
-bool SDCardModule::deleteNFCFromSDCard(const char *visitorId) {
-    ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC Data, Visitor ID %s", visitorId);
-
-    if (strcmp(visitorId, "0") == 0) {
-        // Delete all NFC data by creating an empty JSON array
-        File file = SD.open(RFID_FILE_PATH, FILE_WRITE);
-        if (file) {
-            // Write an empty JSON array to the file
-            file.print("[]");
-            file.close();
-            ESP_LOGI(SD_CARD_LOG_TAG, "All NFC data deleted successfully from SD Card");
-            return true;
-        } else {
-            ESP_LOGE(SD_CARD_LOG_TAG, "Error opening file for deletion of all data: %s", RFID_FILE_PATH);
-            return false;
-        }
-    }
+bool SDCardModule::deleteNFCFromSDCard(const char *keyAccessId) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC Data, Key Access ID %s", keyAccessId);
 
     // Open the file for reading the data
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
@@ -558,41 +677,42 @@ bool SDCardModule::deleteNFCFromSDCard(const char *visitorId) {
         return false;
     }
 
-    bool userFound = false;
-    bool nfcFound = false;
+    bool keyAccessFound = false;
 
-    // Loop through each user in the JSON array
-    for (JsonObject user : document.as<JsonArray>()) {
-        const char *currentVisitorId = user["visitor_id"];
-        if (currentVisitorId == nullptr || strcmp(currentVisitorId, visitorId) != 0) {
-            // Skip if the visitor ID doesn't match
-            continue;
-        }
+    // Iterate over users and their NFC's
+    JsonArray users = document.as<JsonArray>();
+    for (int i = 0; i < users.size(); i++) {
+        JsonObject user = users[i].as<JsonObject>();
 
-        userFound = true;
+        // Check if the user has fingerprints
+        JsonArray nfcCards = user["nfcs"].as<JsonArray>();
+        for (int j = 0; j < nfcCards.size(); j++) {
+            JsonObject nfcCard = nfcCards[j].as<JsonObject>();
 
-        // Loop through the NFCs for the current user
-        JsonArray nfcs = user["nfcs"].as<JsonArray>();
-        for (int i = 0; i < nfcs.size(); i++) {
-            JsonObject nfc = nfcs[i].as<JsonObject>();
-            const char *nfcId = nfc["nfcId"];
+            // Get key_access_id
+            const char* currentKeyAccessId = nfcCard["key_access_id"];
 
-            // If the NFC ID exists, remove it from the array
-            if (nfcId != nullptr) {
-                nfcFound = true;
-                nfcs.remove(i);
-                ESP_LOGI(SD_CARD_LOG_TAG, "Removed NFC Access with NFC ID: %s", nfcId);
+            // Safely check for both possible NFC ID and Key Access JSON Field first
+            if (currentKeyAccessId == nullptr) {
+                ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry missing key_access_id. Skipping.");
+                continue;
+            }
+
+            if (strcmp(currentKeyAccessId, keyAccessId) == 0) {
+                nfcCards.remove(j);
+                keyAccessFound = true;
+                ESP_LOGI(SD_CARD_LOG_TAG, "Removed NFC Access for User with KeyAccessId: %s", keyAccessId);
                 break;
             }
         }
-        if (!nfcFound) {
-            ESP_LOGW(SD_CARD_LOG_TAG, "No NFC data found for Visitor ID %s", visitorId);
+
+        if (keyAccessFound) {
+            break;
         }
-        break;
     }
 
     // If we found the user and NFC entry to delete
-    if (userFound && nfcFound) {
+    if (keyAccessFound) {
         // Write the modified JSON data back to the SD card
         file = SD.open(RFID_FILE_PATH, FILE_WRITE);
         if (file) {
@@ -610,7 +730,79 @@ bool SDCardModule::deleteNFCFromSDCard(const char *visitorId) {
             return false;
         }
     } else {
-        ESP_LOGE(SD_CARD_LOG_TAG, "Visitor ID %s not found or no NFC data to remove", visitorId);
+        ESP_LOGE(SD_CARD_LOG_TAG, "Key Access ID %s not found or no NFC data to remove", keyAccessId);
+        return false;
+    }
+}
+
+/**
+ * @brief Deletes all the NFC Card access of an user from record of the SD card.
+ *
+ * Searches for the given visitorId that associated the specified NFC Card access.
+ *
+ * @param visitorId The visitor ID of the user
+ * @return `true` if the NFCs was successfully deleted, `false` otherwise.
+ */
+bool SDCardModule::deleteNFCsUserFromSDCard(const char *visitorId){
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete NFC Data User, Visitor ID %s", visitorId);
+
+    // Open the file for reading the data
+    File file = SD.open(RFID_FILE_PATH, FILE_READ);
+    JsonDocument document;
+
+    if (file) {
+        DeserializationError error = deserializeJson(document, file);
+        if (error) {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to deserialize JSON: %s", error.c_str());
+            file.close();
+            return false;
+        }
+        file.close();
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Error opening the File!, File %s", RFID_FILE_PATH);
+        return false;
+    }
+
+    // Search for the user with the given visitor_id
+    bool userFound = false;
+    JsonArray users = document.as<JsonArray>();
+    for (int i = 0; i < users.size(); i++) {
+        JsonObject user = users[i].as<JsonObject>();
+
+        // Get visitor_id
+        const char* userVisitorId = user["visitor_id"];
+        // Safely check for both possible NFC ID and Key Access JSON Field first
+        if (userVisitorId == nullptr) {
+            ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry missing Visitor ID. Skipping.");
+            continue;
+        }
+
+        if (strcmp(userVisitorId, visitorId) == 0) {
+            users.remove(i);
+            userFound = true;
+            ESP_LOGI(SD_CARD_LOG_TAG, "User with Visitor ID %s deleted in memory", visitorId);
+            break;
+        }
+    }
+
+    if (userFound) {
+        // Write the modified JSON data back to the SD card
+        file = SD.open(RFID_FILE_PATH, FILE_WRITE);
+        if (file) {
+            if (serializeJson(document, file) == 0) {
+                ESP_LOGE(SD_CARD_LOG_TAG, "Failed to serialize JSON to file");
+                file.close();
+                return false;
+            }
+            file.close();
+            ESP_LOGI(SD_CARD_LOG_TAG, "NFC data change is successfully stored to SD Card");
+            return true;
+        } else {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to change NFC data on SD Card");
+            return false;
+        }
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "NFC Data with Visitor Id %s not found in Storage system!", visitorId);
         return false;
     }
 }
@@ -623,8 +815,8 @@ bool SDCardModule::deleteNFCFromSDCard(const char *visitorId) {
  * @param id The NFC UID Card
  * @return std::string Visitor ID of the NFC Card
  */
-std::string* SDCardModule::getVisitorIdByNFC(char *id) {
-    ESP_LOGI(SD_CARD_LOG_TAG, "Get Visitor ID by NFC ID %s in SD Card", id);
+std::string* SDCardModule::getKeyAccessIdByNFCUid(char *id) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Get Key Access ID by NFC ID %s in SD Card", id);
 
     // Open the file and then close it and create new Static in heap
     File file = SD.open(RFID_FILE_PATH, FILE_READ);
@@ -643,26 +835,30 @@ std::string* SDCardModule::getVisitorIdByNFC(char *id) {
         return nullptr;
     }
 
-    // Loop through all users in the document
+    // Loop through each user in the JSON array
     for (JsonObject user : document.as<JsonArray>()) {
-        const char *currentVisitorId = user["visitor_id"];
-        
-        // Check if the user has a visitor ID
-        if (currentVisitorId == nullptr) {
-            continue;
-        }
+        JsonArray nfcCards = user["nfcs"].as<JsonArray>();
+        if (!nfcCards.isNull()) {
+            for (JsonObject nfcCard : nfcCards) {
+                const char* storedId = nfcCard["nfc_uid"];
+                const char* keyAccessId = nfcCard["key_access_id"];
 
-        // Get the nfcs array for the user
-        JsonArray nfcs = user["nfcs"].as<JsonArray>();
-        
-        // Loop through the nfcs array to find the matching nfcId
-        for (JsonObject nfc : nfcs) {
-            const char *nfcId = nfc["nfcId"];
-            
-            // Check if the nfcId matches the one we are looking for
-            if (nfcId != nullptr && strcmp(nfcId, id) == 0) {
-                ESP_LOGI(SD_CARD_LOG_TAG, "NFC ID %s found for Visitor ID %s", id, currentVisitorId);
-                return new std::string(currentVisitorId);
+                // Check first if there is named key_access_id or nfc_uid field, to prevent nullptr comparison
+                if (storedId == nullptr) {
+                    ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry seems missing nfc_uid. Skipping.");
+                    continue;
+                }
+
+                if (keyAccessId == nullptr) {
+                    ESP_LOGW(SD_CARD_LOG_TAG, "NFC entry seems missing key_access_id. Skipping.");
+                    continue;
+                }
+
+                // Check if the current NFC ID matches the one we're looking for
+                if (strcmp(storedId, id) == 0) {
+                    ESP_LOGI(SD_CARD_LOG_TAG, "Found keyAccessId %s for NFC Unique ID %s", keyAccessId, storedId);
+                    return new std::string(keyAccessId);
+                }
             }
         }
     }
@@ -670,6 +866,48 @@ std::string* SDCardModule::getVisitorIdByNFC(char *id) {
     // If no matching NFC ID is found, log and return nullptr
     ESP_LOGW(SD_CARD_LOG_TAG, "NFC ID %s not found in any user", id);
     return nullptr;
+}
+
+/**
+ * @brief Deletes a JSON file (RFID or Fingerprint) based on the provided LockType.
+ *
+ * @param type LockType that determines which file to delete:
+ *             - LockType::RFID -> Deletes `/rfid_data.json`
+ *             - LockType::Fingerprint -> Deletes `/fingerprints.json`
+ *
+ * @return true if the file was deleted or doesn't exist.
+ *         false if the file could not be deleted or an invalid LockType was provided.
+ *
+ * @note Logs errors for invalid LockType or failed deletions.
+ */
+bool SDCardModule::deleteAccessJsonFile(LockType type) {
+    ESP_LOGI(SD_CARD_LOG_TAG, "Delete the JSON Key Access File, Type %d", type);
+
+    // Switch the file path based on LockType
+    const char* filePath = nullptr;
+    if (type == LockType::RFID) {
+        filePath = RFID_FILE_PATH;
+    } else if (type == LockType::FINGERPRINT) {
+        filePath = FINGERPRINT_FILE_PATH;
+    } else {
+        ESP_LOGE(SD_CARD_LOG_TAG, "Invalid LockType: %d", type);
+        return false;
+    }
+
+    // Check if the file exists
+    if (SD.exists(filePath)) {
+        // Attempt to delete the file
+        if (SD.remove(filePath)) {
+            ESP_LOGI(SD_CARD_LOG_TAG, "%s file deleted successfully.", filePath);
+            return true;
+        } else {
+            ESP_LOGE(SD_CARD_LOG_TAG, "Failed to delete %s file.", filePath);
+            return false;
+        }
+    } else {
+        ESP_LOGI(SD_CARD_LOG_TAG, "%s file does not exist.", filePath);
+        return false;
+    }
 }
 
 /**

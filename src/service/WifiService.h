@@ -2,7 +2,7 @@
 #define WIFI_SERVICE_H
 
 #include "communication/wifi/Wifi.h"
-#include "communication/ble/BLEModule.h"
+#include "communication/ble/core/BLEModule.h"
 
 #include "ota/ota.h"
 

@@ -15,6 +15,8 @@ public:
     DoorRelay();
     bool setup();
     void toggleRelay();
+    void lockRelay();
+    void unlockRelay();
 
 private:
     bool toggleState = false;

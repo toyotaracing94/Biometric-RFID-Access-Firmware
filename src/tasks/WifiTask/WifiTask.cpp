@@ -235,7 +235,7 @@ void WifiTask::handleNFCTask(NFCQueueRequest message) {
         }
     }
     
-    if (message.state == AUTEHNTICATE_RFID) {
+    if (message.state == AUTHENTICATE_RFID) {
         ESP_LOGI(WIFI_TASK_LOG_TAG, "Authenticating NFC (RFID) access.");
         
         if(_wifiService->isConnected()){

@@ -11,6 +11,7 @@ public:
     virtual int getFingerprintIdModel() = 0;
     virtual bool addFingerprintModel(int id, std::function<void(int)> callback);
     virtual bool deleteFingerprintModel(int id) = 0;
+    virtual bool deleteAllFingerprintModel();
 };
 
 #endif

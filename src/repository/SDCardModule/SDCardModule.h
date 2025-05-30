@@ -6,6 +6,9 @@
 #include <ArduinoJson.h>
 #include <Arduino.h>
 
+#include <vector>
+#include "enum/LockType.h"
+
 #define CS_PIN 5    // Chip Select pin
 #define SCK_PIN 18  // Clock pin
 #define MISO_PIN 19 // Master In Slave Out
@@ -20,17 +23,21 @@ public:
     SDCardModule();
     bool setup();
 
-    bool isFingerprintIdRegistered(int id);
-    bool saveFingerprintToSDCard(const char *username, int id, const char *visitorId);
-    bool deleteFingerprintFromSDCard(const char *visitorId);
-    int getFingerprintIdByVisitorId(const char *visitorId);
-    std::string* getVisitorIdByFingerprintId(int fingerprintId);
+    bool isFingerprintIdRegistered(int fingerprintId);
+    bool saveFingerprintToSDCard(const char *username, int fingerprintId, const char *visitorId, const char *keyAccessId);
+    bool deleteFingerprintFromSDCard(const char *keyAccessId);
+    bool deleteFingerprintsUserFromSDCard(const char *visitorId);
+    int getFingerprintIdByKeyAccessId(const char *keyAccessId);
+    std::vector<int> getFingerprintIdsByVisitorId(const char *visitorId);
+    std::string* getKeyAccessIdByFingerprintId(int fingerprintId);
 
-    bool isNFCIdRegistered(const char *id);
-    bool saveNFCToSDCard(const char *username, const char *id, const char *visitorId);
-    bool deleteNFCFromSDCard(const char *visitorId);
-    std::string* getVisitorIdByNFC(char *id);
+    bool isNFCIdRegistered(const char *uidCard);
+    bool saveNFCToSDCard(const char *username, const char *uidCard, const char *visitorId, const char *keyAccessId);
+    bool deleteNFCFromSDCard(const char *keyAccessId);
+    bool deleteNFCsUserFromSDCard(const char *visitorId);
+    std::string* getKeyAccessIdByNFCUid(char *uidCard);
 
+    bool deleteAccessJsonFile(LockType type);
     void createEmptyJsonFileIfNotExists(const char *filepath);
     JsonDocument syncData();
 };

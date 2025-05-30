@@ -17,6 +17,7 @@ public:
   int getFingerprintIdModel() override;
   bool addFingerprintModel(int id, std::function<void(int)> callback = nullptr) override;
   bool deleteFingerprintModel(int id) override;
+  bool deleteAllFingerprintModel() override;
 
   void activateSuccessLED(uint8_t control, uint8_t speed, uint8_t cycles);
   void activateFailedLED(uint8_t control, uint8_t speed, uint8_t cycles);

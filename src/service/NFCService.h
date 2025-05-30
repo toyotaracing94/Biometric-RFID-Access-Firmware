@@ -5,7 +5,7 @@
 #include "DoorRelay.h"
 #include "StatusCodes.h"
 #include "repository/SDCardModule/SDCardModule.h"
-#include "communication/ble/BLEModule.h"
+#include "communication/ble/core/BLEModule.h"
 #include "entity/QueueMessage.h"
 #include "enum/LockType.h"
 #include "enum/SystemState.h"
@@ -16,15 +16,17 @@ class NFCService {
     public:
         NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule *bleModule, QueueHandle_t nfcQueueRequest, QueueHandle_t nfcQueueResponse);
         bool setup();
-        bool addNFC(const char* username);
-        bool deleteNFC(const char *visitorId);
+        bool addNFC(const char *username, const char *visitorId, const char *keyAccessId);
+        bool deleteNFC(const char *keyAccessId);
+        bool deleteNFCsUser(const char *visitorId);
+        bool deleteNFCAccessFile();
         bool authenticateAccessNFC();
 
         // Helper functions
         void sendbleNotification(int statusCode);
         void sendbleNotification(const char* status, const char* username, const char* visitorId, const char* message, const char *type);
         bool handleError(int statusCode, const char* username, const char* visitorId, const char* message, bool cleanup);
-        bool handleDeleteError(int statusCode, const char* visitorId, const char* message);
+        bool handleDeleteError(int statusCode, const char* message);
         void addNFCCallback(int statusCode);
 
     private:
