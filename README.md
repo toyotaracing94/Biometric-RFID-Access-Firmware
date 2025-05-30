@@ -2,9 +2,9 @@
 This is repo for holding the code for Firmware of Group C Project at Capability Center Division on Toyota Motor Indonesia which is Door Locking Mechanism Firmware on ESP32. The project focuses on a door locking mechanism that utilizes an ESP32 microcontroller along with Fingerprint and NFC sensors for access control, where it stored the data access in external SD Card. This project is using PlatformIO to deliver this project.
 
 ## Why PlatformIO not ESP-IDF Framework
-It's also been a question to ask for myself when I first start this project, just why do this? Previously if you see in previous version, you'll will see that we are using Arduino IDE to develop the program (now it's been archived). Of course it's not a problem if we just using this as a play project or something like that, it's hide the ugly truth behind how to config for us to use and we can simply just plug and play and can more actually care about the program. But as the feature keep adding, this become harder to maintain. Just think about it, all the functions are in the same place of this one big `ino` files, making things harder as if we change some of the function, it will introduce new breaking changes to the rest of the flow of the program.
+It's also been a question to ask for myself when I first start this project, just why do this? Previously if you see in previous version, you'll will see that we are using Arduino IDE to develop the program (now it's been archived). Of course it's not a problem if we just using this as a toy project or something like that, Arduino IDE environment really hide the ugly truth behind how to config the microcontroller for us(mostly Arduino and Espressif) for us to use with ease. We can simply just plug and play, and can start more actually care about the program. But as the feature keep adding, this thing become harder to maintain. Just think about it, all the functions are in the same place of this one big `ino` files, making things harder, as if we change some of the function, it will introduce also a new breaking changes to the rest of the flow of the program.
 
-So I know I want to make this program code to become more modular and easier to maintain, if this program can get big in the future. I also hoping this can become as reference to other project to thinking more about how we can make more proper way of development. As goes by, my option for development goes by PlatformIO and ESP-IDF. ESP-IDF is the official works provided by the Esspresif System, the manufacturer of ESP32 on how we can develop the firmare code that is using the ESP32 Microcontroller family system, while PlatformIO is a cross-platform, cross-architecture, multiple framework, professional tool for embedded systems engineers and for software developers who write applications for embedded products. It supports many different software development kits, platform where ESP-IDF is included to the PlatformIO development support. In the end, I choose PlatformIO instead of ESP-IDF, the point of why is reason below, but still it's really a relieve to move away from the Arduino environment
+So I know I want to make this program code to become more modular and easier to maintain, if this program could get bigger in the future. I was also hoping this project could become as a  reference to other project on about how to thinking more about of more proper way of firmware development. As goes by, my option for development goes by PlatformIO and ESP-IDF. ESP-IDF is the official works provided by the Esspresif System, the manufacturer of ESP32 on how we can develop the firmare code that is using the ESP32 Microcontroller family system, while PlatformIO is a cross-platform, cross-architecture, multiple framework, professional tool for embedded systems engineers and for software developers who write applications for embedded products. It supports many different software development kits, platform where ESP-IDF is included to the PlatformIO development support. In the end, I choose PlatformIO instead of ESP-IDF, the point of why is reason below, but still it's really a relieve to move away from the Arduino IDE environment.
 
 | Problems                    | PlatformIO                                            | ESP-IDF                                                      |
 | :-------------------------- | :---------------------------------------------------- | :----------------------------------------------------------- |
@@ -58,6 +58,19 @@ This file contains the configurations for the partitions table to be load into t
 - `platformio.ini`:  
 This file is a configuration to set up your development environment, such as the frameworks, platform we use, the 3rd party libraries, board builds configurations, etc.
 
+## Project Architecture
+So, in this project more or less I designed the project with the believe of what I borrow from the Software development common architecture which is [a CLEAN architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) and OOP Design, that's why I choose to make the firmware in C++ environment rather plain C as C++ support classes, opposite of [many disucssing forum](https://stackoverflow.com/questions/812717/is-there-any-reason-to-use-c-instead-of-c-for-embedded-development) says that developing firmware in C are rather the norm rather in C++.
+This project is structured with modularity and scalability in mind. The system is divided into three main layers:
+
+<p align="center">
+  <img width="69%"src="docs/images/Firmware Architecture.png">
+</p>
+
+So in detailed explanation
+1. Modules (Sensors, Protocols, etc.) --> All core components such as sensors, actuators, and communication protocols are implemented as independent C++ classes. These are self-contained and reusable across the system. By isolating hardware interaction into its own folder or module, we ensure that each hardware or protocol can be tested independently. This makes our code becomes cleaner and easier to maintain or swap out. Everything at this level can be seen as building blocks for higher-level actions.
+2. Services --> Services act as the middle layer that brings together multiple modules to perform real-world actions. For example, unlocking a door with an NFC card would require An NFC reader module to detect the card, actuator module to unlock the door and a SD card module to log the event. So, Instead of handling all these in one place, a Service encapsulates the logic of "unlocking a door" by coordinating the relevant modules. This makes high-level actions clean, readable, and easier to test.
+3. Tasks --> When a Service becomes complex or needs to operate with its own logic, lifecycle, or state machine (e.g., periodic checking, event-based execution), it can be promoted into a Task. A Task is essentially a Service that runs independently—either as a FreeRTOS task, a separate thread, or run with its own loop and timing mechanisms. This keeps the system responsive and decouples critical behaviors from one another. This is critical let say that one service is need to send something to the server, so from this we need a module to connect to the WiFi. But, as WiFi really have many exsternal disturbance, so if we incldue WiFi as a procedure in a let's say Service 'A', then if WiFi suddenly disconnect, it will disturb the Service 'A', that's why it's easier to decouple WiFi in it's own little world.
+
 ## How to Build and Flash
 <p align="center">
   <img width="79%"src="docs/images/PlatformIO Tools.png">
@@ -95,6 +108,12 @@ or
 pio device monitor --upload-port SELECTED-COM-PORT
 ```
 
+### OTA Update
+For now, this devices accept basic OTA updates mechanism by manually flashing them through pio terminal. To do manual OTA updates, first the ESP32 and the computer that has the binary firmware files must be in the same WiFi network. Then search the IP Address of the ESP and then from the terminal, do this command
+```sh
+pio run -t upload --upload-port ESP-IP-ADDRESS
+```   
+
 ## Library Dependencies
 For this project, we use several 3rd Party libraries to make this code functional, we can install them by searching them in the PlatformIO libraries
 * [ArduinoJson](https://github.com/bblanchon/ArduinoJson)
@@ -114,3 +133,7 @@ There are possible development to increase the usability and the security of thi
 <a id="1">[1]</a> Muhammad Juniarto (CC Batch 3 Members)  
 <a id="2">[2]</a> Dhimas Dwi Cahyo  (CC Batch 2 Members)  
 <a id="3">[3]</a> Ahmadhani Fajar Aditama (AKTI Members)
+
+## Project Reference
+1. https://github.com/AllanOricil/esp32-mfa-authenticator
+2. https://github.com/UtilitechAS/amsreader-firmware
