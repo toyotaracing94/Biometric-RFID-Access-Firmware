@@ -47,6 +47,7 @@ bool NFCService::addNFC(const char *username, const char *visitorId, const char 
     if (!saveNFCtoSDCard){
         // Delete back the visitorId that has been saved to the server
         // As failed to save data into SD Card
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to save NFC UID %s to SD card for User: %s", uidCard, username);
         return handleError(FAILED_SAVE_NFC_ACCESS_TO_SD_CARD, username, visitorId, "Failed to save NFC UID to SD Card", false);
     }
