@@ -33,7 +33,7 @@ bool NFCService::addNFC(const char *username, const char *visitorId, const char 
     if (uidCard == nullptr || uidCard[0] == '\0') {
         ESP_LOGW(NFC_SERVICE_LOG_TAG, "No NFC card detected for User: %s!", username);
         sendbleNotification(NFC_CARD_TIMEOUT);
-        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return false;
     }
     
@@ -53,7 +53,7 @@ bool NFCService::addNFC(const char *username, const char *visitorId, const char 
 
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID %s successfully saved to SD card for User: %s", uidCard, username);
     sendbleNotification(SUCCESS_REGISTERING_NFC_ACCESS);
-    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 128, 1);
     return true;
 }
 
@@ -75,13 +75,13 @@ bool NFCService::deleteNFC(const char *keyAccessId) {
 
     if (!deleteNFCfromSDCard) {
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for Key Access ID: %s", keyAccessId);
-        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return handleDeleteError(FAILED_DELETE_NFC_ACCESS_TO_SD_CARD, "Failed to delete NFC Card from SD Card");
         
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID successfully deleted to SD card for Key Access ID: %s", keyAccessId);
     sendbleNotification(SUCCESS_DELETING_NFC_ACCESS);
-    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 128, 1);
     return true;
 }
 
@@ -102,13 +102,13 @@ bool NFCService::deleteNFCsUser(const char *visitorId){
 
     if (!deleteNFCsfromSDCard) {
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card access's for under Visitor ID: %s", visitorId);
-        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return handleDeleteError(FAILED_TO_DELETE_NFCS_USER, "Failed to delete NFC Card from SD Card");
         
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID user successfully deleted from SD card under visitor ID: %s", visitorId);
     sendbleNotification(SUCCESS_DELETING_NFCS_USER);
-    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 25, 10);
+    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 128, 1);
     return true;
 }
 
@@ -165,7 +165,7 @@ bool NFCService::authenticateAccessNFC(){
         }
 
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card ID %s is detected but not stored in our data system!", uidCard);
-        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 255, 1);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return false;
     }
 }
