@@ -2,8 +2,8 @@
 #include "NFCService.h"
 #include <esp_log.h>
 
-NFCService::NFCService(AdafruitNFCSensor *nfcSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule* bleModule, QueueHandle_t nfcQueueRequest, QueueHandle_t nfcQueueResponse) 
-    : _nfcSensor(nfcSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule), _nfcQueueRequest(nfcQueueRequest), _nfcQueueResponse(nfcQueueResponse){
+NFCService::NFCService(AdafruitNFCSensor *nfcSensor, AdafruitFingerprintSensor *fingerprintSensor, SDCardModule *sdCardModule, DoorRelay *doorRelay, BLEModule* bleModule, QueueHandle_t nfcQueueRequest, QueueHandle_t nfcQueueResponse) 
+    : _nfcSensor(nfcSensor), _fingerprintSensor(fingerprintSensor), _sdCardModule(sdCardModule), _doorRelay(doorRelay), _bleModule(bleModule), _nfcQueueRequest(nfcQueueRequest), _nfcQueueResponse(nfcQueueResponse){
     setup();
 }
 
@@ -25,7 +25,6 @@ bool NFCService::setup() {
  */
 bool NFCService::addNFC(const char *username, const char *visitorId, const char *keyAccessId) {
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Enrolling new NFC Access User! Username %s, VisitorId %s, KeyAccessId %s", username, visitorId, keyAccessId);
-
     uint16_t timeout = 5000;
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "Awaiting NFC Card Input! Timeout %d ms", timeout);
     sendbleNotification(READY_FOR_NFC_CARD_INPUT);
@@ -34,6 +33,7 @@ bool NFCService::addNFC(const char *username, const char *visitorId, const char 
     if (uidCard == nullptr || uidCard[0] == '\0') {
         ESP_LOGW(NFC_SERVICE_LOG_TAG, "No NFC card detected for User: %s!", username);
         sendbleNotification(NFC_CARD_TIMEOUT);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return false;
     }
     
@@ -47,12 +47,14 @@ bool NFCService::addNFC(const char *username, const char *visitorId, const char 
     if (!saveNFCtoSDCard){
         // Delete back the visitorId that has been saved to the server
         // As failed to save data into SD Card
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to save NFC UID %s to SD card for User: %s", uidCard, username);
         return handleError(FAILED_SAVE_NFC_ACCESS_TO_SD_CARD, username, visitorId, "Failed to save NFC UID to SD Card", false);
     }
 
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID %s successfully saved to SD card for User: %s", uidCard, username);
     sendbleNotification(SUCCESS_REGISTERING_NFC_ACCESS);
+    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 128, 1);
     return true;
 }
 
@@ -74,11 +76,13 @@ bool NFCService::deleteNFC(const char *keyAccessId) {
 
     if (!deleteNFCfromSDCard) {
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card for Key Access ID: %s", keyAccessId);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return handleDeleteError(FAILED_DELETE_NFC_ACCESS_TO_SD_CARD, "Failed to delete NFC Card from SD Card");
         
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID successfully deleted to SD card for Key Access ID: %s", keyAccessId);
     sendbleNotification(SUCCESS_DELETING_NFC_ACCESS);
+    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 128, 1);
     return true;
 }
 
@@ -99,11 +103,13 @@ bool NFCService::deleteNFCsUser(const char *visitorId){
 
     if (!deleteNFCsfromSDCard) {
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "Failed to delete NFC card access's for under Visitor ID: %s", visitorId);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return handleDeleteError(FAILED_TO_DELETE_NFCS_USER, "Failed to delete NFC Card from SD Card");
         
     }
     ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC UID user successfully deleted from SD card under visitor ID: %s", visitorId);
     sendbleNotification(SUCCESS_DELETING_NFCS_USER);
+    _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_FLASHING, 128, 1);
     return true;
 }
 
@@ -155,11 +161,12 @@ bool NFCService::authenticateAccessNFC(){
             if (xQueueSend(_nfcQueueRequest, &msg, portMAX_DELAY) != pdPASS) {
                 ESP_LOGE(NFC_SERVICE_LOG_TAG, "Failed to send NFC message to WiFi queue!");
             }
-            
+            _fingerprintSensor->activateSuccessLED(FINGERPRINT_LED_BREATHING, 128, 1);
             return true;
         }
 
         ESP_LOGI(NFC_SERVICE_LOG_TAG, "NFC Card ID %s is detected but not stored in our data system!", uidCard);
+        _fingerprintSensor->activateFailedLED(FINGERPRINT_LED_BREATHING, 128, 1);
         return false;
     }
 }

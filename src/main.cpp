@@ -64,13 +64,13 @@ extern "C" void app_main(void){
 
     // Initialize the Sensor and Electrical Components
     SDCardModule *sdCardModule = new SDCardModule();
-    FingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
+    AdafruitFingerprintSensor *adafruitFingerprintSensor = new AdafruitFingerprintSensor();
     AdafruitNFCSensor *adafruitNFCSensor = new AdafruitNFCSensor();
     DoorRelay *doorRelay = new DoorRelay();
 
     // Initialize the Service
     FingerprintService *fingerprintService = new FingerprintService(adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule, fingerprintQueueRequest, fingerprintQueueResponse);
-    NFCService *nfcService = new NFCService(adafruitNFCSensor, sdCardModule, doorRelay, bleModule, nfcQueueRequest, nfcQueueResponse);
+    NFCService *nfcService = new NFCService(adafruitNFCSensor, adafruitFingerprintSensor, sdCardModule, doorRelay, bleModule, nfcQueueRequest, nfcQueueResponse);
     SyncService *syncService = new SyncService(sdCardModule, bleModule);
     WifiService *wifiService = new WifiService(bleModule, otaModule, sdCardModule);
 
